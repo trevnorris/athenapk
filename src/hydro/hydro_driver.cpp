@@ -47,9 +47,9 @@ TaskStatus ResetFluxes(MeshData<Real> *md) {
   IndexRange jb = pmb->cellbounds.GetBoundsJ(IndexDomain::interior);
   IndexRange kb = pmb->cellbounds.GetBoundsK(IndexDomain::interior);
 
-  // In principle, we'd only need to pack Metadata::WithFluxes here, but
-  // choosing to mirror other use in the code so that the packs are already cached.
-  std::vector<parthenon::MetadataFlag> flags_ind({Metadata::Independent});
+  // Flux operations should only touch variables that actually carry fluxes.
+  std::vector<parthenon::MetadataFlag> flags_ind(
+      {Metadata::Independent, Metadata::WithFluxes});
   auto cons_pack = md->PackVariablesAndFluxes(flags_ind);
 
   const int ndim = pmb->pmy_mesh->ndim;
@@ -103,9 +103,8 @@ TaskStatus RKL2StepFirst(MeshData<Real> *md_Y0, MeshData<Real> *md_Yjm1,
                     (static_cast<Real>(s_rkl) * static_cast<Real>(s_rkl) +
                      static_cast<Real>(s_rkl) - 2.);
 
-  // In principle, we'd only need to pack Metadata::WithFluxes here, but
-  // choosing to mirror other use in the code so that the packs are already cached.
-  std::vector<parthenon::MetadataFlag> flags_ind({Metadata::Independent});
+  std::vector<parthenon::MetadataFlag> flags_ind(
+      {Metadata::Independent, Metadata::WithFluxes});
   auto Y0 = md_Y0->PackVariablesAndFluxes(flags_ind);
   auto Yjm1 = md_Yjm1->PackVariablesAndFluxes(flags_ind);
   auto Yjm2 = md_Yjm2->PackVariablesAndFluxes(flags_ind);
@@ -134,9 +133,8 @@ TaskStatus RKL2StepOther(MeshData<Real> *md_Y0, MeshData<Real> *md_Yjm1,
   IndexRange jb = pmb->cellbounds.GetBoundsJ(IndexDomain::interior);
   IndexRange kb = pmb->cellbounds.GetBoundsK(IndexDomain::interior);
 
-  // In principle, we'd only need to pack Metadata::WithFluxes here, but
-  // choosing to mirror other use in the code so that the packs are already cached.
-  std::vector<parthenon::MetadataFlag> flags_ind({Metadata::Independent});
+  std::vector<parthenon::MetadataFlag> flags_ind(
+      {Metadata::Independent, Metadata::WithFluxes});
   auto Y0 = md_Y0->PackVariablesAndFluxes(flags_ind);
   auto Yjm1 = md_Yjm1->PackVariablesAndFluxes(flags_ind);
   auto Yjm2 = md_Yjm2->PackVariablesAndFluxes(flags_ind);

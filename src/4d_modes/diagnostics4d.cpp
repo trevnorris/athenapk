@@ -49,6 +49,42 @@ Real LeakAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_s_leak");
 }
 
+Real PulseCentroidXHst(MeshData<Real> *md) {
+  auto *pmb = md->GetBlockData(0)->GetBlockPointer();
+  const auto &field_pack = md->PackVariables(std::vector<std::string>{"em4d_a"});
+
+  IndexRange ib = md->GetBlockData(0)->GetBoundsI(IndexDomain::interior);
+  IndexRange jb = md->GetBlockData(0)->GetBoundsJ(IndexDomain::interior);
+  IndexRange kb = md->GetBlockData(0)->GetBoundsK(IndexDomain::interior);
+
+  Real weighted_x = 0.0;
+  pmb->par_reduce(
+      "Modes4DPulseCentroidX", 0, field_pack.GetDim(5) - 1, kb.s, kb.e, jb.s, jb.e,
+      ib.s, ib.e,
+      KOKKOS_LAMBDA(const int b, const int k, const int j, const int i, Real &wx) {
+        const auto &field = field_pack(b);
+        const auto &coords = field_pack.GetCoords(b);
+        const Real ay0 = field(2, k, j, i);
+        const Real local_weight = ay0 * ay0 * coords.CellVolume(k, j, i);
+        wx += coords.Xc<1>(k, j, i) * local_weight;
+      },
+      weighted_x);
+
+  Real weight = 0.0;
+  pmb->par_reduce(
+      "Modes4DPulseWeight", 0, field_pack.GetDim(5) - 1, kb.s, kb.e, jb.s, jb.e, ib.s,
+      ib.e,
+      KOKKOS_LAMBDA(const int b, const int k, const int j, const int i, Real &w) {
+        const auto &field = field_pack(b);
+        const auto &coords = field_pack.GetCoords(b);
+        const Real ay0 = field(2, k, j, i);
+        w += ay0 * ay0 * coords.CellVolume(k, j, i);
+      },
+      weight);
+
+  return (weight > 0.0) ? (weighted_x / weight) : 0.0;
+}
+
 Real FieldModeL2Integral(MeshData<Real> *md, const std::string &field_name,
                          const int mode_idx) {
   auto *pmb = md->GetBlockData(0)->GetBlockPointer();
@@ -98,6 +134,9 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     LeakAccumulatorHst,
                                                     "m4d_int_s_leak"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    PulseCentroidXHst,
+                                                    "m4d_pulse_xc"));
 
   const int n_modes = pkg->Param<int>("n_modes");
   for (int n = 0; n < n_modes; ++n) {

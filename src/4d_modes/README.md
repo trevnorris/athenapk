@@ -17,6 +17,7 @@ Implemented now:
   - `m4d_plasma_cons2`
   - `m4d_int_jw_ew`
   - `m4d_int_s_leak`
+  - `m4d_pulse_xc`
   - `m4d_em_a2_mode_<n>`
   - `m4d_em_pi2_mode_<n>`
 
@@ -25,6 +26,9 @@ Not implemented yet:
 - full two-fluid mode dynamics and `J^w` source evolution
 - ledger diagnostics accumulation and output
 - full reconnection workflow/analysis
+
+Additional bring-up path now available:
+- `inputs/em4d_pulse.in` exercises EM-only source evolution for `em4d_a`/`em4d_pi`
 
 ## Files
 
@@ -83,6 +87,21 @@ modes4d_unit_tests: PASS
 
 This input deck includes a history output stream (`file_type = hst`) so the
 `m4d_*` diagnostics channels are emitted during the run.
+
+### 4) Run EM-only pulse bring-up
+
+```bash
+/projects/fluid-engine/athenapk/build-baseline/bin/athenaPK \
+  -i /projects/fluid-engine/athenapk/inputs/em4d_pulse.in
+```
+
+This path enables a minimal unsplit source evolution:
+- currently an analytic moving-Gaussian update for mode-0 `A_y` and `Pi_y`
+  (used as a stable EM-only plumbing harness while full Maxwell RHS is in progress)
+
+with `c_wave` and `damping` configured in `<modes4d>` as:
+- `em_c_wave`
+- `em_damping`
 
 ## Input requirements for `harris_4d`
 

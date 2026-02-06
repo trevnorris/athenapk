@@ -16,6 +16,7 @@ target_sources(athenaPK PRIVATE
     cluster/stellar_feedback.cpp
     cpaw.cpp
     diffusion.cpp
+    em4d_pulse.cpp
     field_loop.cpp
     harris_4d.cpp
     kh.cpp

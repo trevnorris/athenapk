@@ -23,6 +23,11 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   const int n_quadrature =
       pin->GetOrAddInteger("modes4d", "n_quadrature", std::max(n_modes, n_modes + 2));
   const double lambda = pin->GetOrAddReal("modes4d", "lambda", 1.0);
+  const double em_c_wave = pin->GetOrAddReal("modes4d", "em_c_wave", 1.0);
+  const double em_damping = pin->GetOrAddReal("modes4d", "em_damping", 0.0);
+  const double pulse_amp = pin->GetOrAddReal("problem/em4d_pulse", "amplitude", 1.0e-3);
+  const double pulse_sigma = pin->GetOrAddReal("problem/em4d_pulse", "sigma", 0.08);
+  const double pulse_x0 = pin->GetOrAddReal("problem/em4d_pulse", "x0", 0.0);
 
   PARTHENON_REQUIRE(n_modes > 0, "modes4d/n_modes must be > 0");
   PARTHENON_REQUIRE(n_quadrature >= n_modes,
@@ -37,6 +42,11 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<int>("n_modes", n_modes);
   pkg->AddParam<int>("n_quadrature", n_quadrature);
   pkg->AddParam<double>("lambda", lambda);
+  pkg->AddParam<double>("em4d/c_wave", em_c_wave);
+  pkg->AddParam<double>("em4d/damping", em_damping);
+  pkg->AddParam<double>("em4d_pulse/amplitude", pulse_amp);
+  pkg->AddParam<double>("em4d_pulse/sigma", pulse_sigma);
+  pkg->AddParam<double>("em4d_pulse/x0", pulse_x0);
   pkg->AddParam<ModeTables>("mode_tables", ModeTables(config));
 
   RegisterEMVariables(pkg.get(), n_modes);
