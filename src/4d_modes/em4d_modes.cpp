@@ -114,6 +114,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
 
     auto a_new = a_old;
     auto pi_new = pi_old;
+    auto plasma_new = plasma;
 
     IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
     IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
@@ -286,7 +287,29 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             }
             for (int n = 0; n < n_modes; ++n) {
               const int base = PlasmaIndex(s, n, 0, n_modes);
-              plasma(base + kPlasmaMomW, k, j, i) = momw_modes_new[n];
+              plasma_new(base + kPlasmaMomW, k, j, i) = momw_modes_new[n];
+            }
+          }
+
+          // Mode continuity update for each species:
+          // d_t rho^(n) + div j^(n) = -(sqrt(2(n+1))/lambda) * j_w^(n+1)
+          for (int s = 0; s < kSpeciesCount; ++s) {
+            for (int n = 0; n < n_modes; ++n) {
+              const int base = PlasmaIndex(s, n, 0, n_modes);
+              const Real div_jn = gradient_x(plasma, base + kPlasmaMomX, k, j, i) +
+                                  gradient_y(plasma, base + kPlasmaMomY, k, j, i) +
+                                  gradient_z(plasma, base + kPlasmaMomZ, k, j, i);
+              Real leak_rhs = 0.0;
+              if (n + 1 < n_modes) {
+                const int base_np1 = PlasmaIndex(s, n + 1, 0, n_modes);
+                const Real coupling = std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda;
+                leak_rhs = -coupling * plasma_new(base_np1 + kPlasmaMomW, k, j, i);
+              }
+
+              const Real rhs_rho = -div_jn + leak_rhs;
+              const Real rho_old = plasma(base + kPlasmaRho, k, j, i);
+              plasma_new(base + kPlasmaRho, k, j, i) =
+                  std::max(rho_floor, rho_old + (dt * rhs_rho));
             }
           }
 
@@ -294,16 +317,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             const int ion_base = PlasmaIndex(0, n, 0, n_modes);
             const int ele_base = PlasmaIndex(1, n, 0, n_modes);
 
-            const Real rho_ion = plasma(ion_base + kPlasmaRho, k, j, i);
-            const Real rho_electron = plasma(ele_base + kPlasmaRho, k, j, i);
-            const Real momx_ion = plasma(ion_base + kPlasmaMomX, k, j, i);
-            const Real momx_electron = plasma(ele_base + kPlasmaMomX, k, j, i);
-            const Real momy_ion = plasma(ion_base + kPlasmaMomY, k, j, i);
-            const Real momy_electron = plasma(ele_base + kPlasmaMomY, k, j, i);
-            const Real momz_ion = plasma(ion_base + kPlasmaMomZ, k, j, i);
-            const Real momz_electron = plasma(ele_base + kPlasmaMomZ, k, j, i);
-            const Real momw_ion = plasma(ion_base + kPlasmaMomW, k, j, i);
-            const Real momw_electron = plasma(ele_base + kPlasmaMomW, k, j, i);
+            const Real rho_ion = plasma_new(ion_base + kPlasmaRho, k, j, i);
+            const Real rho_electron = plasma_new(ele_base + kPlasmaRho, k, j, i);
+            const Real momx_ion = plasma_new(ion_base + kPlasmaMomX, k, j, i);
+            const Real momx_electron = plasma_new(ele_base + kPlasmaMomX, k, j, i);
+            const Real momy_ion = plasma_new(ion_base + kPlasmaMomY, k, j, i);
+            const Real momy_electron = plasma_new(ele_base + kPlasmaMomY, k, j, i);
+            const Real momz_ion = plasma_new(ion_base + kPlasmaMomZ, k, j, i);
+            const Real momz_electron = plasma_new(ele_base + kPlasmaMomZ, k, j, i);
+            const Real momw_ion = plasma_new(ion_base + kPlasmaMomW, k, j, i);
+            const Real momw_electron = plasma_new(ele_base + kPlasmaMomW, k, j, i);
 
             j0_modes[n] = (qom_ion * rho_ion) + (qom_electron * rho_electron);
             jx_modes[n] = (qom_ion * momx_ion) + (qom_electron * momx_electron);
@@ -394,6 +417,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
 
     a_dev.DeepCopy(a_new);
     pi_dev.DeepCopy(pi_new);
+    plasma_dev.DeepCopy(plasma_new);
   }
 
   auto *diag_jw_ew = modes_pkg->MutableParam<double>("diag/int_jw_ew");

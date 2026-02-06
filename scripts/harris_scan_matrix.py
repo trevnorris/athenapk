@@ -66,7 +66,33 @@ def maybe_col(cols, key):
     return cols.get(key)
 
 
-def analyze_case(case_name, cols):
+def continuity_closure_metrics(times, charge_mode0, int_s_leak):
+    if len(times) < 2 or len(charge_mode0) != len(times) or len(int_s_leak) != len(times):
+        return (math.nan, math.nan, math.nan)
+
+    norm_residuals = []
+    final_residual = math.nan
+    for i in range(1, len(times)):
+        dt = times[i] - times[i - 1]
+        if dt <= 0.0:
+            continue
+        dcharge_dt = (charge_mode0[i] - charge_mode0[i - 1]) / dt
+        dsleak_dt = (int_s_leak[i] - int_s_leak[i - 1]) / dt
+        residual = dcharge_dt - dsleak_dt
+        scale = abs(dcharge_dt) + abs(dsleak_dt) + 1.0e-30
+        norm_residuals.append(abs(residual) / scale)
+        final_residual = residual
+
+    if not norm_residuals:
+        return (math.nan, math.nan, final_residual)
+
+    max_norm = max(norm_residuals)
+    rms_norm = math.sqrt(sum(x * x for x in norm_residuals) / len(norm_residuals))
+    return (max_norm, rms_norm, final_residual)
+
+
+def analyze_case(case_name, cols, closure_norm_tol):
+    times = cols["time"]
     psi = cols["m4d_psi0_span"]
     leak = cols["m4d_int_s_leak"]
     leak_abs = cols.get("m4d_int_s_leak_abs", leak)
@@ -76,6 +102,19 @@ def analyze_case(case_name, cols):
     mixed_c2 = cols["m4d_mixed_c2"]
     em_a2_mode1 = maybe_col(cols, "m4d_em_a2_mode_1")
     jw_mode1_l2 = maybe_col(cols, "m4d_jw_mode_l2_1")
+    jw_mode1 = maybe_col(cols, "m4d_jw_mode_1")
+    charge_mode0 = maybe_col(cols, "m4d_charge_mode_0")
+
+    closure_max_norm = math.nan
+    closure_rms_norm = math.nan
+    closure_final_residual = math.nan
+    closure_status = "N/A"
+    if charge_mode0 is not None:
+        closure_max_norm, closure_rms_norm, closure_final_residual = continuity_closure_metrics(
+            times, charge_mode0, leak
+        )
+        if not math.isnan(closure_max_norm):
+            closure_status = "PASS" if closure_max_norm <= closure_norm_tol else "FAIL"
 
     result = {
         "case": case_name,
@@ -94,9 +133,15 @@ def analyze_case(case_name, cols):
         "corr_psi0_mixed_c2": pearson(psi, mixed_c2),
         "final_em_a2_mode_1": em_a2_mode1[-1] if em_a2_mode1 is not None else math.nan,
         "final_jw_mode_l2_1": jw_mode1_l2[-1] if jw_mode1_l2 is not None else math.nan,
+        "final_jw_mode_1": jw_mode1[-1] if jw_mode1 is not None else math.nan,
+        "final_charge_mode_0": charge_mode0[-1] if charge_mode0 is not None else math.nan,
         "corr_psi0_jw_mode_l2_1": pearson(psi, jw_mode1_l2)
         if jw_mode1_l2 is not None
         else math.nan,
+        "closure_max_norm": closure_max_norm,
+        "closure_rms_norm": closure_rms_norm,
+        "closure_final_residual": closure_final_residual,
+        "closure_status": closure_status,
     }
     return result
 
@@ -130,6 +175,8 @@ def print_table(results):
         "final_mixed_c2",
         "final_em_a2_mode_1",
         "final_jw_mode_l2_1",
+        "final_jw_mode_1",
+        "final_charge_mode_0",
         "corr_psi0_s_leak",
         "corr_psi0_s_leak_abs",
         "corr_psi0_jw_ew",
@@ -137,6 +184,10 @@ def print_table(results):
         "corr_psi0_mixed_ew2",
         "corr_psi0_mixed_c2",
         "corr_psi0_jw_mode_l2_1",
+        "closure_max_norm",
+        "closure_rms_norm",
+        "closure_final_residual",
+        "closure_status",
     ]
     print(",".join(keys))
     for row in results:
@@ -162,6 +213,17 @@ def main():
         default="inputs/harris_4d_full.in",
         help="Full-channel input deck",
     )
+    parser.add_argument(
+        "--closure-norm-tol",
+        type=float,
+        default=5.0e-2,
+        help="Maximum normalized continuity residual for PASS",
+    )
+    parser.add_argument(
+        "--fail-on-check",
+        action="store_true",
+        help="Exit nonzero if any case fails continuity closure check",
+    )
     args = parser.parse_args()
 
     binary = Path(args.binary).resolve()
@@ -177,10 +239,15 @@ def main():
     full_cols = run_case(binary, full_input, workdir, output_dir / "harris_full.out1.hst")
 
     results = [
-        analyze_case("controlled", controlled_cols),
-        analyze_case("full", full_cols),
+        analyze_case("controlled", controlled_cols, args.closure_norm_tol),
+        analyze_case("full", full_cols, args.closure_norm_tol),
     ]
     print_table(results)
+
+    if args.fail_on_check:
+        failing = [r["case"] for r in results if r["closure_status"] == "FAIL"]
+        if failing:
+            raise SystemExit(f"continuity closure check failed for: {', '.join(failing)}")
 
 
 if __name__ == "__main__":

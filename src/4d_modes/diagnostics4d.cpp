@@ -20,6 +20,7 @@ constexpr int kCompAY = 2;
 constexpr int kCompAZ = 3;
 constexpr int kCompAW = 4;
 constexpr int kVarsPerModePerSpecies = 6;
+constexpr int kPlasmaRho = 0;
 constexpr int kPlasmaMomW = 4;
 
 int PlasmaIndex(const int species, const int mode, const int var, const int n_modes) {
@@ -352,6 +353,76 @@ Real JwModeL2Integral(MeshData<Real> *md, const int mode_idx) {
   return sum;
 }
 
+Real JwModeIntegral(MeshData<Real> *md, const int mode_idx) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
+  const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
+  if (mode_idx < 0 || mode_idx >= n_modes) {
+    return 0.0;
+  }
+
+  Real sum = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto plasma = bd->Get("plasma4d_cons").data.GetHostMirrorAndCopy();
+    auto &coords = bd->GetBlockPointer()->coords;
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          const int ion_base = PlasmaIndex(0, mode_idx, 0, n_modes);
+          const int ele_base = PlasmaIndex(1, mode_idx, 0, n_modes);
+          const Real ion_momw = plasma(ion_base + kPlasmaMomW, k, j, i);
+          const Real ele_momw = plasma(ele_base + kPlasmaMomW, k, j, i);
+          const Real jw = (qom_ion * ion_momw) + (qom_electron * ele_momw);
+          sum += jw * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return sum;
+}
+
+Real ChargeModeIntegral(MeshData<Real> *md, const int mode_idx) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
+  const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
+  if (mode_idx < 0 || mode_idx >= n_modes) {
+    return 0.0;
+  }
+
+  Real sum = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto plasma = bd->Get("plasma4d_cons").data.GetHostMirrorAndCopy();
+    auto &coords = bd->GetBlockPointer()->coords;
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          const int ion_base = PlasmaIndex(0, mode_idx, 0, n_modes);
+          const int ele_base = PlasmaIndex(1, mode_idx, 0, n_modes);
+          const Real ion_rho = plasma(ion_base + kPlasmaRho, k, j, i);
+          const Real ele_rho = plasma(ele_base + kPlasmaRho, k, j, i);
+          const Real charge = (qom_ion * ion_rho) + (qom_electron * ele_rho);
+          sum += charge * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return sum;
+}
+
 Real FieldModeL2Integral(MeshData<Real> *md, const std::string &field_name,
                          const int mode_idx) {
   auto *pmb = md->GetBlockData(0)->GetBlockPointer();
@@ -440,6 +511,14 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
         parthenon::UserHistoryOperation::sum,
         [mode_idx](MeshData<Real> *md) { return JwModeL2Integral(md, mode_idx); },
         "m4d_jw_mode_l2_" + std::to_string(mode_idx)));
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) { return JwModeIntegral(md, mode_idx); },
+        "m4d_jw_mode_" + std::to_string(mode_idx)));
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) { return ChargeModeIntegral(md, mode_idx); },
+        "m4d_charge_mode_" + std::to_string(mode_idx)));
   }
 
   pkg->AddParam<>(parthenon::hist_param_key, hst_vars, true);

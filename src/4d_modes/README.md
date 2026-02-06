@@ -19,6 +19,9 @@ Implemented now:
   - reconstruct `E_w` and `C_a` at quadrature nodes from EM modes
   - apply species force `q/m * rho * (E_w - v^a C_a)` in node space
   - project updated `momw` back to mode coefficients
+- split plasma mode-continuity (`rho`) source update:
+  - apply mode equation `d_t rho^(n) + div(j^(n)) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
+  - write updated `plasma4d_cons` back each source step
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
 - `harris_4d` now uses the same unsplit equation-based EM source update during runtime
 - standalone unit-test executable for mode math (`modes4d_unit_tests`)
@@ -39,9 +42,11 @@ Implemented now:
   - `m4d_em_a2_mode_<n>`
   - `m4d_em_pi2_mode_<n>`
   - `m4d_jw_mode_l2_<n>`
+  - `m4d_jw_mode_<n>`
+  - `m4d_charge_mode_<n>`
 
 Not implemented yet:
-- full two-fluid mode dynamics beyond `momw` source bring-up
+- full two-fluid mode dynamics beyond current split `rho`/`momw` source bring-up
 - full conservative EM update in the AthenaPK flux pipeline (current path is source-step)
 - full reconnection workflow/analysis
 
@@ -146,6 +151,10 @@ python3 /projects/fluid-engine/athenapk/scripts/harris_scan_matrix.py \
 
 This prints a CSV table with final values and Pearson correlations between
 `m4d_psi0_span` and key ledger/reconnection proxy channels.
+It also reports continuity-closure metrics based on
+`m4d_charge_mode_0` and `m4d_int_s_leak`, with `closure_status`
+computed from a normalized residual threshold (`--closure-norm-tol`, default `5e-2`).
+Use `--fail-on-check` to force a nonzero exit code on failed checks.
 
 ## Input requirements for `harris_4d`
 
