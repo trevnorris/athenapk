@@ -23,7 +23,7 @@ Implemented now:
   - apply brane Lorentz terms `q/m * rho * (E + v x B + v_w C)` for `momx/momy/momz`
   - apply species work `q/m * rho * (v·E + v_w E_w)` for mode energy
   - project updated node values back to mode coefficients
-  - split plasma mode-continuity coupling update:
+- split plasma mode-continuity coupling update:
   - apply mode continuity form
     `d_t rho^(n) + div(j^a,(n)) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
     using a face-centered central-difference `div(j^a,(n))` term with runtime gain
