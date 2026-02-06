@@ -167,17 +167,32 @@ def analyze_case(
     momz_mode0 = maybe_col(cols, "m4d_momz_mode_0")
     momw_mode0 = maybe_col(cols, "m4d_momw_mode_0")
     energy_mode0 = maybe_col(cols, "m4d_energy_mode_0")
+    pi0_mode0 = maybe_col(cols, "m4d_pi0_mode_0")
+    pix_mode0 = maybe_col(cols, "m4d_pix_mode_0")
+    piy_mode0 = maybe_col(cols, "m4d_piy_mode_0")
+    piz_mode0 = maybe_col(cols, "m4d_piz_mode_0")
+    piw_mode0 = maybe_col(cols, "m4d_piw_mode_0")
     int_divj_mode0 = maybe_col(cols, "m4d_int_divj_mode0")
     int_divmomx_mode0 = maybe_col(cols, "m4d_int_divmomx_mode0")
     int_divmomy_mode0 = maybe_col(cols, "m4d_int_divmomy_mode0")
     int_divmomz_mode0 = maybe_col(cols, "m4d_int_divmomz_mode0")
     int_divmomw_mode0 = maybe_col(cols, "m4d_int_divmomw_mode0")
     int_divenergy_mode0 = maybe_col(cols, "m4d_int_divenergy_mode0")
+    int_divpi0_mode0 = maybe_col(cols, "m4d_int_divpi0_mode0")
+    int_divpix_mode0 = maybe_col(cols, "m4d_int_divpix_mode0")
+    int_divpiy_mode0 = maybe_col(cols, "m4d_int_divpiy_mode0")
+    int_divpiz_mode0 = maybe_col(cols, "m4d_int_divpiz_mode0")
+    int_divpiw_mode0 = maybe_col(cols, "m4d_int_divpiw_mode0")
     int_srcmomx_mode0 = maybe_col(cols, "m4d_int_srcmomx_mode0")
     int_srcmomy_mode0 = maybe_col(cols, "m4d_int_srcmomy_mode0")
     int_srcmomz_mode0 = maybe_col(cols, "m4d_int_srcmomz_mode0")
     int_srcmomw_mode0 = maybe_col(cols, "m4d_int_srcmomw_mode0")
     int_srcenergy_mode0 = maybe_col(cols, "m4d_int_srcenergy_mode0")
+    int_srcpi0_mode0 = maybe_col(cols, "m4d_int_srcpi0_mode0")
+    int_srcpix_mode0 = maybe_col(cols, "m4d_int_srcpix_mode0")
+    int_srcpiy_mode0 = maybe_col(cols, "m4d_int_srcpiy_mode0")
+    int_srcpiz_mode0 = maybe_col(cols, "m4d_int_srcpiz_mode0")
+    int_srcpiw_mode0 = maybe_col(cols, "m4d_int_srcpiw_mode0")
     cont_local_mode0_max_abs = maybe_col(cols, "m4d_cont_mode0_max_abs")
     cont_local_mode0_l1 = maybe_col(cols, "m4d_cont_mode0_l1")
     cont_local_mode0_l2 = maybe_col(cols, "m4d_cont_mode0_l2")
@@ -257,6 +272,46 @@ def analyze_case(
         int_srcenergy_mode0,
         closure_abs_rate_tol,
     )
+    (
+        pi0_transport_max_norm,
+        pi0_transport_rms_norm,
+        pi0_transport_max_abs_rate,
+        pi0_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, pi0_mode0, int_divpi0_mode0, int_srcpi0_mode0, closure_abs_rate_tol
+    )
+    (
+        pix_transport_max_norm,
+        pix_transport_rms_norm,
+        pix_transport_max_abs_rate,
+        pix_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, pix_mode0, int_divpix_mode0, int_srcpix_mode0, closure_abs_rate_tol
+    )
+    (
+        piy_transport_max_norm,
+        piy_transport_rms_norm,
+        piy_transport_max_abs_rate,
+        piy_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, piy_mode0, int_divpiy_mode0, int_srcpiy_mode0, closure_abs_rate_tol
+    )
+    (
+        piz_transport_max_norm,
+        piz_transport_rms_norm,
+        piz_transport_max_abs_rate,
+        piz_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, piz_mode0, int_divpiz_mode0, int_srcpiz_mode0, closure_abs_rate_tol
+    )
+    (
+        piw_transport_max_norm,
+        piw_transport_rms_norm,
+        piw_transport_max_abs_rate,
+        piw_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, piw_mode0, int_divpiw_mode0, int_srcpiw_mode0, closure_abs_rate_tol
+    )
 
     def rate_status(max_norm, max_abs):
         if math.isnan(max_norm):
@@ -278,13 +333,39 @@ def analyze_case(
     energy_transport_status = rate_status(
         energy_transport_max_norm, energy_transport_max_abs_rate
     )
-    transport_statuses = [
+    pi0_transport_status = rate_status(
+        pi0_transport_max_norm, pi0_transport_max_abs_rate
+    )
+    pix_transport_status = rate_status(
+        pix_transport_max_norm, pix_transport_max_abs_rate
+    )
+    piy_transport_status = rate_status(
+        piy_transport_max_norm, piy_transport_max_abs_rate
+    )
+    piz_transport_status = rate_status(
+        piz_transport_max_norm, piz_transport_max_abs_rate
+    )
+    piw_transport_status = rate_status(
+        piw_transport_max_norm, piw_transport_max_abs_rate
+    )
+    plasma_transport_statuses = [
         momx_transport_status,
         momy_transport_status,
         momz_transport_status,
         momw_transport_status,
         energy_transport_status,
     ]
+    em_transport_statuses = [
+        pi0_transport_status,
+        pix_transport_status,
+        piy_transport_status,
+        piz_transport_status,
+        piw_transport_status,
+    ]
+    em_transport_closure_status = (
+        "PASS" if all(s in ("PASS", "N/A") for s in em_transport_statuses) else "FAIL"
+    )
+    transport_statuses = plasma_transport_statuses + em_transport_statuses
     transport_closure_status = (
         "PASS"
         if all(s in ("PASS", "N/A") for s in transport_statuses)
@@ -331,6 +412,21 @@ def analyze_case(
         "final_int_divenergy_mode0": int_divenergy_mode0[-1]
         if int_divenergy_mode0 is not None
         else math.nan,
+        "final_int_divpi0_mode0": int_divpi0_mode0[-1]
+        if int_divpi0_mode0 is not None
+        else math.nan,
+        "final_int_divpix_mode0": int_divpix_mode0[-1]
+        if int_divpix_mode0 is not None
+        else math.nan,
+        "final_int_divpiy_mode0": int_divpiy_mode0[-1]
+        if int_divpiy_mode0 is not None
+        else math.nan,
+        "final_int_divpiz_mode0": int_divpiz_mode0[-1]
+        if int_divpiz_mode0 is not None
+        else math.nan,
+        "final_int_divpiw_mode0": int_divpiw_mode0[-1]
+        if int_divpiw_mode0 is not None
+        else math.nan,
         "final_int_srcmomx_mode0": int_srcmomx_mode0[-1]
         if int_srcmomx_mode0 is not None
         else math.nan,
@@ -345,6 +441,21 @@ def analyze_case(
         else math.nan,
         "final_int_srcenergy_mode0": int_srcenergy_mode0[-1]
         if int_srcenergy_mode0 is not None
+        else math.nan,
+        "final_int_srcpi0_mode0": int_srcpi0_mode0[-1]
+        if int_srcpi0_mode0 is not None
+        else math.nan,
+        "final_int_srcpix_mode0": int_srcpix_mode0[-1]
+        if int_srcpix_mode0 is not None
+        else math.nan,
+        "final_int_srcpiy_mode0": int_srcpiy_mode0[-1]
+        if int_srcpiy_mode0 is not None
+        else math.nan,
+        "final_int_srcpiz_mode0": int_srcpiz_mode0[-1]
+        if int_srcpiz_mode0 is not None
+        else math.nan,
+        "final_int_srcpiw_mode0": int_srcpiw_mode0[-1]
+        if int_srcpiw_mode0 is not None
         else math.nan,
         "corr_psi0_jw_mode_l2_1": pearson(psi, jw_mode1_l2)
         if jw_mode1_l2 is not None
@@ -387,11 +498,37 @@ def analyze_case(
         "energy_transport_rms_norm": energy_transport_rms_norm,
         "energy_transport_max_abs_rate": energy_transport_max_abs_rate,
         "energy_transport_final_rate": energy_transport_final_rate,
+        "pi0_transport_max_norm": pi0_transport_max_norm,
+        "pi0_transport_rms_norm": pi0_transport_rms_norm,
+        "pi0_transport_max_abs_rate": pi0_transport_max_abs_rate,
+        "pi0_transport_final_rate": pi0_transport_final_rate,
+        "pix_transport_max_norm": pix_transport_max_norm,
+        "pix_transport_rms_norm": pix_transport_rms_norm,
+        "pix_transport_max_abs_rate": pix_transport_max_abs_rate,
+        "pix_transport_final_rate": pix_transport_final_rate,
+        "piy_transport_max_norm": piy_transport_max_norm,
+        "piy_transport_rms_norm": piy_transport_rms_norm,
+        "piy_transport_max_abs_rate": piy_transport_max_abs_rate,
+        "piy_transport_final_rate": piy_transport_final_rate,
+        "piz_transport_max_norm": piz_transport_max_norm,
+        "piz_transport_rms_norm": piz_transport_rms_norm,
+        "piz_transport_max_abs_rate": piz_transport_max_abs_rate,
+        "piz_transport_final_rate": piz_transport_final_rate,
+        "piw_transport_max_norm": piw_transport_max_norm,
+        "piw_transport_rms_norm": piw_transport_rms_norm,
+        "piw_transport_max_abs_rate": piw_transport_max_abs_rate,
+        "piw_transport_final_rate": piw_transport_final_rate,
         "momx_transport_status": momx_transport_status,
         "momy_transport_status": momy_transport_status,
         "momz_transport_status": momz_transport_status,
         "momw_transport_status": momw_transport_status,
         "energy_transport_status": energy_transport_status,
+        "pi0_transport_status": pi0_transport_status,
+        "pix_transport_status": pix_transport_status,
+        "piy_transport_status": piy_transport_status,
+        "piz_transport_status": piz_transport_status,
+        "piw_transport_status": piw_transport_status,
+        "em_transport_closure_status": em_transport_closure_status,
         "transport_closure_status": transport_closure_status,
     }
     return result
@@ -439,11 +576,21 @@ def print_table(results):
         "final_int_divmomz_mode0",
         "final_int_divmomw_mode0",
         "final_int_divenergy_mode0",
+        "final_int_divpi0_mode0",
+        "final_int_divpix_mode0",
+        "final_int_divpiy_mode0",
+        "final_int_divpiz_mode0",
+        "final_int_divpiw_mode0",
         "final_int_srcmomx_mode0",
         "final_int_srcmomy_mode0",
         "final_int_srcmomz_mode0",
         "final_int_srcmomw_mode0",
         "final_int_srcenergy_mode0",
+        "final_int_srcpi0_mode0",
+        "final_int_srcpix_mode0",
+        "final_int_srcpiy_mode0",
+        "final_int_srcpiz_mode0",
+        "final_int_srcpiw_mode0",
         "corr_psi0_s_leak",
         "corr_psi0_s_leak_abs",
         "corr_psi0_jw_ew",
@@ -486,6 +633,32 @@ def print_table(results):
         "energy_transport_max_abs_rate",
         "energy_transport_final_rate",
         "energy_transport_status",
+        "pi0_transport_max_norm",
+        "pi0_transport_rms_norm",
+        "pi0_transport_max_abs_rate",
+        "pi0_transport_final_rate",
+        "pi0_transport_status",
+        "pix_transport_max_norm",
+        "pix_transport_rms_norm",
+        "pix_transport_max_abs_rate",
+        "pix_transport_final_rate",
+        "pix_transport_status",
+        "piy_transport_max_norm",
+        "piy_transport_rms_norm",
+        "piy_transport_max_abs_rate",
+        "piy_transport_final_rate",
+        "piy_transport_status",
+        "piz_transport_max_norm",
+        "piz_transport_rms_norm",
+        "piz_transport_max_abs_rate",
+        "piz_transport_final_rate",
+        "piz_transport_status",
+        "piw_transport_max_norm",
+        "piw_transport_rms_norm",
+        "piw_transport_max_abs_rate",
+        "piw_transport_final_rate",
+        "piw_transport_status",
+        "em_transport_closure_status",
         "transport_closure_status",
         "correlation_status",
         "correlation_failures",
@@ -596,7 +769,7 @@ def main():
     parser.add_argument(
         "--check-transport-closure",
         action="store_true",
-        help="Include momentum/energy transport closure status in fail-on-check logic",
+        help="Include plasma+EM transport closure status in fail-on-check logic",
     )
     parser.add_argument(
         "--full-min-jw-ew-abs",

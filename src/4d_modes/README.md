@@ -247,8 +247,17 @@ where each rate is computed as:
 The source-ledger channels (`m4d_int_srcmomx_mode0`, `m4d_int_srcmomy_mode0`,
 `m4d_int_srcmomz_mode0`, `m4d_int_srcmomw_mode0`, `m4d_int_srcenergy_mode0`)
 track source-step contributions, so the transport rate isolates unresolved residual.
+EM mode-0 transport-balance rates are also reported:
+- `pi0_transport_*`
+- `pix_transport_*`
+- `piy_transport_*`
+- `piz_transport_*`
+- `piw_transport_*`
+using
+`d/dt(m4d_pi*_mode_0) + d/dt(m4d_int_divpi*_mode0) - d/dt(m4d_int_srcpi*_mode0)`.
 Use `--check-transport-closure --fail-on-check` to include these transport
-status checks in nonzero-exit gating.
+status checks in nonzero-exit gating (`transport_closure_status` now covers both
+plasma and EM channels).
 
 ### 6) Run controlled-limit regression smoke target
 
@@ -348,7 +357,7 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 This target runs `scripts/harris_regression_tuned.py`, which executes the
 controlled/full scan with fixed closure + activity thresholds for the tuned
 `inputs/harris_4d_full.in` baseline, and includes transport-closure gating
-(`--check-transport-closure`) plus full-case correlation gates tying
+(`--check-transport-closure`, plasma + EM mode-0 channels) plus full-case correlation gates tying
 `m4d_psi0_span` to leakage/mixed-channel activity:
 - `|corr_psi0_s_leak_abs|`
 - `|corr_psi0_jw_ew|`
