@@ -203,6 +203,13 @@ Full-case activity gates can be enabled with:
 - `--full-min-jw-mode-l2-1`
 When set, these enforce nontrivial leakage/work/mixed-channel signal levels in the
 full case and report `activity_status` / `activity_failures` in the CSV output.
+The scan CSV also reports mode-0 transport-balance rates for momentum/energy:
+- `momx_transport_*`
+- `momy_transport_*`
+- `momz_transport_*`
+- `momw_transport_*`
+- `energy_transport_*`
+where each rate is computed as `d/dt(mode0_quantity) + d/dt(m4d_int_div*_mode0)`.
 Use `--fail-on-check` to force a nonzero exit code on failed checks.
 
 ### 6) Run the dedicated tuned regression target

@@ -99,6 +99,40 @@ def continuity_closure_metrics(times, charge_mode0, int_s_leak, int_divj_mode0, 
     return (max_norm, rms_norm, max_abs, final_residual)
 
 
+def transport_balance_metrics(times, quantity_mode0, int_divquantity_mode0, abs_rate_tol):
+    if (
+        len(times) < 2
+        or quantity_mode0 is None
+        or int_divquantity_mode0 is None
+        or len(quantity_mode0) != len(times)
+        or len(int_divquantity_mode0) != len(times)
+    ):
+        return (math.nan, math.nan, math.nan, math.nan)
+
+    norm_rates = []
+    abs_rates = []
+    final_rate = math.nan
+    for i in range(1, len(times)):
+        dt = times[i] - times[i - 1]
+        if dt <= 0.0:
+            continue
+        dquantity_dt = (quantity_mode0[i] - quantity_mode0[i - 1]) / dt
+        ddiv_dt = (int_divquantity_mode0[i] - int_divquantity_mode0[i - 1]) / dt
+        rate = dquantity_dt + ddiv_dt
+        scale = max(abs(dquantity_dt) + abs(ddiv_dt), abs_rate_tol)
+        norm_rates.append(abs(rate) / scale)
+        abs_rates.append(abs(rate))
+        final_rate = rate
+
+    if not norm_rates:
+        return (math.nan, math.nan, math.nan, final_rate)
+
+    max_norm = max(norm_rates)
+    rms_norm = math.sqrt(sum(x * x for x in norm_rates) / len(norm_rates))
+    max_abs = max(abs_rates)
+    return (max_norm, rms_norm, max_abs, final_rate)
+
+
 def analyze_case(
     case_name, cols, closure_norm_tol, closure_abs_rate_tol, local_mode0_abs_rate_tol
 ):
@@ -159,6 +193,47 @@ def analyze_case(
             if max(cont_local_mode0_max_abs) <= local_mode0_abs_rate_tol
             else "FAIL"
         )
+
+    (
+        momx_transport_max_norm,
+        momx_transport_rms_norm,
+        momx_transport_max_abs_rate,
+        momx_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, momx_mode0, int_divmomx_mode0, closure_abs_rate_tol
+    )
+    (
+        momy_transport_max_norm,
+        momy_transport_rms_norm,
+        momy_transport_max_abs_rate,
+        momy_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, momy_mode0, int_divmomy_mode0, closure_abs_rate_tol
+    )
+    (
+        momz_transport_max_norm,
+        momz_transport_rms_norm,
+        momz_transport_max_abs_rate,
+        momz_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, momz_mode0, int_divmomz_mode0, closure_abs_rate_tol
+    )
+    (
+        momw_transport_max_norm,
+        momw_transport_rms_norm,
+        momw_transport_max_abs_rate,
+        momw_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, momw_mode0, int_divmomw_mode0, closure_abs_rate_tol
+    )
+    (
+        energy_transport_max_norm,
+        energy_transport_rms_norm,
+        energy_transport_max_abs_rate,
+        energy_transport_final_rate,
+    ) = transport_balance_metrics(
+        times, energy_mode0, int_divenergy_mode0, closure_abs_rate_tol
+    )
 
     result = {
         "case": case_name,
@@ -221,6 +296,26 @@ def analyze_case(
         if cont_local_mode0_l2 is not None
         else math.nan,
         "closure_local_mode0_status": closure_local_mode0_status,
+        "momx_transport_max_norm": momx_transport_max_norm,
+        "momx_transport_rms_norm": momx_transport_rms_norm,
+        "momx_transport_max_abs_rate": momx_transport_max_abs_rate,
+        "momx_transport_final_rate": momx_transport_final_rate,
+        "momy_transport_max_norm": momy_transport_max_norm,
+        "momy_transport_rms_norm": momy_transport_rms_norm,
+        "momy_transport_max_abs_rate": momy_transport_max_abs_rate,
+        "momy_transport_final_rate": momy_transport_final_rate,
+        "momz_transport_max_norm": momz_transport_max_norm,
+        "momz_transport_rms_norm": momz_transport_rms_norm,
+        "momz_transport_max_abs_rate": momz_transport_max_abs_rate,
+        "momz_transport_final_rate": momz_transport_final_rate,
+        "momw_transport_max_norm": momw_transport_max_norm,
+        "momw_transport_rms_norm": momw_transport_rms_norm,
+        "momw_transport_max_abs_rate": momw_transport_max_abs_rate,
+        "momw_transport_final_rate": momw_transport_final_rate,
+        "energy_transport_max_norm": energy_transport_max_norm,
+        "energy_transport_rms_norm": energy_transport_rms_norm,
+        "energy_transport_max_abs_rate": energy_transport_max_abs_rate,
+        "energy_transport_final_rate": energy_transport_final_rate,
     }
     return result
 
@@ -284,6 +379,26 @@ def print_table(results):
         "closure_local_mode0_final_l1",
         "closure_local_mode0_final_l2",
         "closure_local_mode0_status",
+        "momx_transport_max_norm",
+        "momx_transport_rms_norm",
+        "momx_transport_max_abs_rate",
+        "momx_transport_final_rate",
+        "momy_transport_max_norm",
+        "momy_transport_rms_norm",
+        "momy_transport_max_abs_rate",
+        "momy_transport_final_rate",
+        "momz_transport_max_norm",
+        "momz_transport_rms_norm",
+        "momz_transport_max_abs_rate",
+        "momz_transport_final_rate",
+        "momw_transport_max_norm",
+        "momw_transport_rms_norm",
+        "momw_transport_max_abs_rate",
+        "momw_transport_final_rate",
+        "energy_transport_max_norm",
+        "energy_transport_rms_norm",
+        "energy_transport_max_abs_rate",
+        "energy_transport_final_rate",
         "activity_status",
         "activity_failures",
     ]
