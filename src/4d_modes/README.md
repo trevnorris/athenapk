@@ -49,6 +49,13 @@ Implemented now:
   - `m4d_jw_mode_l2_<n>`
   - `m4d_jw_mode_<n>`
   - `m4d_charge_mode_<n>`
+  - local continuity closure channels (source-step residuals):
+    - `m4d_cont_local_l1`
+    - `m4d_cont_local_l2`
+    - `m4d_cont_local_max_abs`
+    - `m4d_cont_mode0_l1`
+    - `m4d_cont_mode0_l2`
+    - `m4d_cont_mode0_max_abs`
 
 Not implemented yet:
 - full two-fluid mode dynamics beyond current split `rho`/`momw` source bring-up
@@ -163,6 +170,9 @@ It also reports continuity-closure metrics based on
 `m4d_charge_mode_0` and `m4d_int_s_leak`, with `closure_status`
 computed from a normalized residual threshold (`--closure-norm-tol`, default `5e-2`).
 Low-signal cases use `--closure-abs-rate-tol` (default `1e-8`) as an absolute-rate gate.
+The summary also includes local mode-0 closure residual channels from
+`m4d_cont_mode0_*`, with pass/fail controlled by
+`--closure-local-mode0-abs-rate-tol` (default `1e-8`).
 Use `--fail-on-check` to force a nonzero exit code on failed checks.
 
 ## Input requirements for `harris_4d`

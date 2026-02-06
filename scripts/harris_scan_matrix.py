@@ -94,7 +94,9 @@ def continuity_closure_metrics(times, charge_mode0, int_s_leak, abs_rate_tol):
     return (max_norm, rms_norm, max_abs, final_residual)
 
 
-def analyze_case(case_name, cols, closure_norm_tol, closure_abs_rate_tol):
+def analyze_case(
+    case_name, cols, closure_norm_tol, closure_abs_rate_tol, local_mode0_abs_rate_tol
+):
     times = cols["time"]
     psi = cols["m4d_psi0_span"]
     leak = cols["m4d_int_s_leak"]
@@ -107,12 +109,16 @@ def analyze_case(case_name, cols, closure_norm_tol, closure_abs_rate_tol):
     jw_mode1_l2 = maybe_col(cols, "m4d_jw_mode_l2_1")
     jw_mode1 = maybe_col(cols, "m4d_jw_mode_1")
     charge_mode0 = maybe_col(cols, "m4d_charge_mode_0")
+    cont_local_mode0_max_abs = maybe_col(cols, "m4d_cont_mode0_max_abs")
+    cont_local_mode0_l1 = maybe_col(cols, "m4d_cont_mode0_l1")
+    cont_local_mode0_l2 = maybe_col(cols, "m4d_cont_mode0_l2")
 
     closure_max_norm = math.nan
     closure_rms_norm = math.nan
     closure_max_abs_rate = math.nan
     closure_final_residual = math.nan
     closure_status = "N/A"
+    closure_local_mode0_status = "N/A"
     if charge_mode0 is not None:
         (
             closure_max_norm,
@@ -129,6 +135,12 @@ def analyze_case(case_name, cols, closure_norm_tol, closure_abs_rate_tol):
                 )
                 else "FAIL"
             )
+    if cont_local_mode0_max_abs is not None:
+        closure_local_mode0_status = (
+            "PASS"
+            if max(cont_local_mode0_max_abs) <= local_mode0_abs_rate_tol
+            else "FAIL"
+        )
 
     result = {
         "case": case_name,
@@ -157,6 +169,19 @@ def analyze_case(case_name, cols, closure_norm_tol, closure_abs_rate_tol):
         "closure_max_abs_rate": closure_max_abs_rate,
         "closure_final_residual": closure_final_residual,
         "closure_status": closure_status,
+        "closure_local_mode0_max_abs_rate": max(cont_local_mode0_max_abs)
+        if cont_local_mode0_max_abs is not None
+        else math.nan,
+        "closure_local_mode0_final_max_abs_rate": cont_local_mode0_max_abs[-1]
+        if cont_local_mode0_max_abs is not None
+        else math.nan,
+        "closure_local_mode0_final_l1": cont_local_mode0_l1[-1]
+        if cont_local_mode0_l1 is not None
+        else math.nan,
+        "closure_local_mode0_final_l2": cont_local_mode0_l2[-1]
+        if cont_local_mode0_l2 is not None
+        else math.nan,
+        "closure_local_mode0_status": closure_local_mode0_status,
     }
     return result
 
@@ -204,6 +229,11 @@ def print_table(results):
         "closure_max_abs_rate",
         "closure_final_residual",
         "closure_status",
+        "closure_local_mode0_max_abs_rate",
+        "closure_local_mode0_final_max_abs_rate",
+        "closure_local_mode0_final_l1",
+        "closure_local_mode0_final_l2",
+        "closure_local_mode0_status",
     ]
     print(",".join(keys))
     for row in results:
@@ -242,6 +272,12 @@ def main():
         help="Maximum absolute continuity residual rate for low-signal PASS",
     )
     parser.add_argument(
+        "--closure-local-mode0-abs-rate-tol",
+        type=float,
+        default=1.0e-8,
+        help="Maximum mode-0 local continuity residual rate for PASS",
+    )
+    parser.add_argument(
         "--fail-on-check",
         action="store_true",
         help="Exit nonzero if any case fails continuity closure check",
@@ -266,18 +302,25 @@ def main():
             controlled_cols,
             args.closure_norm_tol,
             args.closure_abs_rate_tol,
+            args.closure_local_mode0_abs_rate_tol,
         ),
         analyze_case(
             "full",
             full_cols,
             args.closure_norm_tol,
             args.closure_abs_rate_tol,
+            args.closure_local_mode0_abs_rate_tol,
         ),
     ]
     print_table(results)
 
     if args.fail_on_check:
-        failing = [r["case"] for r in results if r["closure_status"] == "FAIL"]
+        failing = [
+            r["case"]
+            for r in results
+            if r["closure_status"] == "FAIL"
+            or r["closure_local_mode0_status"] == "FAIL"
+        ]
         if failing:
             raise SystemExit(f"continuity closure check failed for: {', '.join(failing)}")
 

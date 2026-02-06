@@ -1,5 +1,6 @@
 #include "em4d_modes.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -102,6 +103,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_jw_ew_step = 0.0;
   Real diag_s_leak_step = 0.0;
   Real diag_s_leak_abs_step = 0.0;
+  Real diag_cont_local_l1_step = 0.0;
+  Real diag_cont_local_l2_step = 0.0;
+  Real diag_cont_local_max_abs_step = 0.0;
+  Real diag_cont_mode0_l1_step = 0.0;
+  Real diag_cont_mode0_l2_step = 0.0;
+  Real diag_cont_mode0_max_abs_step = 0.0;
 
   const int num_blocks = md->NumBlocks();
   for (int b = 0; b < num_blocks; ++b) {
@@ -224,10 +231,19 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     std::vector<Real> momz_modes_new(n_modes, 0.0);
     std::vector<Real> energy_modes_new(n_modes, 0.0);
     std::vector<Real> energy_nodes_new(tables.NumQuadrature(), 0.0);
+    std::vector<Real> charge_modes_old(n_modes, 0.0);
 
     for (int k = kb.s; k <= kb.e; ++k) {
       for (int j = jb.s; j <= jb.e; ++j) {
         for (int i = ib.s; i <= ib.e; ++i) {
+          for (int n = 0; n < n_modes; ++n) {
+            const int ion_base = PlasmaIndex(0, n, 0, n_modes);
+            const int ele_base = PlasmaIndex(1, n, 0, n_modes);
+            const Real ion_rho = plasma(ion_base + kPlasmaRho, k, j, i);
+            const Real ele_rho = plasma(ele_base + kPlasmaRho, k, j, i);
+            charge_modes_old[n] = (qom_ion * ion_rho) + (qom_electron * ele_rho);
+          }
+
           // Update transverse species momentum from mixed-sector 4D forcing:
           // m_s dv_w/dt = q_s (E_w - v^a C_a), represented as mode coefficients.
           for (int n = 0; n < n_modes; ++n) {
@@ -451,6 +467,31 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             jw_modes[n] = (qom_ion * momw_ion) + (qom_electron * momw_electron);
           }
 
+          const Real cell_volume = coords.CellVolume(k, j, i);
+          for (int n = 0; n < n_modes; ++n) {
+            const Real coupling =
+                (n + 1 < n_modes) ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda)
+                                  : 0.0;
+            const Real jw_np1 = (n + 1 < n_modes) ? jw_modes[n + 1] : 0.0;
+            const Real continuity_residual =
+                ((j0_modes[n] - charge_modes_old[n]) / dt) + (coupling * jw_np1);
+            const Real abs_residual = std::abs(continuity_residual);
+
+            diag_cont_local_l1_step += cell_volume * abs_residual;
+            diag_cont_local_l2_step +=
+                cell_volume * continuity_residual * continuity_residual;
+            diag_cont_local_max_abs_step =
+                std::max(diag_cont_local_max_abs_step, abs_residual);
+
+            if (n == 0) {
+              diag_cont_mode0_l1_step += cell_volume * abs_residual;
+              diag_cont_mode0_l2_step +=
+                  cell_volume * continuity_residual * continuity_residual;
+              diag_cont_mode0_max_abs_step =
+                  std::max(diag_cont_mode0_max_abs_step, abs_residual);
+            }
+          }
+
           for (int n = 0; n < n_modes; ++n) {
             const int idx_a0 = EMIndex(n, kCompA0);
             const int idx_ax = EMIndex(n, kCompAX);
@@ -523,7 +564,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
 
           const Real s_leak_density =
               (n_modes > 1) ? (-(inv_lambda_root2 * jw_modes[1])) : 0.0;
-          const Real cell_volume = coords.CellVolume(k, j, i);
           diag_jw_ew_step += dt * cell_volume * jw_ew_density;
           diag_s_leak_step += dt * cell_volume * s_leak_density;
           diag_s_leak_abs_step += dt * cell_volume * std::abs(s_leak_density);
@@ -539,9 +579,23 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   auto *diag_jw_ew = modes_pkg->MutableParam<double>("diag/int_jw_ew");
   auto *diag_s_leak = modes_pkg->MutableParam<double>("diag/int_s_leak");
   auto *diag_s_leak_abs = modes_pkg->MutableParam<double>("diag/int_s_leak_abs");
+  auto *diag_cont_local_l1 = modes_pkg->MutableParam<double>("diag/continuity_local_l1");
+  auto *diag_cont_local_l2 = modes_pkg->MutableParam<double>("diag/continuity_local_l2");
+  auto *diag_cont_local_max_abs =
+      modes_pkg->MutableParam<double>("diag/continuity_local_max_abs");
+  auto *diag_cont_mode0_l1 = modes_pkg->MutableParam<double>("diag/continuity_mode0_l1");
+  auto *diag_cont_mode0_l2 = modes_pkg->MutableParam<double>("diag/continuity_mode0_l2");
+  auto *diag_cont_mode0_max_abs =
+      modes_pkg->MutableParam<double>("diag/continuity_mode0_max_abs");
   *diag_jw_ew += diag_jw_ew_step;
   *diag_s_leak += diag_s_leak_step;
   *diag_s_leak_abs += diag_s_leak_abs_step;
+  *diag_cont_local_l1 = diag_cont_local_l1_step;
+  *diag_cont_local_l2 = diag_cont_local_l2_step;
+  *diag_cont_local_max_abs = diag_cont_local_max_abs_step;
+  *diag_cont_mode0_l1 = diag_cont_mode0_l1_step;
+  *diag_cont_mode0_l2 = diag_cont_mode0_l2_step;
+  *diag_cont_mode0_max_abs = diag_cont_mode0_max_abs_step;
 }
 
 } // namespace Modes4D

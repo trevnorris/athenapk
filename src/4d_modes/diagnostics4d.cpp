@@ -80,6 +80,36 @@ Real LeakAbsAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_s_leak_abs");
 }
 
+Real ContinuityLocalL1Hst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/continuity_local_l1");
+}
+
+Real ContinuityLocalL2Hst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/continuity_local_l2");
+}
+
+Real ContinuityLocalMaxAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/continuity_local_max_abs");
+}
+
+Real ContinuityMode0L1Hst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/continuity_mode0_l1");
+}
+
+Real ContinuityMode0L2Hst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/continuity_mode0_l2");
+}
+
+Real ContinuityMode0MaxAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/continuity_mode0_max_abs");
+}
+
 Real PulseCentroidXHst(MeshData<Real> *md) {
   auto *pmb = md->GetBlockData(0)->GetBlockPointer();
   const auto &field_pack = md->PackVariables(std::vector<std::string>{"em4d_a"});
@@ -458,6 +488,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_jw_ew", 0.0, true);
   pkg->AddParam<double>("diag/int_s_leak", 0.0, true);
   pkg->AddParam<double>("diag/int_s_leak_abs", 0.0, true);
+  pkg->AddParam<double>("diag/continuity_local_l1", 0.0, true);
+  pkg->AddParam<double>("diag/continuity_local_l2", 0.0, true);
+  pkg->AddParam<double>("diag/continuity_local_max_abs", 0.0, true);
+  pkg->AddParam<double>("diag/continuity_mode0_l1", 0.0, true);
+  pkg->AddParam<double>("diag/continuity_mode0_l2", 0.0, true);
+  pkg->AddParam<double>("diag/continuity_mode0_max_abs", 0.0, true);
 
   parthenon::HstVar_list hst_vars = {};
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
@@ -476,6 +512,20 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     LeakAbsAccumulatorHst,
                                                     "m4d_int_s_leak_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ContinuityLocalL1Hst, "m4d_cont_local_l1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ContinuityLocalL2Hst, "m4d_cont_local_l2"));
+  hst_vars.emplace_back(
+      parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::max,
+                                  ContinuityLocalMaxAbsHst, "m4d_cont_local_max_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ContinuityMode0L1Hst, "m4d_cont_mode0_l1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ContinuityMode0L2Hst, "m4d_cont_mode0_l2"));
+  hst_vars.emplace_back(
+      parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::max,
+                                  ContinuityMode0MaxAbsHst, "m4d_cont_mode0_max_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     BraneE2Hst, "m4d_brane_e2"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
