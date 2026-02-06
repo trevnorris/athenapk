@@ -25,6 +25,7 @@ constexpr int kPlasmaMomX = 1;
 constexpr int kPlasmaMomY = 2;
 constexpr int kPlasmaMomZ = 3;
 constexpr int kPlasmaMomW = 4;
+constexpr int kPlasmaEnergy = 5;
 
 Real SpeciesQOM(const int species, const Real qom_ion, const Real qom_electron) {
   return (species == 0) ? qom_ion : qom_electron;
@@ -86,9 +87,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real mu0 = modes_pkg->Param<double>("em4d/mu0");
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
   const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
+  const Real force_source_gain = modes_pkg->Param<double>("plasma4d/force_source_gain");
   const Real momw_source_gain = modes_pkg->Param<double>("plasma4d/momw_source_gain");
   const Real momw_damping = modes_pkg->Param<double>("plasma4d/momw_damping");
   const Real rho_floor = modes_pkg->Param<double>("plasma4d/rho_floor");
+  const Real energy_source_gain = modes_pkg->Param<double>("plasma4d/energy_source_gain");
+  const Real energy_floor = modes_pkg->Param<double>("plasma4d/energy_floor");
   const Real c2 = c_wave * c_wave;
   const Real inv_lambda_root2 = std::sqrt(2.0) / lambda;
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
@@ -178,9 +182,27 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     std::vector<Real> ay_modes(n_modes, 0.0);
     std::vector<Real> az_modes(n_modes, 0.0);
     std::vector<Real> piw_modes(n_modes, 0.0);
+    std::vector<Real> pix_modes(n_modes, 0.0);
+    std::vector<Real> piy_modes(n_modes, 0.0);
+    std::vector<Real> piz_modes(n_modes, 0.0);
+    std::vector<Real> da0_dx_modes(n_modes, 0.0);
+    std::vector<Real> da0_dy_modes(n_modes, 0.0);
+    std::vector<Real> da0_dz_modes(n_modes, 0.0);
+    std::vector<Real> dax_dy_modes(n_modes, 0.0);
+    std::vector<Real> dax_dz_modes(n_modes, 0.0);
+    std::vector<Real> day_dx_modes(n_modes, 0.0);
+    std::vector<Real> day_dz_modes(n_modes, 0.0);
+    std::vector<Real> daz_dx_modes(n_modes, 0.0);
+    std::vector<Real> daz_dy_modes(n_modes, 0.0);
     std::vector<Real> daw_dx_modes(n_modes, 0.0);
     std::vector<Real> daw_dy_modes(n_modes, 0.0);
     std::vector<Real> daw_dz_modes(n_modes, 0.0);
+    std::vector<Real> ex_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> ey_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> ez_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> bx_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> by_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> bz_nodes(tables.NumQuadrature(), 0.0);
     std::vector<Real> ew_nodes(tables.NumQuadrature(), 0.0);
     std::vector<Real> cx_nodes(tables.NumQuadrature(), 0.0);
     std::vector<Real> cy_nodes(tables.NumQuadrature(), 0.0);
@@ -190,8 +212,18 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     std::vector<Real> momy_modes(n_modes, 0.0);
     std::vector<Real> momz_modes(n_modes, 0.0);
     std::vector<Real> momw_modes(n_modes, 0.0);
+    std::vector<Real> energy_modes(n_modes, 0.0);
     std::vector<Real> momw_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> energy_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> momx_nodes_new(tables.NumQuadrature(), 0.0);
+    std::vector<Real> momy_nodes_new(tables.NumQuadrature(), 0.0);
+    std::vector<Real> momz_nodes_new(tables.NumQuadrature(), 0.0);
     std::vector<Real> momw_modes_new(n_modes, 0.0);
+    std::vector<Real> momx_modes_new(n_modes, 0.0);
+    std::vector<Real> momy_modes_new(n_modes, 0.0);
+    std::vector<Real> momz_modes_new(n_modes, 0.0);
+    std::vector<Real> energy_modes_new(n_modes, 0.0);
+    std::vector<Real> energy_nodes_new(tables.NumQuadrature(), 0.0);
 
     for (int k = kb.s; k <= kb.e; ++k) {
       for (int j = jb.s; j <= jb.e; ++j) {
@@ -205,6 +237,18 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             ay_modes[n] = a_old(off + kCompAY, k, j, i);
             az_modes[n] = a_old(off + kCompAZ, k, j, i);
             piw_modes[n] = pi_old(off + kCompAW, k, j, i);
+            pix_modes[n] = pi_old(off + kCompAX, k, j, i);
+            piy_modes[n] = pi_old(off + kCompAY, k, j, i);
+            piz_modes[n] = pi_old(off + kCompAZ, k, j, i);
+            da0_dx_modes[n] = gradient_x(a_old, off + kCompA0, k, j, i);
+            da0_dy_modes[n] = gradient_y(a_old, off + kCompA0, k, j, i);
+            da0_dz_modes[n] = gradient_z(a_old, off + kCompA0, k, j, i);
+            dax_dy_modes[n] = gradient_y(a_old, off + kCompAX, k, j, i);
+            dax_dz_modes[n] = gradient_z(a_old, off + kCompAX, k, j, i);
+            day_dx_modes[n] = gradient_x(a_old, off + kCompAY, k, j, i);
+            day_dz_modes[n] = gradient_z(a_old, off + kCompAY, k, j, i);
+            daz_dx_modes[n] = gradient_x(a_old, off + kCompAZ, k, j, i);
+            daz_dy_modes[n] = gradient_y(a_old, off + kCompAZ, k, j, i);
             daw_dx_modes[n] = gradient_x(a_old, off + kCompAW, k, j, i);
             daw_dy_modes[n] = gradient_y(a_old, off + kCompAW, k, j, i);
             daw_dz_modes[n] = gradient_z(a_old, off + kCompAW, k, j, i);
@@ -216,6 +260,18 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             Real d_w_ay = 0.0;
             Real d_w_az = 0.0;
             Real piw_node = 0.0;
+            Real pix_node = 0.0;
+            Real piy_node = 0.0;
+            Real piz_node = 0.0;
+            Real da0_dx_node = 0.0;
+            Real da0_dy_node = 0.0;
+            Real da0_dz_node = 0.0;
+            Real dax_dy_node = 0.0;
+            Real dax_dz_node = 0.0;
+            Real day_dx_node = 0.0;
+            Real day_dz_node = 0.0;
+            Real daz_dx_node = 0.0;
+            Real daz_dy_node = 0.0;
             Real daw_dx_node = 0.0;
             Real daw_dy_node = 0.0;
             Real daw_dz_node = 0.0;
@@ -228,11 +284,29 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               d_w_ay += ay_modes[n] * dphi_nq;
               d_w_az += az_modes[n] * dphi_nq;
               piw_node += piw_modes[n] * phi_nq;
+              pix_node += pix_modes[n] * phi_nq;
+              piy_node += piy_modes[n] * phi_nq;
+              piz_node += piz_modes[n] * phi_nq;
+              da0_dx_node += da0_dx_modes[n] * phi_nq;
+              da0_dy_node += da0_dy_modes[n] * phi_nq;
+              da0_dz_node += da0_dz_modes[n] * phi_nq;
+              dax_dy_node += dax_dy_modes[n] * phi_nq;
+              dax_dz_node += dax_dz_modes[n] * phi_nq;
+              day_dx_node += day_dx_modes[n] * phi_nq;
+              day_dz_node += day_dz_modes[n] * phi_nq;
+              daz_dx_node += daz_dx_modes[n] * phi_nq;
+              daz_dy_node += daz_dy_modes[n] * phi_nq;
               daw_dx_node += daw_dx_modes[n] * phi_nq;
               daw_dy_node += daw_dy_modes[n] * phi_nq;
               daw_dz_node += daw_dz_modes[n] * phi_nq;
             }
 
+            ex_nodes[q] = -pix_node - da0_dx_node;
+            ey_nodes[q] = -piy_node - da0_dy_node;
+            ez_nodes[q] = -piz_node - da0_dz_node;
+            bx_nodes[q] = daz_dy_node - day_dz_node;
+            by_nodes[q] = dax_dz_node - daz_dx_node;
+            bz_nodes[q] = day_dx_node - dax_dy_node;
             ew_nodes[q] = -piw_node - d_w_a0;
             cx_nodes[q] = daw_dx_node - d_w_ax;
             cy_nodes[q] = daw_dy_node - d_w_ay;
@@ -248,6 +322,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               momy_modes[n] = plasma(base + kPlasmaMomY, k, j, i);
               momz_modes[n] = plasma(base + kPlasmaMomZ, k, j, i);
               momw_modes[n] = plasma(base + kPlasmaMomW, k, j, i);
+              energy_modes[n] = plasma(base + kPlasmaEnergy, k, j, i);
             }
 
             for (int q = 0; q < tables.NumQuadrature(); ++q) {
@@ -256,6 +331,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               Real momy_node = 0.0;
               Real momz_node = 0.0;
               Real momw_node = 0.0;
+              Real energy_node = 0.0;
               for (int n = 0; n < n_modes; ++n) {
                 const Real phi_nq = tables.Phi(n, q);
                 rho_node += rho_modes[n] * phi_nq;
@@ -263,42 +339,82 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 momy_node += momy_modes[n] * phi_nq;
                 momz_node += momz_modes[n] * phi_nq;
                 momw_node += momw_modes[n] * phi_nq;
+                energy_node += energy_modes[n] * phi_nq;
               }
 
               const Real rho_safe = std::max(rho_node, rho_floor);
               const Real vx = momx_node / rho_safe;
               const Real vy = momy_node / rho_safe;
               const Real vz = momz_node / rho_safe;
+              const Real vw = momw_node / rho_safe;
+              const Real ex = ex_nodes[q];
+              const Real ey = ey_nodes[q];
+              const Real ez = ez_nodes[q];
+              const Real bx = bx_nodes[q];
+              const Real by = by_nodes[q];
+              const Real bz = bz_nodes[q];
+              const Real cx = cx_nodes[q];
+              const Real cy = cy_nodes[q];
+              const Real cz = cz_nodes[q];
+              const Real ew = ew_nodes[q];
+              const Real fx = ex + ((vy * bz) - (vz * by)) + (vw * cx);
+              const Real fy = ey + ((vz * bx) - (vx * bz)) + (vw * cy);
+              const Real fz = ez + ((vx * by) - (vy * bx)) + (vw * cz);
               const Real v_dot_c =
-                  (vx * cx_nodes[q]) + (vy * cy_nodes[q]) + (vz * cz_nodes[q]);
-              const Real force_w = qom_s * rho_safe * (ew_nodes[q] - v_dot_c);
+                  (vx * cx) + (vy * cy) + (vz * cz);
+              const Real force_w = qom_s * rho_safe * (ew - v_dot_c);
+              const Real rhs_momx = force_source_gain * qom_s * rho_safe * fx;
+              const Real rhs_momy = force_source_gain * qom_s * rho_safe * fy;
+              const Real rhs_momz = force_source_gain * qom_s * rho_safe * fz;
               const Real rhs_momw =
                   (momw_source_gain * force_w) - (momw_damping * momw_node);
+              const Real rhs_energy = energy_source_gain * qom_s * rho_safe *
+                                      ((vx * ex) + (vy * ey) + (vz * ez) + (vw * ew));
 
               momw_nodes[q] = momw_node + (dt * rhs_momw);
+              energy_nodes[q] = energy_node;
+              momx_nodes_new[q] = momx_node + (dt * rhs_momx);
+              momy_nodes_new[q] = momy_node + (dt * rhs_momy);
+              momz_nodes_new[q] = momz_node + (dt * rhs_momz);
+              energy_nodes_new[q] = std::max(energy_floor, energy_node + (dt * rhs_energy));
             }
 
             for (int n = 0; n < n_modes; ++n) {
+              Real projected_momx = 0.0;
+              Real projected_momy = 0.0;
+              Real projected_momz = 0.0;
               Real projected_momw = 0.0;
+              Real projected_energy = 0.0;
               for (int q = 0; q < tables.NumQuadrature(); ++q) {
+                projected_momx += weights[q] * tables.Phi(n, q) * momx_nodes_new[q];
+                projected_momy += weights[q] * tables.Phi(n, q) * momy_nodes_new[q];
+                projected_momz += weights[q] * tables.Phi(n, q) * momz_nodes_new[q];
                 projected_momw += weights[q] * tables.Phi(n, q) * momw_nodes[q];
+                projected_energy += weights[q] * tables.Phi(n, q) * energy_nodes_new[q];
               }
+              momx_modes_new[n] = projected_momx;
+              momy_modes_new[n] = projected_momy;
+              momz_modes_new[n] = projected_momz;
               momw_modes_new[n] = projected_momw;
+              energy_modes_new[n] = projected_energy;
             }
             for (int n = 0; n < n_modes; ++n) {
               const int base = PlasmaIndex(s, n, 0, n_modes);
+              plasma_new(base + kPlasmaMomX, k, j, i) = momx_modes_new[n];
+              plasma_new(base + kPlasmaMomY, k, j, i) = momy_modes_new[n];
+              plasma_new(base + kPlasmaMomZ, k, j, i) = momz_modes_new[n];
               plasma_new(base + kPlasmaMomW, k, j, i) = momw_modes_new[n];
+              plasma_new(base + kPlasmaEnergy, k, j, i) = energy_modes_new[n];
             }
           }
 
-          // Mode continuity update for each species:
-          // d_t rho^(n) + div j^(n) = -(sqrt(2(n+1))/lambda) * j_w^(n+1)
+          // Mode continuity coupling update for each species:
+          // d_t rho^(n) = -(sqrt(2(n+1))/lambda) * j_w^(n+1)
+          // The brane transport divergence term is deferred until a conservative
+          // plasma-mode flux update path is in place.
           for (int s = 0; s < kSpeciesCount; ++s) {
             for (int n = 0; n < n_modes; ++n) {
               const int base = PlasmaIndex(s, n, 0, n_modes);
-              const Real div_jn = gradient_x(plasma, base + kPlasmaMomX, k, j, i) +
-                                  gradient_y(plasma, base + kPlasmaMomY, k, j, i) +
-                                  gradient_z(plasma, base + kPlasmaMomZ, k, j, i);
               Real leak_rhs = 0.0;
               if (n + 1 < n_modes) {
                 const int base_np1 = PlasmaIndex(s, n + 1, 0, n_modes);
@@ -306,7 +422,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 leak_rhs = -coupling * plasma_new(base_np1 + kPlasmaMomW, k, j, i);
               }
 
-              const Real rhs_rho = -div_jn + leak_rhs;
+              const Real rhs_rho = leak_rhs;
               const Real rho_old = plasma(base + kPlasmaRho, k, j, i);
               plasma_new(base + kPlasmaRho, k, j, i) =
                   std::max(rho_floor, rho_old + (dt * rhs_rho));

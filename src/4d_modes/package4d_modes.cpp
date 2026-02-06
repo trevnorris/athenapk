@@ -29,11 +29,17 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   const double plasma_qom_ion = pin->GetOrAddReal("modes4d", "plasma_qom_ion", 1.0);
   const double plasma_qom_electron =
       pin->GetOrAddReal("modes4d", "plasma_qom_electron", -1.0);
+  const double plasma_force_source_gain =
+      pin->GetOrAddReal("modes4d", "plasma_force_source_gain", 1.0);
   const double plasma_momw_source_gain =
       pin->GetOrAddReal("modes4d", "plasma_momw_source_gain", 1.0);
   const double plasma_momw_damping =
       pin->GetOrAddReal("modes4d", "plasma_momw_damping", 0.0);
   const double plasma_rho_floor = pin->GetOrAddReal("modes4d", "plasma_rho_floor", 1.0e-12);
+  const double plasma_energy_source_gain =
+      pin->GetOrAddReal("modes4d", "plasma_energy_source_gain", 1.0);
+  const double plasma_energy_floor =
+      pin->GetOrAddReal("modes4d", "plasma_energy_floor", 0.0);
   const double pulse_amp = pin->GetOrAddReal("problem/em4d_pulse", "amplitude", 1.0e-3);
   const double pulse_sigma = pin->GetOrAddReal("problem/em4d_pulse", "sigma", 0.08);
   const double pulse_x0 = pin->GetOrAddReal("problem/em4d_pulse", "x0", 0.0);
@@ -56,9 +62,12 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/mu0", em_mu0);
   pkg->AddParam<double>("plasma4d/qom_ion", plasma_qom_ion);
   pkg->AddParam<double>("plasma4d/qom_electron", plasma_qom_electron);
+  pkg->AddParam<double>("plasma4d/force_source_gain", plasma_force_source_gain);
   pkg->AddParam<double>("plasma4d/momw_source_gain", plasma_momw_source_gain);
   pkg->AddParam<double>("plasma4d/momw_damping", plasma_momw_damping);
   pkg->AddParam<double>("plasma4d/rho_floor", plasma_rho_floor);
+  pkg->AddParam<double>("plasma4d/energy_source_gain", plasma_energy_source_gain);
+  pkg->AddParam<double>("plasma4d/energy_floor", plasma_energy_floor);
   pkg->AddParam<double>("em4d_pulse/amplitude", pulse_amp);
   pkg->AddParam<double>("em4d_pulse/sigma", pulse_sigma);
   pkg->AddParam<double>("em4d_pulse/x0", pulse_x0);

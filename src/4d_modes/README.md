@@ -19,8 +19,13 @@ Implemented now:
   - reconstruct `E_w` and `C_a` at quadrature nodes from EM modes
   - apply species force `q/m * rho * (E_w - v^a C_a)` in node space
   - project updated `momw` back to mode coefficients
-- split plasma mode-continuity (`rho`) source update:
-  - apply mode equation `d_t rho^(n) + div(j^(n)) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
+- split plasma brane-momentum + energy source update:
+  - apply brane Lorentz terms `q/m * rho * (E + v x B + v_w C)` for `momx/momy/momz`
+  - apply species work `q/m * rho * (v·E + v_w E_w)` for mode energy
+  - project updated node values back to mode coefficients
+- split plasma mode-continuity coupling update:
+  - apply leakage coupling `d_t rho^(n) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
+  - defer brane transport divergence term to the future conservative flux path
   - write updated `plasma4d_cons` back each source step
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
 - `harris_4d` now uses the same unsplit equation-based EM source update during runtime
@@ -134,9 +139,12 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `em_mu0`
 - `plasma_qom_ion`
 - `plasma_qom_electron`
+- `plasma_force_source_gain`
 - `plasma_momw_source_gain`
 - `plasma_momw_damping`
 - `plasma_rho_floor`
+- `plasma_energy_source_gain`
+- `plasma_energy_floor`
 
 ### 5) Run controlled-vs-full Harris scan summary
 
@@ -154,6 +162,7 @@ This prints a CSV table with final values and Pearson correlations between
 It also reports continuity-closure metrics based on
 `m4d_charge_mode_0` and `m4d_int_s_leak`, with `closure_status`
 computed from a normalized residual threshold (`--closure-norm-tol`, default `5e-2`).
+Low-signal cases use `--closure-abs-rate-tol` (default `1e-8`) as an absolute-rate gate.
 Use `--fail-on-check` to force a nonzero exit code on failed checks.
 
 ## Input requirements for `harris_4d`

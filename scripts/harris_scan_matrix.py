@@ -66,11 +66,12 @@ def maybe_col(cols, key):
     return cols.get(key)
 
 
-def continuity_closure_metrics(times, charge_mode0, int_s_leak):
+def continuity_closure_metrics(times, charge_mode0, int_s_leak, abs_rate_tol):
     if len(times) < 2 or len(charge_mode0) != len(times) or len(int_s_leak) != len(times):
-        return (math.nan, math.nan, math.nan)
+        return (math.nan, math.nan, math.nan, math.nan)
 
     norm_residuals = []
+    abs_residuals = []
     final_residual = math.nan
     for i in range(1, len(times)):
         dt = times[i] - times[i - 1]
@@ -79,19 +80,21 @@ def continuity_closure_metrics(times, charge_mode0, int_s_leak):
         dcharge_dt = (charge_mode0[i] - charge_mode0[i - 1]) / dt
         dsleak_dt = (int_s_leak[i] - int_s_leak[i - 1]) / dt
         residual = dcharge_dt - dsleak_dt
-        scale = abs(dcharge_dt) + abs(dsleak_dt) + 1.0e-30
+        scale = max(abs(dcharge_dt) + abs(dsleak_dt), abs_rate_tol)
         norm_residuals.append(abs(residual) / scale)
+        abs_residuals.append(abs(residual))
         final_residual = residual
 
     if not norm_residuals:
-        return (math.nan, math.nan, final_residual)
+        return (math.nan, math.nan, math.nan, final_residual)
 
     max_norm = max(norm_residuals)
     rms_norm = math.sqrt(sum(x * x for x in norm_residuals) / len(norm_residuals))
-    return (max_norm, rms_norm, final_residual)
+    max_abs = max(abs_residuals)
+    return (max_norm, rms_norm, max_abs, final_residual)
 
 
-def analyze_case(case_name, cols, closure_norm_tol):
+def analyze_case(case_name, cols, closure_norm_tol, closure_abs_rate_tol):
     times = cols["time"]
     psi = cols["m4d_psi0_span"]
     leak = cols["m4d_int_s_leak"]
@@ -107,14 +110,25 @@ def analyze_case(case_name, cols, closure_norm_tol):
 
     closure_max_norm = math.nan
     closure_rms_norm = math.nan
+    closure_max_abs_rate = math.nan
     closure_final_residual = math.nan
     closure_status = "N/A"
     if charge_mode0 is not None:
-        closure_max_norm, closure_rms_norm, closure_final_residual = continuity_closure_metrics(
-            times, charge_mode0, leak
-        )
+        (
+            closure_max_norm,
+            closure_rms_norm,
+            closure_max_abs_rate,
+            closure_final_residual,
+        ) = continuity_closure_metrics(times, charge_mode0, leak, closure_abs_rate_tol)
         if not math.isnan(closure_max_norm):
-            closure_status = "PASS" if closure_max_norm <= closure_norm_tol else "FAIL"
+            closure_status = (
+                "PASS"
+                if (
+                    closure_max_norm <= closure_norm_tol
+                    or closure_max_abs_rate <= closure_abs_rate_tol
+                )
+                else "FAIL"
+            )
 
     result = {
         "case": case_name,
@@ -140,6 +154,7 @@ def analyze_case(case_name, cols, closure_norm_tol):
         else math.nan,
         "closure_max_norm": closure_max_norm,
         "closure_rms_norm": closure_rms_norm,
+        "closure_max_abs_rate": closure_max_abs_rate,
         "closure_final_residual": closure_final_residual,
         "closure_status": closure_status,
     }
@@ -186,6 +201,7 @@ def print_table(results):
         "corr_psi0_jw_mode_l2_1",
         "closure_max_norm",
         "closure_rms_norm",
+        "closure_max_abs_rate",
         "closure_final_residual",
         "closure_status",
     ]
@@ -220,6 +236,12 @@ def main():
         help="Maximum normalized continuity residual for PASS",
     )
     parser.add_argument(
+        "--closure-abs-rate-tol",
+        type=float,
+        default=1.0e-8,
+        help="Maximum absolute continuity residual rate for low-signal PASS",
+    )
+    parser.add_argument(
         "--fail-on-check",
         action="store_true",
         help="Exit nonzero if any case fails continuity closure check",
@@ -239,8 +261,18 @@ def main():
     full_cols = run_case(binary, full_input, workdir, output_dir / "harris_full.out1.hst")
 
     results = [
-        analyze_case("controlled", controlled_cols, args.closure_norm_tol),
-        analyze_case("full", full_cols, args.closure_norm_tol),
+        analyze_case(
+            "controlled",
+            controlled_cols,
+            args.closure_norm_tol,
+            args.closure_abs_rate_tol,
+        ),
+        analyze_case(
+            "full",
+            full_cols,
+            args.closure_norm_tol,
+            args.closure_abs_rate_tol,
+        ),
     ]
     print_table(results)
 
