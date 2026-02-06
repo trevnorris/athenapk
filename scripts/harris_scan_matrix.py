@@ -487,6 +487,8 @@ def print_table(results):
         "energy_transport_final_rate",
         "energy_transport_status",
         "transport_closure_status",
+        "correlation_status",
+        "correlation_failures",
         "activity_status",
         "activity_failures",
     ]
@@ -511,6 +513,38 @@ def evaluate_full_activity(
         failures.append("mixed_ew2")
     if min_jw_mode_l2_1 > 0.0 and row["final_jw_mode_l2_1"] < min_jw_mode_l2_1:
         failures.append("jw_mode_l2_1")
+
+    if failures:
+        return ("FAIL", "|".join(failures))
+    return ("PASS", "none")
+
+
+def evaluate_full_correlation(
+    row,
+    min_abs_corr_psi0_s_leak_abs,
+    min_abs_corr_psi0_jw_ew,
+    min_abs_corr_psi0_mixed_ew2,
+    min_abs_corr_psi0_mixed_c2,
+    min_abs_corr_psi0_jw_mode_l2_1,
+):
+    failures = []
+
+    def check(key, threshold, label):
+        if threshold <= 0.0:
+            return
+        value = row.get(key, math.nan)
+        if math.isnan(value) or abs(value) < threshold:
+            failures.append(label)
+
+    check("corr_psi0_s_leak_abs", min_abs_corr_psi0_s_leak_abs, "corr_psi0_s_leak_abs")
+    check("corr_psi0_jw_ew", min_abs_corr_psi0_jw_ew, "corr_psi0_jw_ew")
+    check("corr_psi0_mixed_ew2", min_abs_corr_psi0_mixed_ew2, "corr_psi0_mixed_ew2")
+    check("corr_psi0_mixed_c2", min_abs_corr_psi0_mixed_c2, "corr_psi0_mixed_c2")
+    check(
+        "corr_psi0_jw_mode_l2_1",
+        min_abs_corr_psi0_jw_mode_l2_1,
+        "corr_psi0_jw_mode_l2_1",
+    )
 
     if failures:
         return ("FAIL", "|".join(failures))
@@ -588,6 +622,36 @@ def main():
         default=0.0,
         help="Minimum final_jw_mode_l2_1 required for full-case activity PASS (disabled when 0)",
     )
+    parser.add_argument(
+        "--full-min-abs-corr-psi0-s-leak-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, int_s_leak_abs)| for full-case correlation PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psi0-jw-ew",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, int_jw_ew)| for full-case correlation PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psi0-mixed-ew2",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, mixed_ew2)| for full-case correlation PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psi0-mixed-c2",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, mixed_c2)| for full-case correlation PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psi0-jw-mode-l2-1",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, jw_mode_l2_1)| for full-case correlation PASS (disabled when 0)",
+    )
     args = parser.parse_args()
 
     binary = Path(args.binary).resolve()
@@ -619,9 +683,21 @@ def main():
         ),
     ]
     for row in results:
+        row["correlation_status"] = "N/A"
+        row["correlation_failures"] = "n/a"
         row["activity_status"] = "N/A"
         row["activity_failures"] = "n/a"
         if row["case"] == "full":
+            corr_status, corr_failures = evaluate_full_correlation(
+                row,
+                args.full_min_abs_corr_psi0_s_leak_abs,
+                args.full_min_abs_corr_psi0_jw_ew,
+                args.full_min_abs_corr_psi0_mixed_ew2,
+                args.full_min_abs_corr_psi0_mixed_c2,
+                args.full_min_abs_corr_psi0_jw_mode_l2_1,
+            )
+            row["correlation_status"] = corr_status
+            row["correlation_failures"] = corr_failures
             status, failures = evaluate_full_activity(
                 row,
                 args.full_min_jw_ew_abs,
@@ -640,6 +716,7 @@ def main():
             for r in results
             if r["closure_status"] == "FAIL"
             or r["closure_local_mode0_status"] == "FAIL"
+            or r["correlation_status"] == "FAIL"
             or r["activity_status"] == "FAIL"
             or (
                 args.check_transport_closure

@@ -44,6 +44,36 @@ def main():
         default=1.0e-30,
         help="Minimum final_jw_mode_l2_1 for full-case activity PASS",
     )
+    parser.add_argument(
+        "--min-abs-corr-psi0-s-leak-abs",
+        type=float,
+        default=9.0e-1,
+        help="Minimum |corr(psi0_span, int_s_leak_abs)| for full-case PASS",
+    )
+    parser.add_argument(
+        "--min-abs-corr-psi0-jw-ew",
+        type=float,
+        default=9.0e-1,
+        help="Minimum |corr(psi0_span, int_jw_ew)| for full-case PASS",
+    )
+    parser.add_argument(
+        "--min-abs-corr-psi0-mixed-ew2",
+        type=float,
+        default=9.0e-1,
+        help="Minimum |corr(psi0_span, mixed_ew2)| for full-case PASS",
+    )
+    parser.add_argument(
+        "--min-abs-corr-psi0-mixed-c2",
+        type=float,
+        default=9.0e-1,
+        help="Minimum |corr(psi0_span, mixed_c2)| for full-case PASS",
+    )
+    parser.add_argument(
+        "--min-abs-corr-psi0-jw-mode-l2-1",
+        type=float,
+        default=9.0e-1,
+        help="Minimum |corr(psi0_span, jw_mode_l2_1)| for full-case PASS",
+    )
     args = parser.parse_args()
 
     script_path = Path(__file__).resolve()
@@ -79,6 +109,16 @@ def main():
         str(args.min_mixed_ew2),
         "--full-min-jw-mode-l2-1",
         str(args.min_jw_mode_l2_1),
+        "--full-min-abs-corr-psi0-s-leak-abs",
+        str(args.min_abs_corr_psi0_s_leak_abs),
+        "--full-min-abs-corr-psi0-jw-ew",
+        str(args.min_abs_corr_psi0_jw_ew),
+        "--full-min-abs-corr-psi0-mixed-ew2",
+        str(args.min_abs_corr_psi0_mixed_ew2),
+        "--full-min-abs-corr-psi0-mixed-c2",
+        str(args.min_abs_corr_psi0_mixed_c2),
+        "--full-min-abs-corr-psi0-jw-mode-l2-1",
+        str(args.min_abs_corr_psi0_jw_mode_l2_1),
     ]
     subprocess.run(cmd, check=True)
 

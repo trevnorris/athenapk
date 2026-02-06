@@ -304,7 +304,13 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 This target runs `scripts/harris_regression_tuned.py`, which executes the
 controlled/full scan with fixed closure + activity thresholds for the tuned
 `inputs/harris_4d_full.in` baseline, and includes transport-closure gating
-(`--check-transport-closure`).
+(`--check-transport-closure`) plus full-case correlation gates tying
+`m4d_psi0_span` to leakage/mixed-channel activity:
+- `|corr_psi0_s_leak_abs|`
+- `|corr_psi0_jw_ew|`
+- `|corr_psi0_mixed_ew2|`
+- `|corr_psi0_mixed_c2|`
+- `|corr_psi0_jw_mode_l2_1|`
 
 ## Input requirements for `harris_4d`
 
