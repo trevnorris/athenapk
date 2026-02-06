@@ -109,6 +109,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_cont_mode0_l1_step = 0.0;
   Real diag_cont_mode0_l2_step = 0.0;
   Real diag_cont_mode0_max_abs_step = 0.0;
+  Real diag_srcmomx_mode0_step = 0.0;
+  Real diag_srcmomy_mode0_step = 0.0;
+  Real diag_srcmomz_mode0_step = 0.0;
+  Real diag_srcmomw_mode0_step = 0.0;
+  Real diag_srcenergy_mode0_step = 0.0;
 
   const int num_blocks = md->NumBlocks();
   for (int b = 0; b < num_blocks; ++b) {
@@ -236,6 +241,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     for (int k = kb.s; k <= kb.e; ++k) {
       for (int j = jb.s; j <= jb.e; ++j) {
         for (int i = ib.s; i <= ib.e; ++i) {
+          const Real cell_volume = coords.CellVolume(k, j, i);
           for (int n = 0; n < n_modes; ++n) {
             const int ion_base = PlasmaIndex(0, n, 0, n_modes);
             const int ele_base = PlasmaIndex(1, n, 0, n_modes);
@@ -243,6 +249,19 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             const Real ele_rho = plasma(ele_base + kPlasmaRho, k, j, i);
             charge_modes_old[n] = (qom_ion * ion_rho) + (qom_electron * ele_rho);
           }
+
+          const int ion_mode0 = PlasmaIndex(0, 0, 0, n_modes);
+          const int ele_mode0 = PlasmaIndex(1, 0, 0, n_modes);
+          const Real momx_mode0_old = plasma(ion_mode0 + kPlasmaMomX, k, j, i) +
+                                      plasma(ele_mode0 + kPlasmaMomX, k, j, i);
+          const Real momy_mode0_old = plasma(ion_mode0 + kPlasmaMomY, k, j, i) +
+                                      plasma(ele_mode0 + kPlasmaMomY, k, j, i);
+          const Real momz_mode0_old = plasma(ion_mode0 + kPlasmaMomZ, k, j, i) +
+                                      plasma(ele_mode0 + kPlasmaMomZ, k, j, i);
+          const Real momw_mode0_old = plasma(ion_mode0 + kPlasmaMomW, k, j, i) +
+                                      plasma(ele_mode0 + kPlasmaMomW, k, j, i);
+          const Real energy_mode0_old = plasma(ion_mode0 + kPlasmaEnergy, k, j, i) +
+                                        plasma(ele_mode0 + kPlasmaEnergy, k, j, i);
 
           // Update transverse species momentum from mixed-sector 4D forcing:
           // m_s dv_w/dt = q_s (E_w - v^a C_a), represented as mode coefficients.
@@ -424,6 +443,22 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             }
           }
 
+          const Real momx_mode0_new = plasma_new(ion_mode0 + kPlasmaMomX, k, j, i) +
+                                      plasma_new(ele_mode0 + kPlasmaMomX, k, j, i);
+          const Real momy_mode0_new = plasma_new(ion_mode0 + kPlasmaMomY, k, j, i) +
+                                      plasma_new(ele_mode0 + kPlasmaMomY, k, j, i);
+          const Real momz_mode0_new = plasma_new(ion_mode0 + kPlasmaMomZ, k, j, i) +
+                                      plasma_new(ele_mode0 + kPlasmaMomZ, k, j, i);
+          const Real momw_mode0_new = plasma_new(ion_mode0 + kPlasmaMomW, k, j, i) +
+                                      plasma_new(ele_mode0 + kPlasmaMomW, k, j, i);
+          const Real energy_mode0_new = plasma_new(ion_mode0 + kPlasmaEnergy, k, j, i) +
+                                        plasma_new(ele_mode0 + kPlasmaEnergy, k, j, i);
+          diag_srcmomx_mode0_step += cell_volume * (momx_mode0_new - momx_mode0_old);
+          diag_srcmomy_mode0_step += cell_volume * (momy_mode0_new - momy_mode0_old);
+          diag_srcmomz_mode0_step += cell_volume * (momz_mode0_new - momz_mode0_old);
+          diag_srcmomw_mode0_step += cell_volume * (momw_mode0_new - momw_mode0_old);
+          diag_srcenergy_mode0_step += cell_volume * (energy_mode0_new - energy_mode0_old);
+
           // Source-step mode continuity coupling update for each species:
           // d_t rho^(n) = -(sqrt(2(n+1))/lambda) * j_w^(n+1)
           // Brane transport divergence is handled through the conservative flux path.
@@ -466,7 +501,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             jw_modes[n] = (qom_ion * momw_ion) + (qom_electron * momw_electron);
           }
 
-          const Real cell_volume = coords.CellVolume(k, j, i);
           for (int n = 0; n < n_modes; ++n) {
             const Real coupling =
                 (n + 1 < n_modes) ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda)
@@ -586,6 +620,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   auto *diag_cont_mode0_l2 = modes_pkg->MutableParam<double>("diag/continuity_mode0_l2");
   auto *diag_cont_mode0_max_abs =
       modes_pkg->MutableParam<double>("diag/continuity_mode0_max_abs");
+  auto *diag_srcmomx_mode0 = modes_pkg->MutableParam<double>("diag/int_srcmomx_mode0");
+  auto *diag_srcmomy_mode0 = modes_pkg->MutableParam<double>("diag/int_srcmomy_mode0");
+  auto *diag_srcmomz_mode0 = modes_pkg->MutableParam<double>("diag/int_srcmomz_mode0");
+  auto *diag_srcmomw_mode0 = modes_pkg->MutableParam<double>("diag/int_srcmomw_mode0");
+  auto *diag_srcenergy_mode0 =
+      modes_pkg->MutableParam<double>("diag/int_srcenergy_mode0");
   *diag_jw_ew += diag_jw_ew_step;
   *diag_s_leak += diag_s_leak_step;
   *diag_s_leak_abs += diag_s_leak_abs_step;
@@ -595,6 +635,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_cont_mode0_l1 = diag_cont_mode0_l1_step;
   *diag_cont_mode0_l2 = diag_cont_mode0_l2_step;
   *diag_cont_mode0_max_abs = diag_cont_mode0_max_abs_step;
+  *diag_srcmomx_mode0 += diag_srcmomx_mode0_step;
+  *diag_srcmomy_mode0 += diag_srcmomy_mode0_step;
+  *diag_srcmomz_mode0 += diag_srcmomz_mode0_step;
+  *diag_srcmomw_mode0 += diag_srcmomw_mode0_step;
+  *diag_srcenergy_mode0 += diag_srcenergy_mode0_step;
 }
 
 } // namespace Modes4D

@@ -99,7 +99,14 @@ def continuity_closure_metrics(times, charge_mode0, int_s_leak, int_divj_mode0, 
     return (max_norm, rms_norm, max_abs, final_residual)
 
 
-def transport_balance_metrics(times, quantity_mode0, int_divquantity_mode0, abs_rate_tol):
+def transport_balance_metrics(
+    times,
+    quantity_mode0,
+    int_divquantity_mode0,
+    int_srcquantity_mode0,
+    abs_rate_tol,
+    skip_initial_interval=True,
+):
     if (
         len(times) < 2
         or quantity_mode0 is None
@@ -108,18 +115,25 @@ def transport_balance_metrics(times, quantity_mode0, int_divquantity_mode0, abs_
         or len(int_divquantity_mode0) != len(times)
     ):
         return (math.nan, math.nan, math.nan, math.nan)
+    if int_srcquantity_mode0 is not None and len(int_srcquantity_mode0) != len(times):
+        return (math.nan, math.nan, math.nan, math.nan)
 
     norm_rates = []
     abs_rates = []
     final_rate = math.nan
     for i in range(1, len(times)):
+        if skip_initial_interval and i == 1:
+            continue
         dt = times[i] - times[i - 1]
         if dt <= 0.0:
             continue
         dquantity_dt = (quantity_mode0[i] - quantity_mode0[i - 1]) / dt
         ddiv_dt = (int_divquantity_mode0[i] - int_divquantity_mode0[i - 1]) / dt
-        rate = dquantity_dt + ddiv_dt
-        scale = max(abs(dquantity_dt) + abs(ddiv_dt), abs_rate_tol)
+        dsrc_dt = 0.0
+        if int_srcquantity_mode0 is not None:
+            dsrc_dt = (int_srcquantity_mode0[i] - int_srcquantity_mode0[i - 1]) / dt
+        rate = dquantity_dt + ddiv_dt - dsrc_dt
+        scale = max(abs(dquantity_dt) + abs(ddiv_dt) + abs(dsrc_dt), abs_rate_tol)
         norm_rates.append(abs(rate) / scale)
         abs_rates.append(abs(rate))
         final_rate = rate
@@ -159,6 +173,11 @@ def analyze_case(
     int_divmomz_mode0 = maybe_col(cols, "m4d_int_divmomz_mode0")
     int_divmomw_mode0 = maybe_col(cols, "m4d_int_divmomw_mode0")
     int_divenergy_mode0 = maybe_col(cols, "m4d_int_divenergy_mode0")
+    int_srcmomx_mode0 = maybe_col(cols, "m4d_int_srcmomx_mode0")
+    int_srcmomy_mode0 = maybe_col(cols, "m4d_int_srcmomy_mode0")
+    int_srcmomz_mode0 = maybe_col(cols, "m4d_int_srcmomz_mode0")
+    int_srcmomw_mode0 = maybe_col(cols, "m4d_int_srcmomw_mode0")
+    int_srcenergy_mode0 = maybe_col(cols, "m4d_int_srcenergy_mode0")
     cont_local_mode0_max_abs = maybe_col(cols, "m4d_cont_mode0_max_abs")
     cont_local_mode0_l1 = maybe_col(cols, "m4d_cont_mode0_l1")
     cont_local_mode0_l2 = maybe_col(cols, "m4d_cont_mode0_l2")
@@ -200,7 +219,7 @@ def analyze_case(
         momx_transport_max_abs_rate,
         momx_transport_final_rate,
     ) = transport_balance_metrics(
-        times, momx_mode0, int_divmomx_mode0, closure_abs_rate_tol
+        times, momx_mode0, int_divmomx_mode0, int_srcmomx_mode0, closure_abs_rate_tol
     )
     (
         momy_transport_max_norm,
@@ -208,7 +227,7 @@ def analyze_case(
         momy_transport_max_abs_rate,
         momy_transport_final_rate,
     ) = transport_balance_metrics(
-        times, momy_mode0, int_divmomy_mode0, closure_abs_rate_tol
+        times, momy_mode0, int_divmomy_mode0, int_srcmomy_mode0, closure_abs_rate_tol
     )
     (
         momz_transport_max_norm,
@@ -216,7 +235,7 @@ def analyze_case(
         momz_transport_max_abs_rate,
         momz_transport_final_rate,
     ) = transport_balance_metrics(
-        times, momz_mode0, int_divmomz_mode0, closure_abs_rate_tol
+        times, momz_mode0, int_divmomz_mode0, int_srcmomz_mode0, closure_abs_rate_tol
     )
     (
         momw_transport_max_norm,
@@ -224,7 +243,7 @@ def analyze_case(
         momw_transport_max_abs_rate,
         momw_transport_final_rate,
     ) = transport_balance_metrics(
-        times, momw_mode0, int_divmomw_mode0, closure_abs_rate_tol
+        times, momw_mode0, int_divmomw_mode0, int_srcmomw_mode0, closure_abs_rate_tol
     )
     (
         energy_transport_max_norm,
@@ -232,7 +251,44 @@ def analyze_case(
         energy_transport_max_abs_rate,
         energy_transport_final_rate,
     ) = transport_balance_metrics(
-        times, energy_mode0, int_divenergy_mode0, closure_abs_rate_tol
+        times,
+        energy_mode0,
+        int_divenergy_mode0,
+        int_srcenergy_mode0,
+        closure_abs_rate_tol,
+    )
+
+    def rate_status(max_norm, max_abs):
+        if math.isnan(max_norm):
+            return "N/A"
+        return "PASS" if (max_norm <= closure_norm_tol or max_abs <= closure_abs_rate_tol) else "FAIL"
+
+    momx_transport_status = rate_status(
+        momx_transport_max_norm, momx_transport_max_abs_rate
+    )
+    momy_transport_status = rate_status(
+        momy_transport_max_norm, momy_transport_max_abs_rate
+    )
+    momz_transport_status = rate_status(
+        momz_transport_max_norm, momz_transport_max_abs_rate
+    )
+    momw_transport_status = rate_status(
+        momw_transport_max_norm, momw_transport_max_abs_rate
+    )
+    energy_transport_status = rate_status(
+        energy_transport_max_norm, energy_transport_max_abs_rate
+    )
+    transport_statuses = [
+        momx_transport_status,
+        momy_transport_status,
+        momz_transport_status,
+        momw_transport_status,
+        energy_transport_status,
+    ]
+    transport_closure_status = (
+        "PASS"
+        if all(s in ("PASS", "N/A") for s in transport_statuses)
+        else "FAIL"
     )
 
     result = {
@@ -275,6 +331,21 @@ def analyze_case(
         "final_int_divenergy_mode0": int_divenergy_mode0[-1]
         if int_divenergy_mode0 is not None
         else math.nan,
+        "final_int_srcmomx_mode0": int_srcmomx_mode0[-1]
+        if int_srcmomx_mode0 is not None
+        else math.nan,
+        "final_int_srcmomy_mode0": int_srcmomy_mode0[-1]
+        if int_srcmomy_mode0 is not None
+        else math.nan,
+        "final_int_srcmomz_mode0": int_srcmomz_mode0[-1]
+        if int_srcmomz_mode0 is not None
+        else math.nan,
+        "final_int_srcmomw_mode0": int_srcmomw_mode0[-1]
+        if int_srcmomw_mode0 is not None
+        else math.nan,
+        "final_int_srcenergy_mode0": int_srcenergy_mode0[-1]
+        if int_srcenergy_mode0 is not None
+        else math.nan,
         "corr_psi0_jw_mode_l2_1": pearson(psi, jw_mode1_l2)
         if jw_mode1_l2 is not None
         else math.nan,
@@ -316,6 +387,12 @@ def analyze_case(
         "energy_transport_rms_norm": energy_transport_rms_norm,
         "energy_transport_max_abs_rate": energy_transport_max_abs_rate,
         "energy_transport_final_rate": energy_transport_final_rate,
+        "momx_transport_status": momx_transport_status,
+        "momy_transport_status": momy_transport_status,
+        "momz_transport_status": momz_transport_status,
+        "momw_transport_status": momw_transport_status,
+        "energy_transport_status": energy_transport_status,
+        "transport_closure_status": transport_closure_status,
     }
     return result
 
@@ -362,6 +439,11 @@ def print_table(results):
         "final_int_divmomz_mode0",
         "final_int_divmomw_mode0",
         "final_int_divenergy_mode0",
+        "final_int_srcmomx_mode0",
+        "final_int_srcmomy_mode0",
+        "final_int_srcmomz_mode0",
+        "final_int_srcmomw_mode0",
+        "final_int_srcenergy_mode0",
         "corr_psi0_s_leak",
         "corr_psi0_s_leak_abs",
         "corr_psi0_jw_ew",
@@ -383,22 +465,28 @@ def print_table(results):
         "momx_transport_rms_norm",
         "momx_transport_max_abs_rate",
         "momx_transport_final_rate",
+        "momx_transport_status",
         "momy_transport_max_norm",
         "momy_transport_rms_norm",
         "momy_transport_max_abs_rate",
         "momy_transport_final_rate",
+        "momy_transport_status",
         "momz_transport_max_norm",
         "momz_transport_rms_norm",
         "momz_transport_max_abs_rate",
         "momz_transport_final_rate",
+        "momz_transport_status",
         "momw_transport_max_norm",
         "momw_transport_rms_norm",
         "momw_transport_max_abs_rate",
         "momw_transport_final_rate",
+        "momw_transport_status",
         "energy_transport_max_norm",
         "energy_transport_rms_norm",
         "energy_transport_max_abs_rate",
         "energy_transport_final_rate",
+        "energy_transport_status",
+        "transport_closure_status",
         "activity_status",
         "activity_failures",
     ]
@@ -470,6 +558,11 @@ def main():
         "--fail-on-check",
         action="store_true",
         help="Exit nonzero if any case fails closure or activity checks",
+    )
+    parser.add_argument(
+        "--check-transport-closure",
+        action="store_true",
+        help="Include momentum/energy transport closure status in fail-on-check logic",
     )
     parser.add_argument(
         "--full-min-jw-ew-abs",
@@ -548,6 +641,10 @@ def main():
             if r["closure_status"] == "FAIL"
             or r["closure_local_mode0_status"] == "FAIL"
             or r["activity_status"] == "FAIL"
+            or (
+                args.check_transport_closure
+                and r["transport_closure_status"] == "FAIL"
+            )
         ]
         if failing:
             raise SystemExit(f"scan checks failed for: {', '.join(failing)}")

@@ -114,6 +114,31 @@ Real DivEnergyMode0AccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_divenergy_mode0");
 }
 
+Real SrcMomXMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcmomx_mode0");
+}
+
+Real SrcMomYMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcmomy_mode0");
+}
+
+Real SrcMomZMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcmomz_mode0");
+}
+
+Real SrcMomWMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcmomw_mode0");
+}
+
+Real SrcEnergyMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcenergy_mode0");
+}
+
 Real ContinuityLocalL1Hst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/continuity_local_l1");
@@ -560,6 +585,11 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_divmomz_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_divmomw_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_divenergy_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcmomx_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcmomy_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcmomz_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcmomw_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcenergy_mode0", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l1", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l2", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_max_abs", 0.0, true);
@@ -602,6 +632,21 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     DivEnergyMode0AccumulatorHst,
                                                     "m4d_int_divenergy_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcMomXMode0AccumulatorHst,
+                                                    "m4d_int_srcmomx_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcMomYMode0AccumulatorHst,
+                                                    "m4d_int_srcmomy_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcMomZMode0AccumulatorHst,
+                                                    "m4d_int_srcmomz_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcMomWMode0AccumulatorHst,
+                                                    "m4d_int_srcmomw_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcEnergyMode0AccumulatorHst,
+                                                    "m4d_int_srcenergy_mode0"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ContinuityLocalL1Hst, "m4d_cont_local_l1"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(

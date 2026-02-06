@@ -70,6 +70,7 @@ def main():
         "--output-dir",
         str(output_dir),
         "--fail-on-check",
+        "--check-transport-closure",
         "--full-min-jw-ew-abs",
         str(args.min_jw_ew_abs),
         "--full-min-s-leak-abs",

@@ -209,8 +209,13 @@ The scan CSV also reports mode-0 transport-balance rates for momentum/energy:
 - `momz_transport_*`
 - `momw_transport_*`
 - `energy_transport_*`
-where each rate is computed as `d/dt(mode0_quantity) + d/dt(m4d_int_div*_mode0)`.
-Use `--fail-on-check` to force a nonzero exit code on failed checks.
+where each rate is computed as:
+`d/dt(mode0_quantity) + d/dt(m4d_int_div*_mode0) - d/dt(m4d_int_src*_mode0)`.
+The source-ledger channels (`m4d_int_srcmomx_mode0`, `m4d_int_srcmomy_mode0`,
+`m4d_int_srcmomz_mode0`, `m4d_int_srcmomw_mode0`, `m4d_int_srcenergy_mode0`)
+track source-step contributions, so the transport rate isolates unresolved residual.
+Use `--check-transport-closure --fail-on-check` to include these transport
+status checks in nonzero-exit gating.
 
 ### 6) Run the dedicated tuned regression target
 
@@ -221,7 +226,8 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 
 This target runs `scripts/harris_regression_tuned.py`, which executes the
 controlled/full scan with fixed closure + activity thresholds for the tuned
-`inputs/harris_4d_full.in` baseline.
+`inputs/harris_4d_full.in` baseline, and includes transport-closure gating
+(`--check-transport-closure`).
 
 ## Input requirements for `harris_4d`
 
