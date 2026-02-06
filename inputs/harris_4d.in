@@ -58,3 +58,7 @@ sheet_half_width = 0.1
 file_type = hdf5
 dt = -0.05
 variables = cons
+
+<parthenon/output1>
+file_type = hst
+dt = 0.01

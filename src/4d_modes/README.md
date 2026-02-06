@@ -11,6 +11,12 @@ Implemented now:
 - package registration skeleton (`modes4d`) with EM/plasma field registration
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
 - standalone unit-test executable for mode math (`modes4d_unit_tests`)
+- initial history diagnostics:
+  - `m4d_em_a2`
+  - `m4d_em_pi2`
+  - `m4d_plasma_cons2`
+  - `m4d_int_jw_ew`
+  - `m4d_int_s_leak`
 
 Not implemented yet:
 - full EM RHS evolution in modes
@@ -72,6 +78,9 @@ modes4d_unit_tests: PASS
 /projects/fluid-engine/athenapk/build-baseline/bin/athenaPK \
   -i /projects/fluid-engine/athenapk/inputs/harris_4d.in
 ```
+
+This input deck includes a history output stream (`file_type = hst`) so the
+`m4d_*` diagnostics channels are emitted during the run.
 
 ## Input requirements for `harris_4d`
 
