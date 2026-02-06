@@ -69,26 +69,34 @@ def maybe_col(cols, key):
 def analyze_case(case_name, cols):
     psi = cols["m4d_psi0_span"]
     leak = cols["m4d_int_s_leak"]
+    leak_abs = cols.get("m4d_int_s_leak_abs", leak)
     jw_ew = cols["m4d_int_jw_ew"]
     epar2 = cols["m4d_brane_epar2"]
     mixed_ew2 = cols["m4d_mixed_ew2"]
     mixed_c2 = cols["m4d_mixed_c2"]
     em_a2_mode1 = maybe_col(cols, "m4d_em_a2_mode_1")
+    jw_mode1_l2 = maybe_col(cols, "m4d_jw_mode_l2_1")
 
     result = {
         "case": case_name,
         "final_psi0_span": psi[-1],
         "final_s_leak": leak[-1],
+        "final_s_leak_abs": leak_abs[-1],
         "final_jw_ew": jw_ew[-1],
         "final_brane_epar2": epar2[-1],
         "final_mixed_ew2": mixed_ew2[-1],
         "final_mixed_c2": mixed_c2[-1],
         "corr_psi0_s_leak": pearson(psi, leak),
+        "corr_psi0_s_leak_abs": pearson(psi, leak_abs),
         "corr_psi0_jw_ew": pearson(psi, jw_ew),
         "corr_psi0_brane_epar2": pearson(psi, epar2),
         "corr_psi0_mixed_ew2": pearson(psi, mixed_ew2),
         "corr_psi0_mixed_c2": pearson(psi, mixed_c2),
         "final_em_a2_mode_1": em_a2_mode1[-1] if em_a2_mode1 is not None else math.nan,
+        "final_jw_mode_l2_1": jw_mode1_l2[-1] if jw_mode1_l2 is not None else math.nan,
+        "corr_psi0_jw_mode_l2_1": pearson(psi, jw_mode1_l2)
+        if jw_mode1_l2 is not None
+        else math.nan,
     }
     return result
 
@@ -115,16 +123,20 @@ def print_table(results):
         "case",
         "final_psi0_span",
         "final_s_leak",
+        "final_s_leak_abs",
         "final_jw_ew",
         "final_brane_epar2",
         "final_mixed_ew2",
         "final_mixed_c2",
         "final_em_a2_mode_1",
+        "final_jw_mode_l2_1",
         "corr_psi0_s_leak",
+        "corr_psi0_s_leak_abs",
         "corr_psi0_jw_ew",
         "corr_psi0_brane_epar2",
         "corr_psi0_mixed_ew2",
         "corr_psi0_mixed_c2",
+        "corr_psi0_jw_mode_l2_1",
     ]
     print(",".join(keys))
     for row in results:

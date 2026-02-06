@@ -15,6 +15,10 @@ Implemented now:
     and `J^nu` source deposition
   - scalar component includes Laplacian and `J^w` source deposition
   - scalar-photon work (`J^w E_w`) and leakage (`S_leak`) accumulators are updated
+- split plasma transverse-momentum (`momw`) source update:
+  - reconstruct `E_w` and `C_a` at quadrature nodes from EM modes
+  - apply species force `q/m * rho * (E_w - v^a C_a)` in node space
+  - project updated `momw` back to mode coefficients
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
 - `harris_4d` now uses the same unsplit equation-based EM source update during runtime
 - standalone unit-test executable for mode math (`modes4d_unit_tests`)
@@ -24,6 +28,7 @@ Implemented now:
   - `m4d_plasma_cons2`
   - `m4d_int_jw_ew`
   - `m4d_int_s_leak`
+  - `m4d_int_s_leak_abs`
   - `m4d_brane_e2`
   - `m4d_brane_b2`
   - `m4d_brane_epar2`
@@ -33,17 +38,18 @@ Implemented now:
   - `m4d_pulse_xc`
   - `m4d_em_a2_mode_<n>`
   - `m4d_em_pi2_mode_<n>`
+  - `m4d_jw_mode_l2_<n>`
 
 Not implemented yet:
-- full two-fluid mode dynamics and `J^w` source evolution
+- full two-fluid mode dynamics beyond `momw` source bring-up
 - full conservative EM update in the AthenaPK flux pipeline (current path is source-step)
 - full reconnection workflow/analysis
 
 Additional bring-up path now available:
 - `inputs/em4d_pulse.in` exercises EM-only source evolution for `em4d_a`/`em4d_pi`
 - `inputs/harris_4d_controlled.in` and `inputs/harris_4d_full.in` provide a
-  controlled-vs-full scan pair (`n_modes=1` vs `n_modes=4`), with optional
-  mode-1 channel seeding in the full case
+  controlled-vs-full scan pair (`n_modes=1` vs `n_modes=4`), with full-case
+  mixed-channel activation driven by plasma response (no direct `J^w` mode seed)
 
 ## Files
 
@@ -123,6 +129,9 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `em_mu0`
 - `plasma_qom_ion`
 - `plasma_qom_electron`
+- `plasma_momw_source_gain`
+- `plasma_momw_damping`
+- `plasma_rho_floor`
 
 ### 5) Run controlled-vs-full Harris scan summary
 
@@ -153,14 +162,16 @@ Key parameters currently used from `<problem/harris_4d>`:
 - `p_bg`
 - `sheet_half_width`
 - `perturbation_amp`
+- `drift_current_scale`
 - `aw_mode1_amp`
 - `piw_mode1_amp`
-- `jw_mode1_amp`
 
 ## Notes
 
 - The `harris_4d` initializer currently sets:
   - hydro/MHD conservative state (`cons`) for a Harris-like zero-mode profile
   - mode-0 `A_y` perturbation in `em4d_a`
+  - optional mode-1 `A_w` perturbation in `em4d_a` for mixed-sector triggering
+  - optional species mode-0 drift current via `drift_current_scale`
   - placeholder species zero-mode values in `plasma4d_cons`
 - This is a bring-up scaffold and not yet the final physics model from the docs.

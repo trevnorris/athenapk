@@ -19,6 +19,13 @@ constexpr int kCompAX = 1;
 constexpr int kCompAY = 2;
 constexpr int kCompAZ = 3;
 constexpr int kCompAW = 4;
+constexpr int kVarsPerModePerSpecies = 6;
+constexpr int kPlasmaMomW = 4;
+
+int PlasmaIndex(const int species, const int mode, const int var, const int n_modes) {
+  return (species * kVarsPerModePerSpecies * n_modes) + (mode * kVarsPerModePerSpecies) +
+         var;
+}
 
 enum class BraneMixedQuantity {
   BraneE2,
@@ -65,6 +72,11 @@ Real JwEwAccumulatorHst(MeshData<Real> *md) {
 Real LeakAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_s_leak");
+}
+
+Real LeakAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_s_leak_abs");
 }
 
 Real PulseCentroidXHst(MeshData<Real> *md) {
@@ -305,6 +317,41 @@ Real Ay0SpanHst(MeshData<Real> *md) {
   return (ay0_max > ay0_min) ? (ay0_max - ay0_min) : 0.0;
 }
 
+Real JwModeL2Integral(MeshData<Real> *md, const int mode_idx) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
+  const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
+  if (mode_idx < 0 || mode_idx >= n_modes) {
+    return 0.0;
+  }
+
+  Real sum = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto plasma = bd->Get("plasma4d_cons").data.GetHostMirrorAndCopy();
+    auto &coords = bd->GetBlockPointer()->coords;
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          const int ion_base = PlasmaIndex(0, mode_idx, 0, n_modes);
+          const int ele_base = PlasmaIndex(1, mode_idx, 0, n_modes);
+          const Real ion_momw = plasma(ion_base + kPlasmaMomW, k, j, i);
+          const Real ele_momw = plasma(ele_base + kPlasmaMomW, k, j, i);
+          const Real jw = (qom_ion * ion_momw) + (qom_electron * ele_momw);
+          sum += 0.5 * jw * jw * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return sum;
+}
+
 Real FieldModeL2Integral(MeshData<Real> *md, const std::string &field_name,
                          const int mode_idx) {
   auto *pmb = md->GetBlockData(0)->GetBlockPointer();
@@ -339,6 +386,7 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   // Placeholder accumulators for the required energy/leakage ledger channels.
   pkg->AddParam<double>("diag/int_jw_ew", 0.0, true);
   pkg->AddParam<double>("diag/int_s_leak", 0.0, true);
+  pkg->AddParam<double>("diag/int_s_leak_abs", 0.0, true);
 
   parthenon::HstVar_list hst_vars = {};
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
@@ -354,6 +402,9 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     LeakAccumulatorHst,
                                                     "m4d_int_s_leak"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    LeakAbsAccumulatorHst,
+                                                    "m4d_int_s_leak_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     BraneE2Hst, "m4d_brane_e2"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
@@ -385,6 +436,10 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
           return FieldModeL2Integral(md, "em4d_pi", mode_idx);
         },
         "m4d_em_pi2_mode_" + std::to_string(mode_idx)));
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) { return JwModeL2Integral(md, mode_idx); },
+        "m4d_jw_mode_l2_" + std::to_string(mode_idx)));
   }
 
   pkg->AddParam<>(parthenon::hist_param_key, hst_vars, true);

@@ -26,6 +26,10 @@ constexpr int kPlasmaMomY = 2;
 constexpr int kPlasmaMomZ = 3;
 constexpr int kPlasmaMomW = 4;
 
+Real SpeciesQOM(const int species, const Real qom_ion, const Real qom_electron) {
+  return (species == 0) ? qom_ion : qom_electron;
+}
+
 int EMIndex(const int mode, const int component) {
   return kNumEMComponents * mode + component;
 }
@@ -82,6 +86,9 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real mu0 = modes_pkg->Param<double>("em4d/mu0");
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
   const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
+  const Real momw_source_gain = modes_pkg->Param<double>("plasma4d/momw_source_gain");
+  const Real momw_damping = modes_pkg->Param<double>("plasma4d/momw_damping");
+  const Real rho_floor = modes_pkg->Param<double>("plasma4d/rho_floor");
   const Real c2 = c_wave * c_wave;
   const Real inv_lambda_root2 = std::sqrt(2.0) / lambda;
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
@@ -90,6 +97,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
 
   Real diag_jw_ew_step = 0.0;
   Real diag_s_leak_step = 0.0;
+  Real diag_s_leak_abs_step = 0.0;
 
   const int num_blocks = md->NumBlocks();
   for (int b = 0; b < num_blocks; ++b) {
@@ -165,10 +173,123 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     std::vector<Real> jw_modes(n_modes, 0.0);
     std::vector<Real> a0_modes(n_modes, 0.0);
     std::vector<Real> ew_modes(n_modes, 0.0);
+    std::vector<Real> ax_modes(n_modes, 0.0);
+    std::vector<Real> ay_modes(n_modes, 0.0);
+    std::vector<Real> az_modes(n_modes, 0.0);
+    std::vector<Real> piw_modes(n_modes, 0.0);
+    std::vector<Real> daw_dx_modes(n_modes, 0.0);
+    std::vector<Real> daw_dy_modes(n_modes, 0.0);
+    std::vector<Real> daw_dz_modes(n_modes, 0.0);
+    std::vector<Real> ew_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> cx_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> cy_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> cz_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> rho_modes(n_modes, 0.0);
+    std::vector<Real> momx_modes(n_modes, 0.0);
+    std::vector<Real> momy_modes(n_modes, 0.0);
+    std::vector<Real> momz_modes(n_modes, 0.0);
+    std::vector<Real> momw_modes(n_modes, 0.0);
+    std::vector<Real> momw_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> momw_modes_new(n_modes, 0.0);
 
     for (int k = kb.s; k <= kb.e; ++k) {
       for (int j = jb.s; j <= jb.e; ++j) {
         for (int i = ib.s; i <= ib.e; ++i) {
+          // Update transverse species momentum from mixed-sector 4D forcing:
+          // m_s dv_w/dt = q_s (E_w - v^a C_a), represented as mode coefficients.
+          for (int n = 0; n < n_modes; ++n) {
+            const int off = EMIndex(n, 0);
+            a0_modes[n] = a_old(off + kCompA0, k, j, i);
+            ax_modes[n] = a_old(off + kCompAX, k, j, i);
+            ay_modes[n] = a_old(off + kCompAY, k, j, i);
+            az_modes[n] = a_old(off + kCompAZ, k, j, i);
+            piw_modes[n] = pi_old(off + kCompAW, k, j, i);
+            daw_dx_modes[n] = gradient_x(a_old, off + kCompAW, k, j, i);
+            daw_dy_modes[n] = gradient_y(a_old, off + kCompAW, k, j, i);
+            daw_dz_modes[n] = gradient_z(a_old, off + kCompAW, k, j, i);
+          }
+
+          for (int q = 0; q < tables.NumQuadrature(); ++q) {
+            Real d_w_a0 = 0.0;
+            Real d_w_ax = 0.0;
+            Real d_w_ay = 0.0;
+            Real d_w_az = 0.0;
+            Real piw_node = 0.0;
+            Real daw_dx_node = 0.0;
+            Real daw_dy_node = 0.0;
+            Real daw_dz_node = 0.0;
+
+            for (int n = 0; n < n_modes; ++n) {
+              const Real phi_nq = tables.Phi(n, q);
+              const Real dphi_nq = tables.DPhi(n, q);
+              d_w_a0 += a0_modes[n] * dphi_nq;
+              d_w_ax += ax_modes[n] * dphi_nq;
+              d_w_ay += ay_modes[n] * dphi_nq;
+              d_w_az += az_modes[n] * dphi_nq;
+              piw_node += piw_modes[n] * phi_nq;
+              daw_dx_node += daw_dx_modes[n] * phi_nq;
+              daw_dy_node += daw_dy_modes[n] * phi_nq;
+              daw_dz_node += daw_dz_modes[n] * phi_nq;
+            }
+
+            ew_nodes[q] = -piw_node - d_w_a0;
+            cx_nodes[q] = daw_dx_node - d_w_ax;
+            cy_nodes[q] = daw_dy_node - d_w_ay;
+            cz_nodes[q] = daw_dz_node - d_w_az;
+          }
+
+          for (int s = 0; s < kSpeciesCount; ++s) {
+            const Real qom_s = SpeciesQOM(s, qom_ion, qom_electron);
+            for (int n = 0; n < n_modes; ++n) {
+              const int base = PlasmaIndex(s, n, 0, n_modes);
+              rho_modes[n] = plasma(base + kPlasmaRho, k, j, i);
+              momx_modes[n] = plasma(base + kPlasmaMomX, k, j, i);
+              momy_modes[n] = plasma(base + kPlasmaMomY, k, j, i);
+              momz_modes[n] = plasma(base + kPlasmaMomZ, k, j, i);
+              momw_modes[n] = plasma(base + kPlasmaMomW, k, j, i);
+            }
+
+            for (int q = 0; q < tables.NumQuadrature(); ++q) {
+              Real rho_node = 0.0;
+              Real momx_node = 0.0;
+              Real momy_node = 0.0;
+              Real momz_node = 0.0;
+              Real momw_node = 0.0;
+              for (int n = 0; n < n_modes; ++n) {
+                const Real phi_nq = tables.Phi(n, q);
+                rho_node += rho_modes[n] * phi_nq;
+                momx_node += momx_modes[n] * phi_nq;
+                momy_node += momy_modes[n] * phi_nq;
+                momz_node += momz_modes[n] * phi_nq;
+                momw_node += momw_modes[n] * phi_nq;
+              }
+
+              const Real rho_safe = std::max(rho_node, rho_floor);
+              const Real vx = momx_node / rho_safe;
+              const Real vy = momy_node / rho_safe;
+              const Real vz = momz_node / rho_safe;
+              const Real v_dot_c =
+                  (vx * cx_nodes[q]) + (vy * cy_nodes[q]) + (vz * cz_nodes[q]);
+              const Real force_w = qom_s * rho_safe * (ew_nodes[q] - v_dot_c);
+              const Real rhs_momw =
+                  (momw_source_gain * force_w) - (momw_damping * momw_node);
+
+              momw_nodes[q] = momw_node + (dt * rhs_momw);
+            }
+
+            for (int n = 0; n < n_modes; ++n) {
+              Real projected_momw = 0.0;
+              for (int q = 0; q < tables.NumQuadrature(); ++q) {
+                projected_momw += weights[q] * tables.Phi(n, q) * momw_nodes[q];
+              }
+              momw_modes_new[n] = projected_momw;
+            }
+            for (int n = 0; n < n_modes; ++n) {
+              const int base = PlasmaIndex(s, n, 0, n_modes);
+              plasma(base + kPlasmaMomW, k, j, i) = momw_modes_new[n];
+            }
+          }
+
           for (int n = 0; n < n_modes; ++n) {
             const int ion_base = PlasmaIndex(0, n, 0, n_modes);
             const int ele_base = PlasmaIndex(1, n, 0, n_modes);
@@ -266,6 +387,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
           const Real cell_volume = coords.CellVolume(k, j, i);
           diag_jw_ew_step += dt * cell_volume * jw_ew_density;
           diag_s_leak_step += dt * cell_volume * s_leak_density;
+          diag_s_leak_abs_step += dt * cell_volume * std::abs(s_leak_density);
         }
       }
     }
@@ -276,8 +398,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
 
   auto *diag_jw_ew = modes_pkg->MutableParam<double>("diag/int_jw_ew");
   auto *diag_s_leak = modes_pkg->MutableParam<double>("diag/int_s_leak");
+  auto *diag_s_leak_abs = modes_pkg->MutableParam<double>("diag/int_s_leak_abs");
   *diag_jw_ew += diag_jw_ew_step;
   *diag_s_leak += diag_s_leak_step;
+  *diag_s_leak_abs += diag_s_leak_abs_step;
 }
 
 } // namespace Modes4D

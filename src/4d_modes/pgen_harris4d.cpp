@@ -18,9 +18,10 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
       pin->GetOrAddReal("problem/harris_4d", "sheet_half_width", 0.1);
   const Real perturbation_amp =
       pin->GetOrAddReal("problem/harris_4d", "perturbation_amp", 1.0e-3);
+  const Real drift_current_scale =
+      pin->GetOrAddReal("problem/harris_4d", "drift_current_scale", 0.0);
   const Real aw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "aw_mode1_amp", 0.0);
   const Real piw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "piw_mode1_amp", 0.0);
-  const Real jw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "jw_mode1_amp", 0.0);
   const Real gamma = pin->GetOrAddReal("hydro", "gamma", 5.0 / 3.0);
 
   PARTHENON_REQUIRE(sheet_half_width > 0.0,
@@ -109,19 +110,14 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
         for (int s = 0; s < 2; ++s) {
           const int species_offset = s * 6 * n_modes;
           const int zero_mode_offset = species_offset;
+          const Real jz_sheet = drift_current_scale * (b0 / sheet_half_width) * sech2y;
           plasma(zero_mode_offset + 0, k, j, i) = 0.5 * rho;
           plasma(zero_mode_offset + 1, k, j, i) = 0.0;
           plasma(zero_mode_offset + 2, k, j, i) = 0.0;
-          plasma(zero_mode_offset + 3, k, j, i) = 0.0;
+          plasma(zero_mode_offset + 3, k, j, i) =
+              (s == 0) ? (0.5 * jz_sheet) : (-0.5 * jz_sheet);
           plasma(zero_mode_offset + 4, k, j, i) = 0.0;
           plasma(zero_mode_offset + 5, k, j, i) = 0.5 * pressure / gm1;
-
-          if (n_modes > 1) {
-            const int mode1_offset = species_offset + 6;
-            const Real jw_mode1 = jw_mode1_amp * sech2y;
-            // Opposite-sign species momentum in mode 1 yields net J^w mode 1 for q/m of +/-1.
-            plasma(mode1_offset + 4, k, j, i) = (s == 0) ? (0.5 * jw_mode1) : (-0.5 * jw_mode1);
-          }
         }
       }
     }
