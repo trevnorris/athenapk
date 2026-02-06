@@ -16,6 +16,8 @@ using namespace parthenon::package::prelude;
 
 void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin) {
 #if ATHENAPK_ENABLE_4D_MODES
+  PARTHENON_REQUIRE(pin->GetString("hydro", "fluid") == "glmmhd",
+                    "harris_4d requires hydro/fluid=glmmhd.");
   auto modes_pkg = pmb->packages.Get("modes4d");
   PARTHENON_REQUIRE(modes_pkg->Param<bool>("enabled"),
                     "harris_4d requires modes4d/enabled=true in the input file.");

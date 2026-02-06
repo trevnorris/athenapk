@@ -1,15 +1,119 @@
 #include "pgen_harris4d.hpp"
 
+#include <cmath>
+
+#include "../main.hpp"
 #include "utils/error_checking.hpp"
 
 namespace Modes4D {
+using namespace parthenon::package::prelude;
 
 void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput *pin) {
-  (void)pmb;
-  (void)pin;
-  PARTHENON_FAIL(
-      "harris_4d setup is scaffolded but not implemented yet. Next step is zero-mode "
-      "Harris initialization plus A_y^(0) perturbation.");
+  const Real b0 = pin->GetOrAddReal("problem/harris_4d", "b0", 1.0);
+  const Real guide_bz = pin->GetOrAddReal("problem/harris_4d", "guide_bz", 0.0);
+  const Real n_bg = pin->GetOrAddReal("problem/harris_4d", "n_bg", 0.2);
+  const Real n_sheet = pin->GetOrAddReal("problem/harris_4d", "n_sheet", 1.0);
+  const Real p_bg = pin->GetOrAddReal("problem/harris_4d", "p_bg", 0.2);
+  const Real sheet_half_width =
+      pin->GetOrAddReal("problem/harris_4d", "sheet_half_width", 0.1);
+  const Real perturbation_amp =
+      pin->GetOrAddReal("problem/harris_4d", "perturbation_amp", 1.0e-3);
+  const Real gamma = pin->GetOrAddReal("hydro", "gamma", 5.0 / 3.0);
+
+  PARTHENON_REQUIRE(sheet_half_width > 0.0,
+                    "problem/harris_4d/sheet_half_width must be > 0");
+  PARTHENON_REQUIRE(gamma > 1.0, "hydro/gamma must be > 1");
+
+  auto modes_pkg = pmb->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+
+  const Real x1min = pin->GetReal("parthenon/mesh", "x1min");
+  const Real x1max = pin->GetReal("parthenon/mesh", "x1max");
+  const Real x3min = pin->GetReal("parthenon/mesh", "x3min");
+  const Real x3max = pin->GetReal("parthenon/mesh", "x3max");
+  const Real lx = x1max - x1min;
+  const Real lz = x3max - x3min;
+  const Real gm1 = gamma - 1.0;
+  constexpr Real kTwoPi = 6.2831853071795864769;
+
+  IndexRange ib = pmb->cellbounds.GetBoundsI(IndexDomain::interior);
+  IndexRange jb = pmb->cellbounds.GetBoundsJ(IndexDomain::interior);
+  IndexRange kb = pmb->cellbounds.GetBoundsK(IndexDomain::interior);
+
+  auto &rc = pmb->meshblock_data.Get();
+  auto &cons_dev = rc->Get("cons").data;
+  auto &em_a_dev = rc->Get("em4d_a").data;
+  auto &em_pi_dev = rc->Get("em4d_pi").data;
+  auto &plasma_dev = rc->Get("plasma4d_cons").data;
+
+  auto cons = cons_dev.GetHostMirrorAndCopy();
+  auto em_a = em_a_dev.GetHostMirrorAndCopy();
+  auto em_pi = em_pi_dev.GetHostMirrorAndCopy();
+  auto plasma = plasma_dev.GetHostMirrorAndCopy();
+  auto &coords = pmb->coords;
+
+  const int n_em_vars = em_a.GetDim(4);
+  const int n_plasma_vars = plasma.GetDim(4);
+
+  for (int k = kb.s; k <= kb.e; ++k) {
+    for (int j = jb.s; j <= jb.e; ++j) {
+      for (int i = ib.s; i <= ib.e; ++i) {
+        const Real x = coords.Xc<1>(i);
+        const Real y = coords.Xc<2>(j);
+        const Real z = coords.Xc<3>(k);
+        const Real yhat = y / sheet_half_width;
+        const Real tanhy = std::tanh(yhat);
+        const Real sech2y = 1.0 / (std::cosh(yhat) * std::cosh(yhat));
+
+        const Real rho = n_bg + n_sheet * sech2y;
+        const Real pressure = p_bg + 0.5 * b0 * b0 * sech2y;
+        const Real bx = b0 * tanhy;
+        const Real by = 0.0;
+        const Real bz = guide_bz;
+        const Real magnetic_energy = 0.5 * ((bx * bx) + (by * by) + (bz * bz));
+
+        cons(IDN, k, j, i) = rho;
+        cons(IM1, k, j, i) = 0.0;
+        cons(IM2, k, j, i) = 0.0;
+        cons(IM3, k, j, i) = 0.0;
+        cons(IEN, k, j, i) = (pressure / gm1) + magnetic_energy;
+        cons(IB1, k, j, i) = bx;
+        cons(IB2, k, j, i) = by;
+        cons(IB3, k, j, i) = bz;
+        cons(IPS, k, j, i) = 0.0;
+
+        for (int n = 0; n < n_em_vars; ++n) {
+          em_a(n, k, j, i) = 0.0;
+          em_pi(n, k, j, i) = 0.0;
+        }
+        for (int n = 0; n < n_plasma_vars; ++n) {
+          plasma(n, k, j, i) = 0.0;
+        }
+
+        const Real phase_x = (lx > 0.0) ? (kTwoPi * (x - x1min) / lx) : 0.0;
+        const Real phase_z = (lz > 0.0) ? (kTwoPi * (z - x3min) / lz) : 0.0;
+        const Real ay_perturb = perturbation_amp * std::cos(phase_x) * std::cos(phase_z);
+        em_a(2, k, j, i) = ay_perturb; // mode 0, A_y component
+
+        // Two-species (ions/electrons) mode state. Initialize only the zero mode.
+        for (int s = 0; s < 2; ++s) {
+          const int species_offset = s * 6 * n_modes;
+          const int zero_mode_offset = species_offset;
+          plasma(zero_mode_offset + 0, k, j, i) = 0.5 * rho;
+          plasma(zero_mode_offset + 1, k, j, i) = 0.0;
+          plasma(zero_mode_offset + 2, k, j, i) = 0.0;
+          plasma(zero_mode_offset + 3, k, j, i) = 0.0;
+          plasma(zero_mode_offset + 4, k, j, i) = 0.0;
+          plasma(zero_mode_offset + 5, k, j, i) = 0.5 * pressure / gm1;
+        }
+      }
+    }
+  }
+
+  cons_dev.DeepCopy(cons);
+  em_a_dev.DeepCopy(em_a);
+  em_pi_dev.DeepCopy(em_pi);
+  plasma_dev.DeepCopy(plasma);
 }
 
 } // namespace Modes4D

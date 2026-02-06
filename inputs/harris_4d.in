@@ -38,7 +38,7 @@ tlim = 0.1
 nlim = 1000
 
 <hydro>
-fluid = euler
+fluid = glmmhd
 eos = adiabatic
 riemann = hlle
 reconstruction = plm

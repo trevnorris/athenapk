@@ -10,3 +10,15 @@ target_sources(athenaPK PRIVATE
     pgen_harris4d.cpp
     package4d_modes.cpp
 )
+
+if(AthenaPK_ENABLE_4D_MODES_UNIT_TESTS)
+  add_executable(modes4d_unit_tests
+      mode_tables_tests.cpp
+      mode_tables.cpp
+      mode_transform.cpp
+  )
+  target_compile_features(modes4d_unit_tests PRIVATE cxx_std_17)
+  if(BUILD_TESTING)
+    add_test(NAME modes4d_unit_tests COMMAND modes4d_unit_tests)
+  endif()
+endif()

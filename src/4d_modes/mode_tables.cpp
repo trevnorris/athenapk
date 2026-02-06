@@ -1,7 +1,9 @@
 #include "mode_tables.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <utility>
 
 namespace Modes4D {
 namespace {
@@ -43,57 +45,88 @@ void ComputeGaussHermiteStandard(const int n, std::vector<double> *nodes,
     throw std::invalid_argument("Gauss-Hermite order must be positive");
   }
 
+  // Build Hermite (e^{-x^2}) Jacobi matrix and diagonalize it.
+  // Off-diagonal entries for orthonormal Hermite functions are sqrt(k/2).
+  std::vector<std::vector<double>> a(n, std::vector<double>(n, 0.0));
+  std::vector<std::vector<double>> v(n, std::vector<double>(n, 0.0));
+  for (int i = 0; i < n; ++i) {
+    v[i][i] = 1.0;
+  }
+  for (int i = 0; i < n - 1; ++i) {
+    const double beta = std::sqrt(static_cast<double>(i + 1) / 2.0);
+    a[i][i + 1] = beta;
+    a[i + 1][i] = beta;
+  }
+
+  constexpr double kTol = 1.0e-15;
+  const int max_iters = 128 * n * n;
+  for (int iter = 0; iter < max_iters; ++iter) {
+    int p = 0;
+    int q = 1;
+    double max_offdiag = 0.0;
+    for (int i = 0; i < n; ++i) {
+      for (int j = i + 1; j < n; ++j) {
+        const double val = std::abs(a[i][j]);
+        if (val > max_offdiag) {
+          max_offdiag = val;
+          p = i;
+          q = j;
+        }
+      }
+    }
+
+    if (max_offdiag < kTol) {
+      break;
+    }
+
+    const double app = a[p][p];
+    const double aqq = a[q][q];
+    const double apq = a[p][q];
+    const double tau = (aqq - app) / (2.0 * apq);
+    const double t = ((tau >= 0.0) ? 1.0 : -1.0) /
+                     (std::abs(tau) + std::sqrt(1.0 + (tau * tau)));
+    const double c = 1.0 / std::sqrt(1.0 + (t * t));
+    const double s = t * c;
+
+    a[p][p] = app - (t * apq);
+    a[q][q] = aqq + (t * apq);
+    a[p][q] = 0.0;
+    a[q][p] = 0.0;
+
+    for (int k = 0; k < n; ++k) {
+      if (k == p || k == q) {
+        continue;
+      }
+      const double akp = a[k][p];
+      const double akq = a[k][q];
+      a[k][p] = (c * akp) - (s * akq);
+      a[p][k] = a[k][p];
+      a[k][q] = (s * akp) + (c * akq);
+      a[q][k] = a[k][q];
+    }
+
+    for (int k = 0; k < n; ++k) {
+      const double vkp = v[k][p];
+      const double vkq = v[k][q];
+      v[k][p] = (c * vkp) - (s * vkq);
+      v[k][q] = (s * vkp) + (c * vkq);
+    }
+  }
+
+  std::vector<std::pair<double, double>> node_weight_pairs(n);
+  for (int i = 0; i < n; ++i) {
+    const double node = a[i][i];
+    const double weight = std::sqrt(kPi) * v[0][i] * v[0][i];
+    node_weight_pairs[i] = std::make_pair(node, weight);
+  }
+  std::sort(node_weight_pairs.begin(), node_weight_pairs.end(),
+            [](const auto &lhs, const auto &rhs) { return lhs.first < rhs.first; });
+
   nodes->assign(n, 0.0);
   weights->assign(n, 0.0);
-
-  const int m = (n + 1) / 2;
-  constexpr double kNewtonTolerance = 1.0e-14;
-  constexpr int kNewtonMaxIters = 32;
-
-  double z = 0.0;
-  const double n_as_double = static_cast<double>(n);
-
-  for (int i = 0; i < m; ++i) {
-    if (i == 0) {
-      z = std::sqrt((2.0 * n_as_double) + 1.0) -
-          (1.85575 * std::pow((2.0 * n_as_double) + 1.0, -1.0 / 6.0));
-    } else if (i == 1) {
-      z -= 1.14 * std::pow(n_as_double, 0.426) / z;
-    } else if (i == 2) {
-      z = (1.86 * z) - (0.86 * (*nodes)[0]);
-    } else if (i == 3) {
-      z = (1.91 * z) - (0.91 * (*nodes)[1]);
-    } else {
-      z = (2.0 * z) - (*nodes)[i - 2];
-    }
-
-    for (int iteration = 0; iteration < kNewtonMaxIters; ++iteration) {
-      double hn = 0.0;
-      double hnm1 = 0.0;
-      HermitePhysicists(n, z, &hn, &hnm1);
-      const double derivative = 2.0 * n_as_double * hnm1;
-      const double z_new = z - (hn / derivative);
-      if (std::abs(z_new - z) < kNewtonTolerance) {
-        z = z_new;
-        break;
-      }
-      z = z_new;
-    }
-
-    double hn = 0.0;
-    double hnm1 = 0.0;
-    HermitePhysicists(n, z, &hn, &hnm1);
-
-    const double log_numerator = ((n - 1) * std::log(2.0)) +
-                                 std::lgamma(n_as_double + 1.0) +
-                                 (0.5 * std::log(kPi));
-    const double denominator = (n_as_double * n_as_double * hnm1 * hnm1);
-    const double weight = std::exp(log_numerator) / denominator;
-
-    (*nodes)[i] = -z;
-    (*nodes)[n - 1 - i] = z;
-    (*weights)[i] = weight;
-    (*weights)[n - 1 - i] = weight;
+  for (int i = 0; i < n; ++i) {
+    (*nodes)[i] = node_weight_pairs[i].first;
+    (*weights)[i] = node_weight_pairs[i].second;
   }
 }
 
