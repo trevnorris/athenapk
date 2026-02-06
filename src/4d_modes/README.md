@@ -312,6 +312,21 @@ controlled/full scan with fixed closure + activity thresholds for the tuned
 - `|corr_psi0_mixed_c2|`
 - `|corr_psi0_jw_mode_l2_1|`
 
+### 11) Run the Phase-10 validation bundle target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_phase10_regression
+```
+
+This target runs the full non-MPI Phase-10 validation stack in one command,
+with fail-fast behavior on the first failing check:
+- `modes4d_controlled_regression`
+- `modes4d_controlled_parity_regression`
+- `modes4d_kk_coulomb_regression`
+- `modes4d_scalar_pulse_regression`
+- `modes4d_harris_regression`
+
 ## Input requirements for `harris_4d`
 
 Required right now:
