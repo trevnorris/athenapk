@@ -7,6 +7,7 @@
 #include "pgen.hpp"
 
 #include <cmath>
+#include <string>
 
 #include "../4d_modes/em4d_modes.hpp"
 #include "../main.hpp"
@@ -31,7 +32,10 @@ void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin) {
   const Real amp = modes_pkg->Param<double>("em4d_pulse/amplitude");
   const Real sigma = modes_pkg->Param<double>("em4d_pulse/sigma");
   const Real x0 = modes_pkg->Param<double>("em4d_pulse/x0");
+  const std::string component =
+      pin->GetOrAddString("problem/em4d_pulse", "component", "ay_mode0");
   const Real gamma = pin->GetOrAddReal("hydro", "gamma", 5.0 / 3.0);
+  const Real pi_pulse_scale = pin->GetOrAddReal("problem/em4d_pulse", "pi_pulse_scale", 0.0);
 
   PARTHENON_REQUIRE(sigma > 0.0, "problem/em4d_pulse/sigma must be > 0.");
 
@@ -53,6 +57,18 @@ void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin) {
 
   const Real gm1 = gamma - 1.0;
   const int n_modes = modes_pkg->Param<int>("n_modes");
+  int pulse_idx = 2;
+  if (component == "ay_mode0") {
+    pulse_idx = 2;
+  } else if (component == "aw_mode0") {
+    pulse_idx = 4;
+  } else if (component == "aw_mode1") {
+    PARTHENON_REQUIRE(n_modes > 1,
+                      "problem/em4d_pulse/component=aw_mode1 requires modes4d/n_modes > 1.");
+    pulse_idx = 9;
+  } else {
+    PARTHENON_FAIL("problem/em4d_pulse/component must be one of: ay_mode0, aw_mode0, aw_mode1");
+  }
   const int n_em_vars = em_a.GetDim(4);
   const int n_plasma_vars = plasma.GetDim(4);
 
@@ -76,7 +92,8 @@ void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin) {
           em_a(v, k, j, i) = 0.0;
           em_pi(v, k, j, i) = 0.0;
         }
-        em_a(2, k, j, i) = pulse; // mode 0, A_y component
+        em_a(pulse_idx, k, j, i) = pulse;
+        em_pi(pulse_idx, k, j, i) = pi_pulse_scale * pulse;
 
         for (int v = 0; v < n_plasma_vars; ++v) {
           plasma(v, k, j, i) = 0.0;

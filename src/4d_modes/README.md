@@ -79,6 +79,8 @@ Not implemented yet:
 
 Additional bring-up path now available:
 - `inputs/em4d_pulse.in` exercises EM-only source evolution for `em4d_a`/`em4d_pi`
+- `inputs/em4d_scalar_pulse.in` seeds a scalar-channel `A_w` pulse (`aw_mode1`)
+  for mixed-sector activity checks
 - `inputs/harris_4d_controlled.in` and `inputs/harris_4d_full.in` provide a
   controlled-vs-full scan pair (`n_modes=1` vs `n_modes=4`), with full-case
   mixed-channel activation driven by plasma response (no direct `J^w` mode seed)
@@ -171,6 +173,10 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_energy_source_gain`
 - `plasma_energy_floor`
 
+`<problem/em4d_pulse>` also supports:
+- `component` (`ay_mode0`, `aw_mode0`, `aw_mode1`)
+- `pi_pulse_scale` (initial `pi` pulse multiplier)
+
 ### 5) Run controlled-vs-full Harris scan summary
 
 ```bash
@@ -217,7 +223,21 @@ track source-step contributions, so the transport rate isolates unresolved resid
 Use `--check-transport-closure --fail-on-check` to include these transport
 status checks in nonzero-exit gating.
 
-### 6) Run the dedicated tuned regression target
+### 6) Run scalar-channel pulse regression target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_scalar_pulse_regression
+```
+
+This target runs `scripts/em4d_scalar_pulse_regression.py` against
+`inputs/em4d_scalar_pulse.in` and enforces mixed-sector activity checks:
+- `max(m4d_mixed_ew2)`
+- `max(m4d_mixed_c2)`
+- `max(m4d_em_a2_mode_1)`
+- `|m4d_pulse_xc(final)-m4d_pulse_xc(initial)|`
+
+### 7) Run the dedicated tuned Harris regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \

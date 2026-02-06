@@ -87,6 +87,15 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
   find_package(Python3 COMPONENTS Interpreter)
   if(Python3_Interpreter_FOUND)
     add_custom_target(
+      modes4d_scalar_pulse_regression
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_scalar_pulse_regression
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/em4d_scalar_pulse_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_scalar_pulse_regression
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running scalar-channel 4D pulse regression checks")
+    add_custom_target(
       modes4d_harris_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_regression
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_regression_tuned.py
