@@ -16,8 +16,7 @@ void RegisterEMVariables(parthenon::StateDescriptor *pkg, const int n_modes) {
     labels[5 * n + 4] = "aw_mode_" + std::to_string(n);
   }
 
-  Metadata m({Metadata::Cell, Metadata::Independent, Metadata::FillGhost,
-              Metadata::WithFluxes},
+  Metadata m({Metadata::Cell, Metadata::Independent, Metadata::FillGhost},
              std::vector<int>({5 * n_modes}), labels);
   pkg->AddField("em4d_a", m);
 
@@ -30,8 +29,7 @@ void RegisterEMVariables(parthenon::StateDescriptor *pkg, const int n_modes) {
     pi_labels[5 * n + 4] = "piw_mode_" + std::to_string(n);
   }
 
-  m = Metadata({Metadata::Cell, Metadata::Independent, Metadata::FillGhost,
-                Metadata::WithFluxes},
+  m = Metadata({Metadata::Cell, Metadata::Independent, Metadata::FillGhost},
                std::vector<int>({5 * n_modes}), pi_labels);
   pkg->AddField("em4d_pi", m);
 }

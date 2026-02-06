@@ -24,8 +24,7 @@ void RegisterPlasmaVariables(parthenon::StateDescriptor *pkg, const int n_modes)
     }
   }
 
-  Metadata m({Metadata::Cell, Metadata::Independent, Metadata::FillGhost,
-              Metadata::WithFluxes},
+  Metadata m({Metadata::Cell, Metadata::Independent, Metadata::FillGhost},
              std::vector<int>({static_cast<int>(labels.size())}), labels);
   pkg->AddField("plasma4d_cons", m);
 }

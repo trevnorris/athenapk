@@ -990,7 +990,7 @@ TaskStatus CalculateFluxesTight(std::shared_ptr<MeshData<Real>> &md) {
   IndexRange jb = pmb->cellbounds.GetBoundsJ(IndexDomain::interior);
   IndexRange kb = pmb->cellbounds.GetBoundsK(IndexDomain::interior);
 
-  std::vector<parthenon::MetadataFlag> flags_ind({Metadata::Independent});
+  std::vector<parthenon::MetadataFlag> flags_ind({Metadata::Independent, Metadata::WithFluxes});
   auto cons_in = md->PackVariablesAndFluxes(flags_ind);
   auto pkg = pmb->packages.Get("Hydro");
 
@@ -1044,7 +1044,7 @@ TaskStatus CalculateFluxes(std::shared_ptr<MeshData<Real>> &md) {
       jl = jb.s - 1, ju = jb.e + 1, kl = kb.s - 1, ku = kb.e + 1;
   }
 
-  std::vector<parthenon::MetadataFlag> flags_ind({Metadata::Independent});
+  std::vector<parthenon::MetadataFlag> flags_ind({Metadata::Independent, Metadata::WithFluxes});
   auto cons_in = md->PackVariablesAndFluxes(flags_ind);
   auto pkg = pmb->packages.Get("Hydro");
   const auto nhydro = pkg->Param<int>("nhydro");
@@ -1240,7 +1240,7 @@ TaskStatus FirstOrderFluxCorrect(MeshData<Real> *u0_data, MeshData<Real> *u1_dat
   IndexRange jb = pmb->cellbounds.GetBoundsJ(IndexDomain::interior);
   IndexRange kb = pmb->cellbounds.GetBoundsK(IndexDomain::interior);
 
-  std::vector<parthenon::MetadataFlag> flags_ind({Metadata::Independent});
+  std::vector<parthenon::MetadataFlag> flags_ind({Metadata::Independent, Metadata::WithFluxes});
   auto u0_cons_pack = u0_data->PackVariablesAndFluxes(flags_ind);
   auto const &u0_prim_pack = u0_data->PackVariables(std::vector<std::string>{"prim"});
   auto u1_cons_pack = u1_data->PackVariablesAndFluxes(flags_ind);
