@@ -27,8 +27,8 @@ Implemented now:
   - source-step term applies leakage coupling
     `d_t rho^(n) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
   - brane transport `div(j^a,(n))` is handled in the conservative flux pipeline by
-    registering `plasma4d_cons` with `WithFluxes` and filling rho fluxes from species
-    mode momenta (`momx/momy/momz`) each stage
+    registering `plasma4d_cons` with `WithFluxes` and filling stage fluxes for
+    `rho/momx/momy/momz/momw/energy` each stage
   - runtime gain `plasma_rho_divj_gain` scales that conservative brane-transport path
   - write updated `plasma4d_cons` back each source step
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
@@ -63,7 +63,7 @@ Implemented now:
     - `m4d_cont_mode0_max_abs`
 
 Not implemented yet:
-- full two-fluid mode dynamics beyond current split `rho`/`momw` source bring-up
+- full two-fluid mode dynamics beyond the current source + advective-transport bring-up
 - full conservative EM update in the AthenaPK flux pipeline (current path is source-step)
 - full reconnection workflow/analysis
 
@@ -80,7 +80,7 @@ Additional bring-up path now available:
 - `package4d_modes.hpp`, `package4d_modes.cpp`: `modes4d` package setup and parameters
 - `em4d_modes.*`: registered EM mode fields (`em4d_a`, `em4d_pi`)
 - `plasma4d_modes.*`: registered plasma mode fields (`plasma4d_cons`)
-  plus conservative rho-transport flux helpers
+  plus conservative plasma-transport flux helpers
 - `diagnostics4d.*`: placeholder diagnostics params
 - `pgen_harris4d.*`: Harris-sheet initialization for the `harris_4d` problem path
 - `mode_tables_tests.cpp`: standalone mode-math tests
@@ -208,6 +208,6 @@ Key parameters currently used from `<problem/harris_4d>`:
   - hydro/MHD conservative state (`cons`) for a Harris-like zero-mode profile
   - mode-0 `A_y` perturbation in `em4d_a`
   - optional mode-1 `A_w` perturbation in `em4d_a` for mixed-sector triggering
-  - optional species mode-0 drift current via `drift_current_scale`
-  - placeholder species zero-mode values in `plasma4d_cons`
+  - species mode-0 plasma state in `plasma4d_cons` using q/m-aware splits that
+    preserve mode-0 charge neutrality and target drift-current amplitude
 - This is a bring-up scaffold and not yet the final physics model from the docs.

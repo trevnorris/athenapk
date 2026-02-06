@@ -50,7 +50,7 @@ n_quadrature = 6
 lambda = 1.0
 em_mu0 = 1.0
 plasma_qom_ion = 1.0
-plasma_qom_electron = -1.0
+plasma_qom_electron = -20.0
 plasma_force_source_gain = 1.0
 plasma_momw_source_gain = 1.0
 plasma_momw_damping = 0.1
@@ -62,7 +62,7 @@ plasma_energy_floor = 0.0
 perturbation_amp = 1.0e-3
 sheet_half_width = 0.1
 drift_current_scale = 0.05
-aw_mode1_amp = 5.0e-4
+aw_mode1_amp = 5.0e-2
 piw_mode1_amp = 0.0
 
 <parthenon/output0>

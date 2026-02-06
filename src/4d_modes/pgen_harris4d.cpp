@@ -30,6 +30,8 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
 
   auto modes_pkg = pmb->packages.Get("modes4d");
   const int n_modes = modes_pkg->Param<int>("n_modes");
+  const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
+  const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
 
   const Real x1min = pin->GetReal("parthenon/mesh", "x1min");
   const Real x1max = pin->GetReal("parthenon/mesh", "x1max");
@@ -38,6 +40,11 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
   const Real lx = x1max - x1min;
   const Real lz = x3max - x3min;
   const Real gm1 = gamma - 1.0;
+  const Real qom_denom = qom_ion - qom_electron;
+  PARTHENON_REQUIRE(std::abs(qom_denom) > 0.0,
+                    "modes4d plasma_qom_ion and plasma_qom_electron must differ");
+  PARTHENON_REQUIRE((qom_ion * qom_electron) < 0.0,
+                    "Harris modes initializer expects opposite-sign ion/electron q/m");
   constexpr Real kTwoPi = 6.2831853071795864769;
 
   IndexRange ib = pmb->cellbounds.GetBoundsI(IndexDomain::interior);
@@ -107,18 +114,30 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
         }
 
         // Two-species (ions/electrons) mode state. Initialize only the zero mode.
-        for (int s = 0; s < 2; ++s) {
-          const int species_offset = s * 6 * n_modes;
-          const int zero_mode_offset = species_offset;
-          const Real jz_sheet = drift_current_scale * (b0 / sheet_half_width) * sech2y;
-          plasma(zero_mode_offset + 0, k, j, i) = 0.5 * rho;
-          plasma(zero_mode_offset + 1, k, j, i) = 0.0;
-          plasma(zero_mode_offset + 2, k, j, i) = 0.0;
-          plasma(zero_mode_offset + 3, k, j, i) =
-              (s == 0) ? (0.5 * jz_sheet) : (-0.5 * jz_sheet);
-          plasma(zero_mode_offset + 4, k, j, i) = 0.0;
-          plasma(zero_mode_offset + 5, k, j, i) = 0.5 * pressure / gm1;
-        }
+        const Real jz_sheet = drift_current_scale * (b0 / sheet_half_width) * sech2y;
+        const Real rho_ion = (-qom_electron / qom_denom) * rho;
+        const Real rho_electron = (qom_ion / qom_denom) * rho;
+        const Real momz_ion = jz_sheet / qom_denom;
+        const Real momz_electron = -momz_ion;
+        const Real energy_density = pressure / gm1;
+        const Real energy_ion = (-qom_electron / qom_denom) * energy_density;
+        const Real energy_electron = (qom_ion / qom_denom) * energy_density;
+
+        const int ion_offset = 0;
+        plasma(ion_offset + 0, k, j, i) = rho_ion;
+        plasma(ion_offset + 1, k, j, i) = 0.0;
+        plasma(ion_offset + 2, k, j, i) = 0.0;
+        plasma(ion_offset + 3, k, j, i) = momz_ion;
+        plasma(ion_offset + 4, k, j, i) = 0.0;
+        plasma(ion_offset + 5, k, j, i) = energy_ion;
+
+        const int ele_offset = 6 * n_modes;
+        plasma(ele_offset + 0, k, j, i) = rho_electron;
+        plasma(ele_offset + 1, k, j, i) = 0.0;
+        plasma(ele_offset + 2, k, j, i) = 0.0;
+        plasma(ele_offset + 3, k, j, i) = momz_electron;
+        plasma(ele_offset + 4, k, j, i) = 0.0;
+        plasma(ele_offset + 5, k, j, i) = energy_electron;
       }
     }
   }
