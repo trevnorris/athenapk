@@ -92,6 +92,15 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       USES_TERMINAL
       COMMENT "Running Gaussian KK Coulomb+Yukawa regression checks")
     add_custom_target(
+      modes4d_controlled_parity_regression
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_controlled_parity_regression
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_controlled_parity_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_controlled_parity_regression
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running controlled-limit parity regression checks")
+    add_custom_target(
       modes4d_controlled_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_controlled_regression
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_controlled_regression.py
