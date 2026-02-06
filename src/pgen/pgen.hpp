@@ -141,6 +141,7 @@ namespace harris_4d {
 using namespace parthenon::driver::prelude;
 
 void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin);
+void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real dt);
 } // namespace harris_4d
 
 namespace em4d_pulse {

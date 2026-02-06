@@ -94,6 +94,7 @@ int main(int argc, char *argv[]) {
     pman.app_input->MeshProblemGenerator = kh::ProblemGenerator;
   } else if (problem == "harris_4d") {
     pman.app_input->ProblemGenerator = harris_4d::ProblemGenerator;
+    Hydro::ProblemSourceUnsplit = harris_4d::SourceUnsplit;
   } else if (problem == "em4d_pulse") {
     pman.app_input->ProblemGenerator = em4d_pulse::ProblemGenerator;
     Hydro::ProblemSourceUnsplit = em4d_pulse::SourceUnsplit;

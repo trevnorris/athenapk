@@ -16,6 +16,7 @@ Implemented now:
   - scalar component includes Laplacian and `J^w` source deposition
   - scalar-photon work (`J^w E_w`) and leakage (`S_leak`) accumulators are updated
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
+- `harris_4d` now uses the same unsplit equation-based EM source update during runtime
 - standalone unit-test executable for mode math (`modes4d_unit_tests`)
 - initial history diagnostics:
   - `m4d_em_a2`

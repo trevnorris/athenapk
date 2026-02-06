@@ -7,6 +7,7 @@
 #include "pgen.hpp"
 
 #if ATHENAPK_ENABLE_4D_MODES
+#include "../4d_modes/em4d_modes.hpp"
 #include "../4d_modes/pgen_harris4d.hpp"
 #endif
 #include "utils/error_checking.hpp"
@@ -28,6 +29,16 @@ void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin) {
   (void)pin;
   PARTHENON_FAIL(
       "harris_4d requested but AthenaPK_ENABLE_4D_MODES=OFF at configure time.");
+#endif
+}
+
+void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real dt) {
+#if ATHENAPK_ENABLE_4D_MODES
+  Modes4D::SourceUnsplit(md, tm, dt);
+#else
+  (void)md;
+  (void)tm;
+  (void)dt;
 #endif
 }
 
