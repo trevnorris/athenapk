@@ -250,11 +250,20 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 ```
 
 This target runs `scripts/modes4d_controlled_parity_regression.py`, which:
-- runs `linear_wave3d`, `sod`, and `orszag_tang` twice (baseline and forced
-  `<modes4d> enabled=true, n_modes=1`)
+- runs `linear_wave3d`, `sod`, and `orszag_tang` in three variants:
+  - baseline
+  - forced `<modes4d> enabled=true, n_modes=1`
+  - forced `<modes4d> enabled=true, n_modes=4`
 - applies short smoke runtime overrides (`tlim=0.05`, `nlim=200`)
-- compares final `time`, `mass`, `1-mom`, `2-mom`, `3-mom`, `tot-E`
-- fails if controlled-limit parity exceeds configured relative tolerances
+- compares final `time`, `mass`, `1-mom`, `2-mom`, `3-mom`, `tot-E` parity
+  between baseline and `n_modes=1`
+- for `linear_wave3d`, compares `linearwave-errors.dat` parity between baseline
+  and `n_modes=1` (RMS/L1/max columns)
+- for `n_modes=4`, enforces controlled-limit inactivity of:
+  - all `m4d_*_mode_<n>` channels with `n>=1`
+  - mixed/leak channels (`m4d_mixed_ew2`, `m4d_mixed_c2`,
+    `m4d_int_jw_ew`, `m4d_int_s_leak`, `m4d_int_s_leak_abs`)
+- fails if any of those parity/inactivity checks exceed configured tolerances
 
 ### 8) Run Gaussian KK Coulomb+Yukawa regression target
 
