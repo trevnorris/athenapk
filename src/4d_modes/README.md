@@ -223,7 +223,26 @@ track source-step contributions, so the transport rate isolates unresolved resid
 Use `--check-transport-closure --fail-on-check` to include these transport
 status checks in nonzero-exit gating.
 
-### 6) Run scalar-channel pulse regression target
+### 6) Run controlled-limit regression smoke target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_controlled_regression
+```
+
+This target runs `scripts/modes4d_controlled_regression.py`, which:
+- runs baseline AthenaPK smoke cases (`linear_wave3d`, `sod`, `orszag_tang`)
+- applies short smoke-runtime overrides (`tlim=0.05`, `nlim=200`)
+- auto-disables HDF5/phdf output blocks in copied inputs (`dt=-1`) for
+  non-HDF5 builds
+- runs `inputs/harris_4d_controlled.in`
+- enforces controlled-limit inactivity gates on:
+  - `m4d_int_jw_ew`
+  - `m4d_int_s_leak_abs`
+  - `m4d_mixed_ew2`
+  - `m4d_mixed_c2`
+
+### 7) Run scalar-channel pulse regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -237,7 +256,7 @@ This target runs `scripts/em4d_scalar_pulse_regression.py` against
 - `max(m4d_em_a2_mode_1)`
 - `|m4d_pulse_xc(final)-m4d_pulse_xc(initial)|`
 
-### 7) Run the dedicated tuned Harris regression target
+### 8) Run the dedicated tuned Harris regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
