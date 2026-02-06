@@ -9,6 +9,12 @@ Implemented now:
 - scaled Gauss-Hermite quadrature (`w_q = lambda * x_q`, `omega_q = lambda * omega_hat_q`)
 - mode/node transforms and identity helpers (ID-3, ID-4, ID-7)
 - package registration skeleton (`modes4d`) with EM/plasma field registration
+- unsplit EM mode source update using the semi-discrete equations in
+  `docs/mode_equations_verified.md`:
+  - brane components include Laplacian, `m_n^2` term, nearest-neighbor `A_w` coupling,
+    and `J^nu` source deposition
+  - scalar component includes Laplacian and `J^w` source deposition
+  - scalar-photon work (`J^w E_w`) and leakage (`S_leak`) accumulators are updated
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
 - standalone unit-test executable for mode math (`modes4d_unit_tests`)
 - initial history diagnostics:
@@ -22,9 +28,8 @@ Implemented now:
   - `m4d_em_pi2_mode_<n>`
 
 Not implemented yet:
-- full EM RHS evolution in modes
 - full two-fluid mode dynamics and `J^w` source evolution
-- ledger diagnostics accumulation and output
+- full conservative EM update in the AthenaPK flux pipeline (current path is source-step)
 - full reconnection workflow/analysis
 
 Additional bring-up path now available:
@@ -96,12 +101,15 @@ This input deck includes a history output stream (`file_type = hst`) so the
 ```
 
 This path enables a minimal unsplit source evolution:
-- currently an analytic moving-Gaussian update for mode-0 `A_y` and `Pi_y`
-  (used as a stable EM-only plumbing harness while full Maxwell RHS is in progress)
+- equation-based mode update for `em4d_a`/`em4d_pi` (semi-discrete Maxwell form),
+  with current sources derived from `plasma4d_cons`
 
 with `c_wave` and `damping` configured in `<modes4d>` as:
 - `em_c_wave`
 - `em_damping`
+- `em_mu0`
+- `plasma_qom_ion`
+- `plasma_qom_electron`
 
 ## Input requirements for `harris_4d`
 

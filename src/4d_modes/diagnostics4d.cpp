@@ -117,8 +117,8 @@ Real FieldModeL2Integral(MeshData<Real> *md, const std::string &field_name,
 
 void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   // Placeholder accumulators for the required energy/leakage ledger channels.
-  pkg->AddParam<double>("diag/int_jw_ew", 0.0);
-  pkg->AddParam<double>("diag/int_s_leak", 0.0);
+  pkg->AddParam<double>("diag/int_jw_ew", 0.0, true);
+  pkg->AddParam<double>("diag/int_s_leak", 0.0, true);
 
   parthenon::HstVar_list hst_vars = {};
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,

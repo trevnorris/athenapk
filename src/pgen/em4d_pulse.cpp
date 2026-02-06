@@ -8,6 +8,7 @@
 
 #include <cmath>
 
+#include "../4d_modes/em4d_modes.hpp"
 #include "../main.hpp"
 #include "utils/error_checking.hpp"
 
@@ -96,61 +97,7 @@ void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin) {
 }
 
 void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real dt) {
-  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
-
-  const Real c_wave = modes_pkg->Param<double>("em4d/c_wave");
-  const Real pulse_amp = modes_pkg->Param<double>("em4d_pulse/amplitude");
-  const Real pulse_sigma = modes_pkg->Param<double>("em4d_pulse/sigma");
-  const Real pulse_x0 = modes_pkg->Param<double>("em4d_pulse/x0");
-  const Real t_new = tm.time + dt;
-
-  const int num_blocks = md->NumBlocks();
-  for (int b = 0; b < num_blocks; ++b) {
-    auto &bd = md->GetBlockData(b);
-    auto *pmb = bd->GetBlockPointer();
-
-    auto &a_dev = bd->Get("em4d_a").data;
-    auto &pi_dev = bd->Get("em4d_pi").data;
-    auto a = a_dev.GetHostMirrorAndCopy();
-    auto pi = pi_dev.GetHostMirrorAndCopy();
-
-    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
-    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
-    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
-
-    auto &coords = pmb->coords;
-    const Real x1min = pmb->pmy_mesh->mesh_size.xmin(X1DIR);
-    const Real x1max = pmb->pmy_mesh->mesh_size.xmax(X1DIR);
-    const Real lx = x1max - x1min;
-    const Real sigma2 = pulse_sigma * pulse_sigma;
-    const Real xc_raw = pulse_x0 + (c_wave * t_new);
-    const Real xc = x1min + std::fmod((xc_raw - x1min) + 1000.0 * lx, lx);
-
-    for (int k = kb.s; k <= kb.e; ++k) {
-      for (int j = jb.s; j <= jb.e; ++j) {
-        for (int i = ib.s; i <= ib.e; ++i) {
-          for (int v = 0; v < a.GetDim(4); ++v) {
-            a(v, k, j, i) = 0.0;
-            pi(v, k, j, i) = 0.0;
-          }
-
-          const Real x = coords.Xc<1>(i);
-          Real dx = x - xc;
-          if (dx > 0.5 * lx) dx -= lx;
-          if (dx < -0.5 * lx) dx += lx;
-
-          const Real ay = pulse_amp * std::exp(-0.5 * (dx * dx) / sigma2);
-          const Real piy = c_wave * (dx / sigma2) * ay;
-
-          a(2, k, j, i) = ay;  // mode 0, A_y
-          pi(2, k, j, i) = piy;
-        }
-      }
-    }
-
-    a_dev.DeepCopy(a);
-    pi_dev.DeepCopy(pi);
-  }
+  Modes4D::SourceUnsplit(md, tm, dt);
 }
 
 } // namespace em4d_pulse

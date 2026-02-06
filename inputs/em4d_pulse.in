@@ -50,6 +50,9 @@ n_quadrature = 6
 lambda = 1.0
 em_c_wave = 1.0
 em_damping = 0.0
+em_mu0 = 1.0
+plasma_qom_ion = 1.0
+plasma_qom_electron = -1.0
 
 <problem/em4d_pulse>
 rho0 = 1.0
