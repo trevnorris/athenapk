@@ -52,6 +52,21 @@ Implemented now:
   - `m4d_int_divmomz_mode0`
   - `m4d_int_divmomw_mode0`
   - `m4d_int_divenergy_mode0`
+  - `m4d_int_divpi0_mode0`
+  - `m4d_int_divpix_mode0`
+  - `m4d_int_divpiy_mode0`
+  - `m4d_int_divpiz_mode0`
+  - `m4d_int_divpiw_mode0`
+  - `m4d_int_srcmomx_mode0`
+  - `m4d_int_srcmomy_mode0`
+  - `m4d_int_srcmomz_mode0`
+  - `m4d_int_srcmomw_mode0`
+  - `m4d_int_srcenergy_mode0`
+  - `m4d_int_srcpi0_mode0`
+  - `m4d_int_srcpix_mode0`
+  - `m4d_int_srcpiy_mode0`
+  - `m4d_int_srcpiz_mode0`
+  - `m4d_int_srcpiw_mode0`
   - `m4d_brane_e2`
   - `m4d_brane_b2`
   - `m4d_brane_epar2`
@@ -61,6 +76,11 @@ Implemented now:
   - `m4d_pulse_xc`
   - `m4d_em_a2_mode_<n>`
   - `m4d_em_pi2_mode_<n>`
+  - `m4d_pi0_mode_0`
+  - `m4d_pix_mode_0`
+  - `m4d_piy_mode_0`
+  - `m4d_piz_mode_0`
+  - `m4d_piw_mode_0`
   - `m4d_jw_mode_l2_<n>`
   - `m4d_jw_mode_<n>`
   - `m4d_charge_mode_<n>`
@@ -313,6 +333,10 @@ the optional conservative EM transport path
 (`modes4d/em_conservative_transport=true`) with:
 - scalar-channel pulse activity gates
 - short Harris full-case smoke with finite-history checks and mixed-channel activity
+- mode-0 EM transport-rate closure gates for
+  `pi0/pix/piy/piz/piw`, using
+  `d/dt(m4d_pi*_mode_0) + d/dt(m4d_int_divpi*_mode0) - d/dt(m4d_int_srcpi*_mode0)`
+  with normalized and absolute-rate tolerances
 
 ### 11) Run the dedicated tuned Harris regression target
 

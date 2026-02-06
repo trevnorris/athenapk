@@ -114,6 +114,31 @@ Real DivEnergyMode0AccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_divenergy_mode0");
 }
 
+Real DivPi0Mode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divpi0_mode0");
+}
+
+Real DivPixMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divpix_mode0");
+}
+
+Real DivPiyMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divpiy_mode0");
+}
+
+Real DivPizMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divpiz_mode0");
+}
+
+Real DivPiwMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divpiw_mode0");
+}
+
 Real SrcMomXMode0AccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_srcmomx_mode0");
@@ -137,6 +162,31 @@ Real SrcMomWMode0AccumulatorHst(MeshData<Real> *md) {
 Real SrcEnergyMode0AccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_srcenergy_mode0");
+}
+
+Real SrcPi0Mode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpi0_mode0");
+}
+
+Real SrcPixMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpix_mode0");
+}
+
+Real SrcPiyMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpiy_mode0");
+}
+
+Real SrcPizMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpiz_mode0");
+}
+
+Real SrcPiwMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpiw_mode0");
 }
 
 Real ContinuityLocalL1Hst(MeshData<Real> *md) {
@@ -544,6 +594,35 @@ Real SpeciesSummedModeIntegral(MeshData<Real> *md, const int mode_idx, const int
   return sum;
 }
 
+Real EMModeComponentIntegral(MeshData<Real> *md, const int mode_idx, const int comp_idx) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  if (mode_idx < 0 || mode_idx >= n_modes || comp_idx < 0 || comp_idx >= 5) {
+    return 0.0;
+  }
+
+  const int idx = (5 * mode_idx) + comp_idx;
+  Real sum = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto pi = bd->Get("em4d_pi").data.GetHostMirrorAndCopy();
+    auto &coords = bd->GetBlockPointer()->coords;
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          sum += pi(idx, k, j, i) * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return sum;
+}
+
 Real FieldModeL2Integral(MeshData<Real> *md, const std::string &field_name,
                          const int mode_idx) {
   auto *pmb = md->GetBlockData(0)->GetBlockPointer();
@@ -585,11 +664,21 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_divmomz_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_divmomw_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_divenergy_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divpi0_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divpix_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divpiy_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divpiz_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divpiw_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcmomx_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcmomy_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcmomz_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcmomw_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcenergy_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpi0_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpix_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpiy_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpiz_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpiw_mode0", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l1", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l2", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_max_abs", 0.0, true);
@@ -633,6 +722,21 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
                                                     DivEnergyMode0AccumulatorHst,
                                                     "m4d_int_divenergy_mode0"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivPi0Mode0AccumulatorHst,
+                                                    "m4d_int_divpi0_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivPixMode0AccumulatorHst,
+                                                    "m4d_int_divpix_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivPiyMode0AccumulatorHst,
+                                                    "m4d_int_divpiy_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivPizMode0AccumulatorHst,
+                                                    "m4d_int_divpiz_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivPiwMode0AccumulatorHst,
+                                                    "m4d_int_divpiw_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     SrcMomXMode0AccumulatorHst,
                                                     "m4d_int_srcmomx_mode0"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
@@ -647,6 +751,21 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     SrcEnergyMode0AccumulatorHst,
                                                     "m4d_int_srcenergy_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcPi0Mode0AccumulatorHst,
+                                                    "m4d_int_srcpi0_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcPixMode0AccumulatorHst,
+                                                    "m4d_int_srcpix_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcPiyMode0AccumulatorHst,
+                                                    "m4d_int_srcpiy_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcPizMode0AccumulatorHst,
+                                                    "m4d_int_srcpiz_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    SrcPiwMode0AccumulatorHst,
+                                                    "m4d_int_srcpiw_mode0"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ContinuityLocalL1Hst, "m4d_cont_local_l1"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
@@ -676,6 +795,26 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     PulseCentroidXHst,
                                                     "m4d_pulse_xc"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      [](MeshData<Real> *md) { return EMModeComponentIntegral(md, 0, kCompA0); },
+      "m4d_pi0_mode_0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      [](MeshData<Real> *md) { return EMModeComponentIntegral(md, 0, kCompAX); },
+      "m4d_pix_mode_0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      [](MeshData<Real> *md) { return EMModeComponentIntegral(md, 0, kCompAY); },
+      "m4d_piy_mode_0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      [](MeshData<Real> *md) { return EMModeComponentIntegral(md, 0, kCompAZ); },
+      "m4d_piz_mode_0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      [](MeshData<Real> *md) { return EMModeComponentIntegral(md, 0, kCompAW); },
+      "m4d_piw_mode_0"));
 
   const int n_modes = pkg->Param<int>("n_modes");
   for (int n = 0; n < n_modes; ++n) {

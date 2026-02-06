@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "mode_tables.hpp"
+#include "interface/update.hpp"
 
 namespace Modes4D {
 using namespace parthenon::package::prelude;
@@ -143,6 +144,84 @@ TaskStatus AddEMTransportFluxes(MeshData<Real> *md) {
   return TaskStatus::complete;
 }
 
+TaskStatus AccumulateEMTransportMode0Diagnostics(MeshData<Real> *md, const Real dt) {
+  if (dt <= 0.0) {
+    return TaskStatus::complete;
+  }
+
+  auto pmb = md->GetBlockData(0)->GetBlockPointer();
+  auto modes_pkg = pmb->packages.Get("modes4d");
+  if (!modes_pkg->Param<bool>("enabled")) {
+    return TaskStatus::complete;
+  }
+  if (!modes_pkg->Param<bool>("em4d/use_conservative_transport")) {
+    return TaskStatus::complete;
+  }
+
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  if (n_modes < 1) {
+    return TaskStatus::complete;
+  }
+
+  const auto &pi_pack =
+      md->PackVariablesAndFluxes(std::vector<std::string>{"em4d_pi"},
+                                 std::vector<std::string>{"em4d_pi"});
+  if (pi_pack.GetDim(4) == 0) {
+    return TaskStatus::complete;
+  }
+
+  IndexRange ib = md->GetBlockData(0)->GetBoundsI(IndexDomain::interior);
+  IndexRange jb = md->GetBlockData(0)->GetBoundsJ(IndexDomain::interior);
+  IndexRange kb = md->GetBlockData(0)->GetBoundsK(IndexDomain::interior);
+  const int ndim = pi_pack.GetNdim();
+
+  auto accumulate_transport = [&](const int idx, const char *kernel_name) {
+    Real step = 0.0;
+    parthenon::par_reduce(
+        DEFAULT_LOOP_PATTERN, kernel_name, parthenon::DevExecSpace(), 0,
+        pi_pack.GetDim(5) - 1, kb.s, kb.e, jb.s, jb.e, ib.s, ib.e,
+        KOKKOS_LAMBDA(const int b, const int k, const int j, const int i,
+                      Real &local_sum) {
+          const auto &pi = pi_pack(b);
+          const auto &coords = pi_pack.GetCoords(b);
+          const Real flux_div =
+              parthenon::Update::FluxDivHelper(idx, k, j, i, ndim, coords, pi);
+          local_sum += -dt * coords.CellVolume(k, j, i) * flux_div;
+        },
+        step);
+    return step;
+  };
+
+  const int pi0_mode0 = EMIndex(0, kCompA0);
+  const int pix_mode0 = EMIndex(0, kCompAX);
+  const int piy_mode0 = EMIndex(0, kCompAY);
+  const int piz_mode0 = EMIndex(0, kCompAZ);
+  const int piw_mode0 = EMIndex(0, kCompAW);
+
+  const Real divpi0_step =
+      accumulate_transport(pi0_mode0, "Modes4DAccumulateEMDivPi0Mode0");
+  const Real divpix_step =
+      accumulate_transport(pix_mode0, "Modes4DAccumulateEMDivPixMode0");
+  const Real divpiy_step =
+      accumulate_transport(piy_mode0, "Modes4DAccumulateEMDivPiyMode0");
+  const Real divpiz_step =
+      accumulate_transport(piz_mode0, "Modes4DAccumulateEMDivPizMode0");
+  const Real divpiw_step =
+      accumulate_transport(piw_mode0, "Modes4DAccumulateEMDivPiwMode0");
+
+  auto *diag_divpi0_mode0 = modes_pkg->MutableParam<double>("diag/int_divpi0_mode0");
+  auto *diag_divpix_mode0 = modes_pkg->MutableParam<double>("diag/int_divpix_mode0");
+  auto *diag_divpiy_mode0 = modes_pkg->MutableParam<double>("diag/int_divpiy_mode0");
+  auto *diag_divpiz_mode0 = modes_pkg->MutableParam<double>("diag/int_divpiz_mode0");
+  auto *diag_divpiw_mode0 = modes_pkg->MutableParam<double>("diag/int_divpiw_mode0");
+  *diag_divpi0_mode0 += divpi0_step;
+  *diag_divpix_mode0 += divpix_step;
+  *diag_divpiy_mode0 += divpiy_step;
+  *diag_divpiz_mode0 += divpiz_step;
+  *diag_divpiw_mode0 += divpiw_step;
+  return TaskStatus::complete;
+}
+
 void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt) {
   if (dt <= 0.0) {
     return;
@@ -189,6 +268,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_srcmomz_mode0_step = 0.0;
   Real diag_srcmomw_mode0_step = 0.0;
   Real diag_srcenergy_mode0_step = 0.0;
+  Real diag_srcpi0_mode0_step = 0.0;
+  Real diag_srcpix_mode0_step = 0.0;
+  Real diag_srcpiy_mode0_step = 0.0;
+  Real diag_srcpiz_mode0_step = 0.0;
+  Real diag_srcpiw_mode0_step = 0.0;
 
   const int num_blocks = md->NumBlocks();
   for (int b = 0; b < num_blocks; ++b) {
@@ -312,6 +396,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     std::vector<Real> energy_modes_new(n_modes, 0.0);
     std::vector<Real> energy_nodes_new(tables.NumQuadrature(), 0.0);
     std::vector<Real> charge_modes_old(n_modes, 0.0);
+    const int pi0_mode0_idx = EMIndex(0, kCompA0);
+    const int pix_mode0_idx = EMIndex(0, kCompAX);
+    const int piy_mode0_idx = EMIndex(0, kCompAY);
+    const int piz_mode0_idx = EMIndex(0, kCompAZ);
+    const int piw_mode0_idx = EMIndex(0, kCompAW);
 
     for (int k = kb.s; k <= kb.e; ++k) {
       for (int j = jb.s; j <= jb.e; ++j) {
@@ -337,6 +426,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                                       plasma(ele_mode0 + kPlasmaMomW, k, j, i);
           const Real energy_mode0_old = plasma(ion_mode0 + kPlasmaEnergy, k, j, i) +
                                         plasma(ele_mode0 + kPlasmaEnergy, k, j, i);
+          const Real pi0_mode0_old = pi_old(pi0_mode0_idx, k, j, i);
+          const Real pix_mode0_old = pi_old(pix_mode0_idx, k, j, i);
+          const Real piy_mode0_old = pi_old(piy_mode0_idx, k, j, i);
+          const Real piz_mode0_old = pi_old(piz_mode0_idx, k, j, i);
+          const Real piw_mode0_old = pi_old(piw_mode0_idx, k, j, i);
 
           // Update transverse species momentum from mixed-sector 4D forcing:
           // m_s dv_w/dt = q_s (E_w - v^a C_a), represented as mode coefficients.
@@ -665,6 +759,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             a_new(idx_az, k, j, i) = a_old(idx_az, k, j, i) + (dt * pi_new(idx_az, k, j, i));
             a_new(idx_aw, k, j, i) = a_old(idx_aw, k, j, i) + (dt * pi_new(idx_aw, k, j, i));
           }
+          const Real pi0_mode0_new = pi_new(pi0_mode0_idx, k, j, i);
+          const Real pix_mode0_new = pi_new(pix_mode0_idx, k, j, i);
+          const Real piy_mode0_new = pi_new(piy_mode0_idx, k, j, i);
+          const Real piz_mode0_new = pi_new(piz_mode0_idx, k, j, i);
+          const Real piw_mode0_new = pi_new(piw_mode0_idx, k, j, i);
+          diag_srcpi0_mode0_step += cell_volume * (pi0_mode0_new - pi0_mode0_old);
+          diag_srcpix_mode0_step += cell_volume * (pix_mode0_new - pix_mode0_old);
+          diag_srcpiy_mode0_step += cell_volume * (piy_mode0_new - piy_mode0_old);
+          diag_srcpiz_mode0_step += cell_volume * (piz_mode0_new - piz_mode0_old);
+          diag_srcpiw_mode0_step += cell_volume * (piw_mode0_new - piw_mode0_old);
 
           for (int n = 0; n < n_modes; ++n) {
             a0_modes[n] = a_new(EMIndex(n, kCompA0), k, j, i);
@@ -717,6 +821,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   auto *diag_srcmomw_mode0 = modes_pkg->MutableParam<double>("diag/int_srcmomw_mode0");
   auto *diag_srcenergy_mode0 =
       modes_pkg->MutableParam<double>("diag/int_srcenergy_mode0");
+  auto *diag_srcpi0_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpi0_mode0");
+  auto *diag_srcpix_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpix_mode0");
+  auto *diag_srcpiy_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiy_mode0");
+  auto *diag_srcpiz_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiz_mode0");
+  auto *diag_srcpiw_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiw_mode0");
   *diag_jw_ew += diag_jw_ew_step;
   *diag_s_leak += diag_s_leak_step;
   *diag_s_leak_abs += diag_s_leak_abs_step;
@@ -731,6 +840,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_srcmomz_mode0 += diag_srcmomz_mode0_step;
   *diag_srcmomw_mode0 += diag_srcmomw_mode0_step;
   *diag_srcenergy_mode0 += diag_srcenergy_mode0_step;
+  *diag_srcpi0_mode0 += diag_srcpi0_mode0_step;
+  *diag_srcpix_mode0 += diag_srcpix_mode0_step;
+  *diag_srcpiy_mode0 += diag_srcpiy_mode0_step;
+  *diag_srcpiz_mode0 += diag_srcpiz_mode0_step;
+  *diag_srcpiw_mode0 += diag_srcpiw_mode0_step;
 }
 
 } // namespace Modes4D
