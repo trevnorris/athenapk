@@ -16,6 +16,9 @@
 // AthenaPK headers
 #include "../eos/adiabatic_glmmhd.hpp"
 #include "../eos/adiabatic_hydro.hpp"
+#if ATHENAPK_ENABLE_4D_MODES
+#include "../4d_modes/package4d_modes.hpp"
+#endif
 #include "../main.hpp"
 #include "../pgen/pgen.hpp"
 #include "../recon/dc_simple.hpp"
@@ -55,6 +58,9 @@ using parthenon::HistoryOutputVar;
 parthenon::Packages_t ProcessPackages(std::unique_ptr<ParameterInput> &pin) {
   parthenon::Packages_t packages;
   packages.Add(Hydro::Initialize(pin.get()));
+#if ATHENAPK_ENABLE_4D_MODES
+  packages.Add(Modes4D::Initialize(pin.get()));
+#endif
   packages.Add(Tracers::Initialize(pin.get()));
   return packages;
 }

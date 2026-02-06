@@ -92,6 +92,8 @@ int main(int argc, char *argv[]) {
     Hydro::ProblemInitPackageData = field_loop::ProblemInitPackageData;
   } else if (problem == "kh") {
     pman.app_input->MeshProblemGenerator = kh::ProblemGenerator;
+  } else if (problem == "harris_4d") {
+    pman.app_input->ProblemGenerator = harris_4d::ProblemGenerator;
   } else if (problem == "lw_implode") {
     pman.app_input->ProblemGenerator = lw_implode::ProblemGenerator;
   } else if (problem == "rand_blast") {

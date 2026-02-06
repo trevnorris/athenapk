@@ -137,4 +137,10 @@ TaskStatus ProblemFillTracers(MeshData<Real> *md, const parthenon::SimTime &tm,
 void Cleanup();
 } // namespace turbulence
 
+namespace harris_4d {
+using namespace parthenon::driver::prelude;
+
+void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin);
+} // namespace harris_4d
+
 #endif // PGEN_PGEN_HPP_

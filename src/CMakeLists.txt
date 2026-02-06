@@ -28,6 +28,13 @@ add_executable(
         utils/few_modes_ft.hpp
 )
 
+if(AthenaPK_ENABLE_4D_MODES)
+  target_compile_definitions(athenaPK PRIVATE ATHENAPK_ENABLE_4D_MODES=1)
+  add_subdirectory(4d_modes)
+else()
+  target_compile_definitions(athenaPK PRIVATE ATHENAPK_ENABLE_4D_MODES=0)
+endif()
+
 add_subdirectory(pgen)
 
 target_link_libraries(athenaPK PRIVATE parthenon)

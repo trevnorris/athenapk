@@ -64,6 +64,7 @@ if (NOT PARTHENON_DISABLE_MPI)
 endif()
 
 option(AthenaPK_ENABLE_TESTING "Enable AthenaPK test" ON)
+option(AthenaPK_ENABLE_4D_MODES "Enable experimental 4D x modes package scaffold" ON)
 set(PARTHENON_ENABLE_PYTHON_MODULE_CHECK ${AthenaPK_ENABLE_TESTING} CACHE BOOL "Check if local python version contains all modules required for running tests.")
 
 set(PARTHENON_ENABLE_TESTING OFF CACHE BOOL "Disable Parthenon testing.")
@@ -84,4 +85,3 @@ if (AthenaPK_ENABLE_TESTING)
   include(CTest)
   add_subdirectory(tst/regression)
 endif()
-
