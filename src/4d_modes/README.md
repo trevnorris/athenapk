@@ -242,7 +242,22 @@ This target runs `scripts/modes4d_controlled_regression.py`, which:
   - `m4d_mixed_ew2`
   - `m4d_mixed_c2`
 
-### 7) Run scalar-channel pulse regression target
+### 7) Run Gaussian KK Coulomb+Yukawa regression target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_kk_coulomb_regression
+```
+
+This target runs `scripts/kk_coulomb_yukawa_regression.py`, validating the
+Gaussian tower formulas used in `docs/4d_em_fields_summary.md`:
+- `m_n^2 = 2n/lambda^2`
+- odd-mode decoupling (`c_{2m+1}=0`)
+- even-mode couplings (`c_{2m}/c_0 = (1/4^m) * binom(2m,m)`)
+- leading static correction
+  `A_0(r) = A_0^(Coulomb) * [1 + 1/2 * exp(-2r/lambda) + ...]`
+
+### 8) Run scalar-channel pulse regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -256,7 +271,7 @@ This target runs `scripts/em4d_scalar_pulse_regression.py` against
 - `max(m4d_em_a2_mode_1)`
 - `|m4d_pulse_xc(final)-m4d_pulse_xc(initial)|`
 
-### 8) Run the dedicated tuned Harris regression target
+### 9) Run the dedicated tuned Harris regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \

@@ -87,6 +87,11 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
   find_package(Python3 COMPONENTS Interpreter)
   if(Python3_Interpreter_FOUND)
     add_custom_target(
+      modes4d_kk_coulomb_regression
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/kk_coulomb_yukawa_regression.py
+      USES_TERMINAL
+      COMMENT "Running Gaussian KK Coulomb+Yukawa regression checks")
+    add_custom_target(
       modes4d_controlled_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_controlled_regression
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_controlled_regression.py
