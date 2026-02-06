@@ -1,5 +1,6 @@
 #include "pgen_harris4d.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include "../main.hpp"
@@ -22,6 +23,10 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
       pin->GetOrAddReal("problem/harris_4d", "drift_current_scale", 0.0);
   const Real aw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "aw_mode1_amp", 0.0);
   const Real piw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "piw_mode1_amp", 0.0);
+  const Real init_charge_rel_tol =
+      pin->GetOrAddReal("problem/harris_4d", "init_charge_rel_tol", 1.0e-12);
+  const Real init_charge_abs_tol =
+      pin->GetOrAddReal("problem/harris_4d", "init_charge_abs_tol", 1.0e-12);
   const Real gamma = pin->GetOrAddReal("hydro", "gamma", 5.0 / 3.0);
 
   PARTHENON_REQUIRE(sheet_half_width > 0.0,
@@ -65,6 +70,9 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
 
   const int n_em_vars = em_a.GetDim(4);
   const int n_plasma_vars = plasma.GetDim(4);
+  Real total_charge = 0.0;
+  Real charge_scale = 0.0;
+  Real max_abs_charge = 0.0;
 
   for (int k = kb.s; k <= kb.e; ++k) {
     for (int j = jb.s; j <= jb.e; ++j) {
@@ -122,6 +130,12 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
         const Real energy_density = pressure / gm1;
         const Real energy_ion = (-qom_electron / qom_denom) * energy_density;
         const Real energy_electron = (qom_ion / qom_denom) * energy_density;
+        const Real charge_density = (qom_ion * rho_ion) + (qom_electron * rho_electron);
+        const Real cell_volume = coords.CellVolume(k, j, i);
+        total_charge += charge_density * cell_volume;
+        charge_scale +=
+            (std::abs(qom_ion * rho_ion) + std::abs(qom_electron * rho_electron)) * cell_volume;
+        max_abs_charge = std::max(max_abs_charge, std::abs(charge_density));
 
         const int ion_offset = 0;
         plasma(ion_offset + 0, k, j, i) = rho_ion;
@@ -141,6 +155,16 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
       }
     }
   }
+
+  const Real charge_norm = std::abs(total_charge) / std::max(charge_scale, 1.0e-30);
+  PARTHENON_REQUIRE(
+      charge_norm <= init_charge_rel_tol,
+      "harris_4d initialization failed charge-neutrality relative check; "
+      "tune problem/harris_4d/init_charge_rel_tol if needed");
+  PARTHENON_REQUIRE(
+      max_abs_charge <= init_charge_abs_tol,
+      "harris_4d initialization failed charge-neutrality local absolute check; "
+      "tune problem/harris_4d/init_charge_abs_tol if needed");
 
   cons_dev.DeepCopy(cons);
   em_a_dev.DeepCopy(em_a);

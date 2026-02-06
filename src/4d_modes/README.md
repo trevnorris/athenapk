@@ -330,6 +330,8 @@ Key parameters currently used from `<problem/harris_4d>`:
 - `drift_current_scale`
 - `aw_mode1_amp`
 - `piw_mode1_amp`
+- `init_charge_rel_tol`
+- `init_charge_abs_tol`
 
 ## Notes
 
