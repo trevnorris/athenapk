@@ -18,6 +18,9 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
       pin->GetOrAddReal("problem/harris_4d", "sheet_half_width", 0.1);
   const Real perturbation_amp =
       pin->GetOrAddReal("problem/harris_4d", "perturbation_amp", 1.0e-3);
+  const Real aw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "aw_mode1_amp", 0.0);
+  const Real piw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "piw_mode1_amp", 0.0);
+  const Real jw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "jw_mode1_amp", 0.0);
   const Real gamma = pin->GetOrAddReal("hydro", "gamma", 5.0 / 3.0);
 
   PARTHENON_REQUIRE(sheet_half_width > 0.0,
@@ -95,6 +98,13 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
         const Real ay_perturb = perturbation_amp * std::cos(phase_x) * std::cos(phase_z);
         em_a(2, k, j, i) = ay_perturb; // mode 0, A_y component
 
+        if (n_modes > 1) {
+          const int aw_mode1_idx = 5 + 4;
+          const Real phase = std::cos(phase_x) * std::cos(phase_z);
+          em_a(aw_mode1_idx, k, j, i) = aw_mode1_amp * phase;
+          em_pi(aw_mode1_idx, k, j, i) = piw_mode1_amp * phase;
+        }
+
         // Two-species (ions/electrons) mode state. Initialize only the zero mode.
         for (int s = 0; s < 2; ++s) {
           const int species_offset = s * 6 * n_modes;
@@ -105,6 +115,13 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
           plasma(zero_mode_offset + 3, k, j, i) = 0.0;
           plasma(zero_mode_offset + 4, k, j, i) = 0.0;
           plasma(zero_mode_offset + 5, k, j, i) = 0.5 * pressure / gm1;
+
+          if (n_modes > 1) {
+            const int mode1_offset = species_offset + 6;
+            const Real jw_mode1 = jw_mode1_amp * sech2y;
+            // Opposite-sign species momentum in mode 1 yields net J^w mode 1 for q/m of +/-1.
+            plasma(mode1_offset + 4, k, j, i) = (s == 0) ? (0.5 * jw_mode1) : (-0.5 * jw_mode1);
+          }
         }
       }
     }

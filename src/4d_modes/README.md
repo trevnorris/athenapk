@@ -41,6 +41,9 @@ Not implemented yet:
 
 Additional bring-up path now available:
 - `inputs/em4d_pulse.in` exercises EM-only source evolution for `em4d_a`/`em4d_pi`
+- `inputs/harris_4d_controlled.in` and `inputs/harris_4d_full.in` provide a
+  controlled-vs-full scan pair (`n_modes=1` vs `n_modes=4`), with optional
+  mode-1 channel seeding in the full case
 
 ## Files
 
@@ -121,6 +124,20 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_qom_ion`
 - `plasma_qom_electron`
 
+### 5) Run controlled-vs-full Harris scan summary
+
+```bash
+python3 /projects/fluid-engine/athenapk/scripts/harris_scan_matrix.py \
+  --binary /projects/fluid-engine/athenapk/build-baseline/bin/athenaPK \
+  --workdir /projects/fluid-engine \
+  --controlled-input /projects/fluid-engine/athenapk/inputs/harris_4d_controlled.in \
+  --full-input /projects/fluid-engine/athenapk/inputs/harris_4d_full.in \
+  --output-dir /projects/fluid-engine/athenapk/build-baseline/harris_scan_outputs
+```
+
+This prints a CSV table with final values and Pearson correlations between
+`m4d_psi0_span` and key ledger/reconnection proxy channels.
+
 ## Input requirements for `harris_4d`
 
 Required right now:
@@ -136,6 +153,9 @@ Key parameters currently used from `<problem/harris_4d>`:
 - `p_bg`
 - `sheet_half_width`
 - `perturbation_amp`
+- `aw_mode1_amp`
+- `piw_mode1_amp`
+- `jw_mode1_amp`
 
 ## Notes
 

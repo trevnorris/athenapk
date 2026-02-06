@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "mode_tables.hpp"
 #include "outputs/outputs.hpp"
 
 namespace Modes4D {
@@ -103,106 +104,158 @@ Real PulseCentroidXHst(MeshData<Real> *md) {
 }
 
 Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
-  auto *pmb = md->GetBlockData(0)->GetBlockPointer();
-  auto modes_pkg = pmb->packages.Get("modes4d");
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   const int n_modes = modes_pkg->Param<int>("n_modes");
-  const Real lambda = modes_pkg->Param<double>("lambda");
-  const Real dw_coeff =
-      (n_modes > 1) ? (std::sqrt(static_cast<Real>(2.0)) / lambda) : static_cast<Real>(0.0);
-  const bool has_mode1 = (n_modes > 1);
-
-  const auto &a_pack = md->PackVariables(std::vector<std::string>{"em4d_a"});
-  const auto &pi_pack = md->PackVariables(std::vector<std::string>{"em4d_pi"});
-
-  IndexRange ib = md->GetBlockData(0)->GetBoundsI(IndexDomain::interior);
-  IndexRange jb = md->GetBlockData(0)->GetBoundsJ(IndexDomain::interior);
-  IndexRange kb = md->GetBlockData(0)->GetBoundsK(IndexDomain::interior);
-
-  const bool has_x = (ib.e > ib.s);
-  const bool has_y = (jb.e > jb.s);
-  const bool has_z = (kb.e > kb.s);
-  const int which = static_cast<int>(quantity);
+  const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
+  const int n_quad = tables.NumQuadrature();
+  const auto &weights = tables.Weights();
 
   Real integral = 0.0;
-  pmb->par_reduce(
-      "Modes4DBraneMixedIntegral", 0, a_pack.GetDim(5) - 1, kb.s, kb.e, jb.s, jb.e, ib.s,
-      ib.e,
-      KOKKOS_LAMBDA(const int b, const int k, const int j, const int i, Real &local_sum) {
-        const auto &a = a_pack(b);
-        const auto &pi = pi_pack(b);
-        const auto &coords = a_pack.GetCoords(b);
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto *pmb = bd->GetBlockPointer();
+    auto &coords = pmb->coords;
 
-        const Real dx = has_x ? coords.Dxc<1>(i) : 1.0;
-        const Real dy = has_y ? coords.Dxc<2>(j) : 1.0;
-        const Real dz = has_z ? coords.Dxc<3>(k) : 1.0;
+    auto a = bd->Get("em4d_a").data.GetHostMirrorAndCopy();
+    auto pi = bd->Get("em4d_pi").data.GetHostMirrorAndCopy();
 
-        const Real dA0_dx =
-            has_x ? (a(kCompA0, k, j, i + 1) - a(kCompA0, k, j, i - 1)) / (2.0 * dx) : 0.0;
-        const Real dA0_dy =
-            has_y ? (a(kCompA0, k, j + 1, i) - a(kCompA0, k, j - 1, i)) / (2.0 * dy) : 0.0;
-        const Real dA0_dz =
-            has_z ? (a(kCompA0, k + 1, j, i) - a(kCompA0, k - 1, j, i)) / (2.0 * dz) : 0.0;
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+    const bool has_x = (ib.e > ib.s);
+    const bool has_y = (jb.e > jb.s);
+    const bool has_z = (kb.e > kb.s);
 
-        const Real dAx_dy =
-            has_y ? (a(kCompAX, k, j + 1, i) - a(kCompAX, k, j - 1, i)) / (2.0 * dy) : 0.0;
-        const Real dAx_dz =
-            has_z ? (a(kCompAX, k + 1, j, i) - a(kCompAX, k - 1, j, i)) / (2.0 * dz) : 0.0;
-        const Real dAy_dx =
-            has_x ? (a(kCompAY, k, j, i + 1) - a(kCompAY, k, j, i - 1)) / (2.0 * dx) : 0.0;
-        const Real dAy_dz =
-            has_z ? (a(kCompAY, k + 1, j, i) - a(kCompAY, k - 1, j, i)) / (2.0 * dz) : 0.0;
-        const Real dAz_dx =
-            has_x ? (a(kCompAZ, k, j, i + 1) - a(kCompAZ, k, j, i - 1)) / (2.0 * dx) : 0.0;
-        const Real dAz_dy =
-            has_y ? (a(kCompAZ, k, j + 1, i) - a(kCompAZ, k, j - 1, i)) / (2.0 * dy) : 0.0;
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          const Real dx = has_x ? coords.Dxc<1>(i) : 1.0;
+          const Real dy = has_y ? coords.Dxc<2>(j) : 1.0;
+          const Real dz = has_z ? coords.Dxc<3>(k) : 1.0;
 
-        const Real dAw_dx =
-            has_x ? (a(kCompAW, k, j, i + 1) - a(kCompAW, k, j, i - 1)) / (2.0 * dx) : 0.0;
-        const Real dAw_dy =
-            has_y ? (a(kCompAW, k, j + 1, i) - a(kCompAW, k, j - 1, i)) / (2.0 * dy) : 0.0;
-        const Real dAw_dz =
-            has_z ? (a(kCompAW, k + 1, j, i) - a(kCompAW, k - 1, j, i)) / (2.0 * dz) : 0.0;
+          const Real dA0_dx =
+              has_x ? (a(kCompA0, k, j, i + 1) - a(kCompA0, k, j, i - 1)) / (2.0 * dx) : 0.0;
+          const Real dA0_dy =
+              has_y ? (a(kCompA0, k, j + 1, i) - a(kCompA0, k, j - 1, i)) / (2.0 * dy) : 0.0;
+          const Real dA0_dz =
+              has_z ? (a(kCompA0, k + 1, j, i) - a(kCompA0, k - 1, j, i)) / (2.0 * dz) : 0.0;
 
-        const Real ex = -pi(kCompAX, k, j, i) - dA0_dx;
-        const Real ey = -pi(kCompAY, k, j, i) - dA0_dy;
-        const Real ez = -pi(kCompAZ, k, j, i) - dA0_dz;
+          const Real dAx_dy =
+              has_y ? (a(kCompAX, k, j + 1, i) - a(kCompAX, k, j - 1, i)) / (2.0 * dy) : 0.0;
+          const Real dAx_dz =
+              has_z ? (a(kCompAX, k + 1, j, i) - a(kCompAX, k - 1, j, i)) / (2.0 * dz) : 0.0;
+          const Real dAy_dx =
+              has_x ? (a(kCompAY, k, j, i + 1) - a(kCompAY, k, j, i - 1)) / (2.0 * dx) : 0.0;
+          const Real dAy_dz =
+              has_z ? (a(kCompAY, k + 1, j, i) - a(kCompAY, k - 1, j, i)) / (2.0 * dz) : 0.0;
+          const Real dAz_dx =
+              has_x ? (a(kCompAZ, k, j, i + 1) - a(kCompAZ, k, j, i - 1)) / (2.0 * dx) : 0.0;
+          const Real dAz_dy =
+              has_y ? (a(kCompAZ, k, j + 1, i) - a(kCompAZ, k, j - 1, i)) / (2.0 * dy) : 0.0;
 
-        const Real bx = dAz_dy - dAy_dz;
-        const Real by = dAx_dz - dAz_dx;
-        const Real bz = dAy_dx - dAx_dy;
+          const Real ex = -pi(kCompAX, k, j, i) - dA0_dx;
+          const Real ey = -pi(kCompAY, k, j, i) - dA0_dy;
+          const Real ez = -pi(kCompAZ, k, j, i) - dA0_dz;
 
-        const Real b2 = (bx * bx) + (by * by) + (bz * bz);
-        const Real e2 = (ex * ex) + (ey * ey) + (ez * ez);
-        const Real edotb = (ex * bx) + (ey * by) + (ez * bz);
-        const Real epar2 = (edotb * edotb) / (b2 + 1.0e-30);
+          const Real bx = dAz_dy - dAy_dz;
+          const Real by = dAx_dz - dAz_dx;
+          const Real bz = dAy_dx - dAx_dy;
 
-        const Real a0_mode1 = has_mode1 ? a(5 + kCompA0, k, j, i) : 0.0;
-        const Real ax_mode1 = has_mode1 ? a(5 + kCompAX, k, j, i) : 0.0;
-        const Real ay_mode1 = has_mode1 ? a(5 + kCompAY, k, j, i) : 0.0;
-        const Real az_mode1 = has_mode1 ? a(5 + kCompAZ, k, j, i) : 0.0;
+          const Real b2 = (bx * bx) + (by * by) + (bz * bz);
+          const Real e2 = (ex * ex) + (ey * ey) + (ez * ez);
+          const Real edotb = (ex * bx) + (ey * by) + (ez * bz);
+          const Real epar2 = (edotb * edotb) / (b2 + 1.0e-30);
 
-        const Real ew = -pi(kCompAW, k, j, i) - (dw_coeff * a0_mode1);
-        const Real cx = dAw_dx - (dw_coeff * ax_mode1);
-        const Real cy = dAw_dy - (dw_coeff * ay_mode1);
-        const Real cz = dAw_dz - (dw_coeff * az_mode1);
-        const Real c2 = (cx * cx) + (cy * cy) + (cz * cz);
+          std::vector<Real> a0_modes(n_modes, 0.0);
+          std::vector<Real> ax_modes(n_modes, 0.0);
+          std::vector<Real> ay_modes(n_modes, 0.0);
+          std::vector<Real> az_modes(n_modes, 0.0);
+          std::vector<Real> aw_modes(n_modes, 0.0);
+          std::vector<Real> piw_modes(n_modes, 0.0);
+          std::vector<Real> daw_dx_modes(n_modes, 0.0);
+          std::vector<Real> daw_dy_modes(n_modes, 0.0);
+          std::vector<Real> daw_dz_modes(n_modes, 0.0);
 
-        const Real vol = coords.CellVolume(k, j, i);
-        Real val = 0.0;
-        if (which == static_cast<int>(BraneMixedQuantity::BraneE2)) {
-          val = 0.5 * e2;
-        } else if (which == static_cast<int>(BraneMixedQuantity::BraneB2)) {
-          val = 0.5 * b2;
-        } else if (which == static_cast<int>(BraneMixedQuantity::BraneEParallel2)) {
-          val = epar2;
-        } else if (which == static_cast<int>(BraneMixedQuantity::MixedEw2)) {
-          val = 0.5 * ew * ew;
-        } else {
-          val = 0.5 * c2;
+          for (int n = 0; n < n_modes; ++n) {
+            const int off = 5 * n;
+            a0_modes[n] = a(off + kCompA0, k, j, i);
+            ax_modes[n] = a(off + kCompAX, k, j, i);
+            ay_modes[n] = a(off + kCompAY, k, j, i);
+            az_modes[n] = a(off + kCompAZ, k, j, i);
+            aw_modes[n] = a(off + kCompAW, k, j, i);
+            piw_modes[n] = pi(off + kCompAW, k, j, i);
+
+            if (has_x) {
+              daw_dx_modes[n] =
+                  (a(off + kCompAW, k, j, i + 1) - a(off + kCompAW, k, j, i - 1)) /
+                  (2.0 * dx);
+            }
+            if (has_y) {
+              daw_dy_modes[n] =
+                  (a(off + kCompAW, k, j + 1, i) - a(off + kCompAW, k, j - 1, i)) /
+                  (2.0 * dy);
+            }
+            if (has_z) {
+              daw_dz_modes[n] =
+                  (a(off + kCompAW, k + 1, j, i) - a(off + kCompAW, k - 1, j, i)) /
+                  (2.0 * dz);
+            }
+          }
+
+          Real ew2_int = 0.0;
+          Real c2_int = 0.0;
+          for (int q = 0; q < n_quad; ++q) {
+            Real d_w_a0 = 0.0;
+            Real d_w_ax = 0.0;
+            Real d_w_ay = 0.0;
+            Real d_w_az = 0.0;
+            Real piw_node = 0.0;
+            Real daw_dx_node = 0.0;
+            Real daw_dy_node = 0.0;
+            Real daw_dz_node = 0.0;
+
+            for (int n = 0; n < n_modes; ++n) {
+              const Real phi_nq = tables.Phi(n, q);
+              const Real dphi_nq = tables.DPhi(n, q);
+
+              d_w_a0 += a0_modes[n] * dphi_nq;
+              d_w_ax += ax_modes[n] * dphi_nq;
+              d_w_ay += ay_modes[n] * dphi_nq;
+              d_w_az += az_modes[n] * dphi_nq;
+
+              piw_node += piw_modes[n] * phi_nq;
+              daw_dx_node += daw_dx_modes[n] * phi_nq;
+              daw_dy_node += daw_dy_modes[n] * phi_nq;
+              daw_dz_node += daw_dz_modes[n] * phi_nq;
+            }
+
+            const Real ew = -piw_node - d_w_a0;
+            const Real cx = daw_dx_node - d_w_ax;
+            const Real cy = daw_dy_node - d_w_ay;
+            const Real cz = daw_dz_node - d_w_az;
+
+            ew2_int += weights[q] * (ew * ew);
+            c2_int += weights[q] * ((cx * cx) + (cy * cy) + (cz * cz));
+          }
+
+          const Real vol = coords.CellVolume(k, j, i);
+          Real val = 0.0;
+          if (quantity == BraneMixedQuantity::BraneE2) {
+            val = 0.5 * e2;
+          } else if (quantity == BraneMixedQuantity::BraneB2) {
+            val = 0.5 * b2;
+          } else if (quantity == BraneMixedQuantity::BraneEParallel2) {
+            val = epar2;
+          } else if (quantity == BraneMixedQuantity::MixedEw2) {
+            val = 0.5 * ew2_int;
+          } else {
+            val = 0.5 * c2_int;
+          }
+          integral += val * vol;
         }
-        local_sum += val * vol;
-      },
-      integral);
+      }
+    }
+  }
   return integral;
 }
 
