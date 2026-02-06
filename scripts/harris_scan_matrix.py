@@ -244,10 +244,34 @@ def print_table(results):
         "closure_local_mode0_final_l1",
         "closure_local_mode0_final_l2",
         "closure_local_mode0_status",
+        "activity_status",
+        "activity_failures",
     ]
     print(",".join(keys))
     for row in results:
         print(",".join(fmt(row[k]) for k in keys))
+
+
+def evaluate_full_activity(
+    row,
+    min_jw_ew_abs,
+    min_s_leak_abs,
+    min_mixed_ew2,
+    min_jw_mode_l2_1,
+):
+    failures = []
+    if min_jw_ew_abs > 0.0 and abs(row["final_jw_ew"]) < min_jw_ew_abs:
+        failures.append("jw_ew")
+    if min_s_leak_abs > 0.0 and row["final_s_leak_abs"] < min_s_leak_abs:
+        failures.append("s_leak_abs")
+    if min_mixed_ew2 > 0.0 and row["final_mixed_ew2"] < min_mixed_ew2:
+        failures.append("mixed_ew2")
+    if min_jw_mode_l2_1 > 0.0 and row["final_jw_mode_l2_1"] < min_jw_mode_l2_1:
+        failures.append("jw_mode_l2_1")
+
+    if failures:
+        return ("FAIL", "|".join(failures))
+    return ("PASS", "none")
 
 
 def main():
@@ -290,7 +314,31 @@ def main():
     parser.add_argument(
         "--fail-on-check",
         action="store_true",
-        help="Exit nonzero if any case fails continuity closure check",
+        help="Exit nonzero if any case fails closure or activity checks",
+    )
+    parser.add_argument(
+        "--full-min-jw-ew-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_jw_ew| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-s-leak-abs",
+        type=float,
+        default=0.0,
+        help="Minimum final_s_leak_abs required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-mixed-ew2",
+        type=float,
+        default=0.0,
+        help="Minimum final_mixed_ew2 required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-jw-mode-l2-1",
+        type=float,
+        default=0.0,
+        help="Minimum final_jw_mode_l2_1 required for full-case activity PASS (disabled when 0)",
     )
     args = parser.parse_args()
 
@@ -322,6 +370,20 @@ def main():
             args.closure_local_mode0_abs_rate_tol,
         ),
     ]
+    for row in results:
+        row["activity_status"] = "N/A"
+        row["activity_failures"] = "n/a"
+        if row["case"] == "full":
+            status, failures = evaluate_full_activity(
+                row,
+                args.full_min_jw_ew_abs,
+                args.full_min_s_leak_abs,
+                args.full_min_mixed_ew2,
+                args.full_min_jw_mode_l2_1,
+            )
+            row["activity_status"] = status
+            row["activity_failures"] = failures
+
     print_table(results)
 
     if args.fail_on_check:
@@ -330,9 +392,10 @@ def main():
             for r in results
             if r["closure_status"] == "FAIL"
             or r["closure_local_mode0_status"] == "FAIL"
+            or r["activity_status"] == "FAIL"
         ]
         if failing:
-            raise SystemExit(f"continuity closure check failed for: {', '.join(failing)}")
+            raise SystemExit(f"scan checks failed for: {', '.join(failing)}")
 
 
 if __name__ == "__main__":

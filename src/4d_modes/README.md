@@ -181,6 +181,13 @@ The summary also includes local mode-0 closure residual channels from
 `m4d_cont_mode0_*`, with pass/fail controlled by
 `--closure-local-mode0-abs-rate-tol` (default `1e-8`).
 `m4d_int_divj_mode0` is accumulated from the corrected conservative rho-transport fluxes.
+Full-case activity gates can be enabled with:
+- `--full-min-jw-ew-abs`
+- `--full-min-s-leak-abs`
+- `--full-min-mixed-ew2`
+- `--full-min-jw-mode-l2-1`
+When set, these enforce nontrivial leakage/work/mixed-channel signal levels in the
+full case and report `activity_status` / `activity_failures` in the CSV output.
 Use `--fail-on-check` to force a nonzero exit code on failed checks.
 
 ## Input requirements for `harris_4d`
