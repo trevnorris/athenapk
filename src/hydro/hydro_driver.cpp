@@ -22,6 +22,9 @@
 #include "../pgen/cluster/agn_triggering.hpp"
 #include "../pgen/cluster/magnetic_tower.hpp"
 #include "../tracers/tracers.hpp"
+#if ATHENAPK_ENABLE_4D_MODES
+#include "../4d_modes/plasma4d_modes.hpp"
+#endif
 #include "diffusion/diffusion.hpp"
 #include "glmmhd/glmmhd.hpp"
 #include "hydro.hpp"
@@ -522,15 +525,29 @@ TaskCollection HydroDriver::MakeTaskCollection(BlockList_t &blocks, int stage) {
                      integrator->beta[stage - 1] * integrator->dt);
     }
 
+    TaskID plasma_transport_flux = first_order_flux_correct;
+#if ATHENAPK_ENABLE_4D_MODES
+    plasma_transport_flux =
+        tl.AddTask(first_order_flux_correct, Modes4D::AddRhoTransportFluxes, mu0.get());
+#endif
+
     auto send_flx =
-        tl.AddTask(first_order_flux_correct, parthenon::LoadAndSendFluxCorrections, mu0);
+        tl.AddTask(plasma_transport_flux, parthenon::LoadAndSendFluxCorrections, mu0);
     auto recv_flx = tl.AddTask(start_flxcor_recv, parthenon::ReceiveFluxCorrections, mu0);
-    auto set_flx = tl.AddTask(recv_flx | first_order_flux_correct,
+    auto set_flx = tl.AddTask(recv_flx | plasma_transport_flux,
                               parthenon::SetFluxCorrections, mu0);
+
+    TaskID accumulate_plasma_divj = set_flx;
+#if ATHENAPK_ENABLE_4D_MODES
+    accumulate_plasma_divj = tl.AddTask(set_flx, Modes4D::AccumulateRhoTransportDivJ,
+                                        mu0.get(),
+                                        integrator->beta[stage - 1] * integrator->dt);
+#endif
 
     // compute the divergence of fluxes of conserved variables
     auto update = tl.AddTask(
-        set_flx, parthenon::Update::UpdateWithFluxDivergence<MeshData<Real>>, mu0.get(),
+        accumulate_plasma_divj, parthenon::Update::UpdateWithFluxDivergence<MeshData<Real>>,
+        mu0.get(),
         mu1.get(), integrator->gam0[stage - 1], integrator->gam1[stage - 1],
         integrator->beta[stage - 1] * integrator->dt);
 

@@ -24,10 +24,12 @@ Implemented now:
   - apply species work `q/m * rho * (v·E + v_w E_w)` for mode energy
   - project updated node values back to mode coefficients
 - split plasma mode-continuity coupling update:
-  - apply mode continuity form
-    `d_t rho^(n) + div(j^a,(n)) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
-    using a face-centered central-difference `div(j^a,(n))` term with runtime gain
-    `plasma_rho_divj_gain`
+  - source-step term applies leakage coupling
+    `d_t rho^(n) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
+  - brane transport `div(j^a,(n))` is handled in the conservative flux pipeline by
+    registering `plasma4d_cons` with `WithFluxes` and filling rho fluxes from species
+    mode momenta (`momx/momy/momz`) each stage
+  - runtime gain `plasma_rho_divj_gain` scales that conservative brane-transport path
   - write updated `plasma4d_cons` back each source step
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
 - `harris_4d` now uses the same unsplit equation-based EM source update during runtime
@@ -78,6 +80,7 @@ Additional bring-up path now available:
 - `package4d_modes.hpp`, `package4d_modes.cpp`: `modes4d` package setup and parameters
 - `em4d_modes.*`: registered EM mode fields (`em4d_a`, `em4d_pi`)
 - `plasma4d_modes.*`: registered plasma mode fields (`plasma4d_cons`)
+  plus conservative rho-transport flux helpers
 - `diagnostics4d.*`: placeholder diagnostics params
 - `pgen_harris4d.*`: Harris-sheet initialization for the `harris_4d` problem path
 - `mode_tables_tests.cpp`: standalone mode-math tests
@@ -177,6 +180,7 @@ Low-signal cases use `--closure-abs-rate-tol` (default `1e-8`) as an absolute-ra
 The summary also includes local mode-0 closure residual channels from
 `m4d_cont_mode0_*`, with pass/fail controlled by
 `--closure-local-mode0-abs-rate-tol` (default `1e-8`).
+`m4d_int_divj_mode0` is accumulated from the corrected conservative rho-transport fluxes.
 Use `--fail-on-check` to force a nonzero exit code on failed checks.
 
 ## Input requirements for `harris_4d`

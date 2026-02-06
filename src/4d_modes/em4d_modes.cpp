@@ -91,7 +91,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real force_source_gain = modes_pkg->Param<double>("plasma4d/force_source_gain");
   const Real momw_source_gain = modes_pkg->Param<double>("plasma4d/momw_source_gain");
   const Real momw_damping = modes_pkg->Param<double>("plasma4d/momw_damping");
-  const Real rho_divj_gain = modes_pkg->Param<double>("plasma4d/rho_divj_gain");
   const Real rho_floor = modes_pkg->Param<double>("plasma4d/rho_floor");
   const Real energy_source_gain = modes_pkg->Param<double>("plasma4d/energy_source_gain");
   const Real energy_floor = modes_pkg->Param<double>("plasma4d/energy_floor");
@@ -104,7 +103,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_jw_ew_step = 0.0;
   Real diag_s_leak_step = 0.0;
   Real diag_s_leak_abs_step = 0.0;
-  Real diag_divj_mode0_step = 0.0;
   Real diag_cont_local_l1_step = 0.0;
   Real diag_cont_local_l2_step = 0.0;
   Real diag_cont_local_max_abs_step = 0.0;
@@ -234,8 +232,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     std::vector<Real> energy_modes_new(n_modes, 0.0);
     std::vector<Real> energy_nodes_new(tables.NumQuadrature(), 0.0);
     std::vector<Real> charge_modes_old(n_modes, 0.0);
-    std::vector<Real> div_ion_modes(n_modes, 0.0);
-    std::vector<Real> div_electron_modes(n_modes, 0.0);
 
     for (int k = kb.s; k <= kb.e; ++k) {
       for (int j = jb.s; j <= jb.e; ++j) {
@@ -428,33 +424,23 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             }
           }
 
-          // Mode continuity coupling update for each species:
-          // d_t rho^(n) + div(j^a,(n)) = -(sqrt(2(n+1))/lambda) * j_w^(n+1)
-          // using a face-centered central difference for div(j^a,(n)).
+          // Source-step mode continuity coupling update for each species:
+          // d_t rho^(n) = -(sqrt(2(n+1))/lambda) * j_w^(n+1)
+          // Brane transport divergence is handled through the conservative flux path.
           for (int s = 0; s < kSpeciesCount; ++s) {
             for (int n = 0; n < n_modes; ++n) {
               const int base = PlasmaIndex(s, n, 0, n_modes);
               Real leak_rhs = 0.0;
-              Real div_ja = 0.0;
               if (n + 1 < n_modes) {
                 const int base_np1 = PlasmaIndex(s, n + 1, 0, n_modes);
                 const Real coupling = std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda;
                 leak_rhs = -coupling * plasma_new(base_np1 + kPlasmaMomW, k, j, i);
               }
-              div_ja += gradient_x(plasma, base + kPlasmaMomX, k, j, i);
-              div_ja += gradient_y(plasma, base + kPlasmaMomY, k, j, i);
-              div_ja += gradient_z(plasma, base + kPlasmaMomZ, k, j, i);
 
-              const Real rhs_rho = leak_rhs - (rho_divj_gain * div_ja);
+              const Real rhs_rho = leak_rhs;
               const Real rho_old = plasma(base + kPlasmaRho, k, j, i);
               plasma_new(base + kPlasmaRho, k, j, i) =
                   std::max(rho_floor, rho_old + (dt * rhs_rho));
-
-              if (s == 0) {
-                div_ion_modes[n] = div_ja;
-              } else {
-                div_electron_modes[n] = div_ja;
-              }
             }
           }
 
@@ -486,11 +472,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 (n + 1 < n_modes) ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda)
                                   : 0.0;
             const Real jw_np1 = (n + 1 < n_modes) ? jw_modes[n + 1] : 0.0;
-            const Real div_charge =
-                (qom_ion * div_ion_modes[n]) + (qom_electron * div_electron_modes[n]);
             const Real continuity_residual =
-                ((j0_modes[n] - charge_modes_old[n]) / dt) + (rho_divj_gain * div_charge) +
-                (coupling * jw_np1);
+                ((j0_modes[n] - charge_modes_old[n]) / dt) + (coupling * jw_np1);
             const Real abs_residual = std::abs(continuity_residual);
 
             diag_cont_local_l1_step += cell_volume * abs_residual;
@@ -500,7 +483,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 std::max(diag_cont_local_max_abs_step, abs_residual);
 
             if (n == 0) {
-              diag_divj_mode0_step += dt * cell_volume * (rho_divj_gain * div_charge);
               diag_cont_mode0_l1_step += cell_volume * abs_residual;
               diag_cont_mode0_l2_step +=
                   cell_volume * continuity_residual * continuity_residual;
@@ -596,7 +578,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   auto *diag_jw_ew = modes_pkg->MutableParam<double>("diag/int_jw_ew");
   auto *diag_s_leak = modes_pkg->MutableParam<double>("diag/int_s_leak");
   auto *diag_s_leak_abs = modes_pkg->MutableParam<double>("diag/int_s_leak_abs");
-  auto *diag_divj_mode0 = modes_pkg->MutableParam<double>("diag/int_divj_mode0");
   auto *diag_cont_local_l1 = modes_pkg->MutableParam<double>("diag/continuity_local_l1");
   auto *diag_cont_local_l2 = modes_pkg->MutableParam<double>("diag/continuity_local_l2");
   auto *diag_cont_local_max_abs =
@@ -608,7 +589,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_jw_ew += diag_jw_ew_step;
   *diag_s_leak += diag_s_leak_step;
   *diag_s_leak_abs += diag_s_leak_abs_step;
-  *diag_divj_mode0 += diag_divj_mode0_step;
   *diag_cont_local_l1 = diag_cont_local_l1_step;
   *diag_cont_local_l2 = diag_cont_local_l2_step;
   *diag_cont_local_max_abs = diag_cont_local_max_abs_step;
