@@ -24,6 +24,12 @@ Implemented now:
   - `m4d_plasma_cons2`
   - `m4d_int_jw_ew`
   - `m4d_int_s_leak`
+  - `m4d_brane_e2`
+  - `m4d_brane_b2`
+  - `m4d_brane_epar2`
+  - `m4d_mixed_ew2`
+  - `m4d_mixed_c2`
+  - `m4d_psi0_span`
   - `m4d_pulse_xc`
   - `m4d_em_a2_mode_<n>`
   - `m4d_em_pi2_mode_<n>`
@@ -93,6 +99,9 @@ modes4d_unit_tests: PASS
 
 This input deck includes a history output stream (`file_type = hst`) so the
 `m4d_*` diagnostics channels are emitted during the run.
+For reconnection-oriented analysis, this includes `m4d_brane_epar2` (parallel
+electric proxy), mixed-sector proxies (`m4d_mixed_ew2`, `m4d_mixed_c2`), and
+`m4d_psi0_span` as a zero-mode flux-function span proxy.
 
 ### 4) Run EM-only pulse bring-up
 
