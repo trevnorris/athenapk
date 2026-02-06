@@ -42,6 +42,11 @@ Implemented now:
   - `m4d_int_s_leak`
   - `m4d_int_s_leak_abs`
   - `m4d_int_divj_mode0`
+  - `m4d_int_divmomx_mode0`
+  - `m4d_int_divmomy_mode0`
+  - `m4d_int_divmomz_mode0`
+  - `m4d_int_divmomw_mode0`
+  - `m4d_int_divenergy_mode0`
   - `m4d_brane_e2`
   - `m4d_brane_b2`
   - `m4d_brane_epar2`
@@ -54,6 +59,11 @@ Implemented now:
   - `m4d_jw_mode_l2_<n>`
   - `m4d_jw_mode_<n>`
   - `m4d_charge_mode_<n>`
+  - `m4d_momx_mode_<n>`
+  - `m4d_momy_mode_<n>`
+  - `m4d_momz_mode_<n>`
+  - `m4d_momw_mode_<n>`
+  - `m4d_energy_mode_<n>`
   - local continuity closure channels (source-step residuals):
     - `m4d_cont_local_l1`
     - `m4d_cont_local_l2`
@@ -91,8 +101,9 @@ At AthenaPK configure time:
 
 - `-DAthenaPK_ENABLE_4D_MODES=ON|OFF`
 - `-DAthenaPK_ENABLE_4D_MODES_UNIT_TESTS=ON|OFF`
+- `-DAthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET=ON|OFF`
 
-Defaults are `ON` for both.
+Defaults are `ON` for all three.
 
 ## Quick start
 
@@ -181,6 +192,10 @@ The summary also includes local mode-0 closure residual channels from
 `m4d_cont_mode0_*`, with pass/fail controlled by
 `--closure-local-mode0-abs-rate-tol` (default `1e-8`).
 `m4d_int_divj_mode0` is accumulated from the corrected conservative rho-transport fluxes.
+The momentum/energy transport companions (`m4d_int_divmomx_mode0`,
+`m4d_int_divmomy_mode0`, `m4d_int_divmomz_mode0`, `m4d_int_divmomw_mode0`,
+`m4d_int_divenergy_mode0`) are accumulated the same way from corrected
+`plasma4d_cons` fluxes.
 Full-case activity gates can be enabled with:
 - `--full-min-jw-ew-abs`
 - `--full-min-s-leak-abs`
@@ -189,6 +204,17 @@ Full-case activity gates can be enabled with:
 When set, these enforce nontrivial leakage/work/mixed-channel signal levels in the
 full case and report `activity_status` / `activity_failures` in the CSV output.
 Use `--fail-on-check` to force a nonzero exit code on failed checks.
+
+### 6) Run the dedicated tuned regression target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_harris_regression
+```
+
+This target runs `scripts/harris_regression_tuned.py`, which executes the
+controlled/full scan with fixed closure + activity thresholds for the tuned
+`inputs/harris_4d_full.in` baseline.
 
 ## Input requirements for `harris_4d`
 

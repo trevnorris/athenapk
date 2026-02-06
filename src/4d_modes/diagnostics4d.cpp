@@ -21,7 +21,11 @@ constexpr int kCompAZ = 3;
 constexpr int kCompAW = 4;
 constexpr int kVarsPerModePerSpecies = 6;
 constexpr int kPlasmaRho = 0;
+constexpr int kPlasmaMomX = 1;
+constexpr int kPlasmaMomY = 2;
+constexpr int kPlasmaMomZ = 3;
 constexpr int kPlasmaMomW = 4;
+constexpr int kPlasmaEnergy = 5;
 
 int PlasmaIndex(const int species, const int mode, const int var, const int n_modes) {
   return (species * kVarsPerModePerSpecies * n_modes) + (mode * kVarsPerModePerSpecies) +
@@ -83,6 +87,31 @@ Real LeakAbsAccumulatorHst(MeshData<Real> *md) {
 Real DivJMode0AccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_divj_mode0");
+}
+
+Real DivMomXMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divmomx_mode0");
+}
+
+Real DivMomYMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divmomy_mode0");
+}
+
+Real DivMomZMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divmomz_mode0");
+}
+
+Real DivMomWMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divmomw_mode0");
+}
+
+Real DivEnergyMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divenergy_mode0");
 }
 
 Real ContinuityLocalL1Hst(MeshData<Real> *md) {
@@ -458,6 +487,38 @@ Real ChargeModeIntegral(MeshData<Real> *md, const int mode_idx) {
   return sum;
 }
 
+Real SpeciesSummedModeIntegral(MeshData<Real> *md, const int mode_idx, const int var_idx) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  if (mode_idx < 0 || mode_idx >= n_modes) {
+    return 0.0;
+  }
+
+  Real sum = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto plasma = bd->Get("plasma4d_cons").data.GetHostMirrorAndCopy();
+    auto &coords = bd->GetBlockPointer()->coords;
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          const int ion_base = PlasmaIndex(0, mode_idx, 0, n_modes);
+          const int ele_base = PlasmaIndex(1, mode_idx, 0, n_modes);
+          const Real ion_val = plasma(ion_base + var_idx, k, j, i);
+          const Real ele_val = plasma(ele_base + var_idx, k, j, i);
+          sum += (ion_val + ele_val) * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return sum;
+}
+
 Real FieldModeL2Integral(MeshData<Real> *md, const std::string &field_name,
                          const int mode_idx) {
   auto *pmb = md->GetBlockData(0)->GetBlockPointer();
@@ -494,6 +555,11 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_s_leak", 0.0, true);
   pkg->AddParam<double>("diag/int_s_leak_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_divj_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divmomx_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divmomy_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divmomz_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divmomw_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_divenergy_mode0", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l1", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l2", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_max_abs", 0.0, true);
@@ -521,6 +587,21 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     DivJMode0AccumulatorHst,
                                                     "m4d_int_divj_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivMomXMode0AccumulatorHst,
+                                                    "m4d_int_divmomx_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivMomYMode0AccumulatorHst,
+                                                    "m4d_int_divmomy_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivMomZMode0AccumulatorHst,
+                                                    "m4d_int_divmomz_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivMomWMode0AccumulatorHst,
+                                                    "m4d_int_divmomw_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivEnergyMode0AccumulatorHst,
+                                                    "m4d_int_divenergy_mode0"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ContinuityLocalL1Hst, "m4d_cont_local_l1"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
@@ -578,6 +659,36 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
         parthenon::UserHistoryOperation::sum,
         [mode_idx](MeshData<Real> *md) { return ChargeModeIntegral(md, mode_idx); },
         "m4d_charge_mode_" + std::to_string(mode_idx)));
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) {
+          return SpeciesSummedModeIntegral(md, mode_idx, kPlasmaMomX);
+        },
+        "m4d_momx_mode_" + std::to_string(mode_idx)));
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) {
+          return SpeciesSummedModeIntegral(md, mode_idx, kPlasmaMomY);
+        },
+        "m4d_momy_mode_" + std::to_string(mode_idx)));
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) {
+          return SpeciesSummedModeIntegral(md, mode_idx, kPlasmaMomZ);
+        },
+        "m4d_momz_mode_" + std::to_string(mode_idx)));
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) {
+          return SpeciesSummedModeIntegral(md, mode_idx, kPlasmaMomW);
+        },
+        "m4d_momw_mode_" + std::to_string(mode_idx)));
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) {
+          return SpeciesSummedModeIntegral(md, mode_idx, kPlasmaEnergy);
+        },
+        "m4d_energy_mode_" + std::to_string(mode_idx)));
   }
 
   pkg->AddParam<>(parthenon::hist_param_key, hst_vars, true);

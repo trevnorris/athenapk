@@ -114,7 +114,17 @@ def analyze_case(
     jw_mode1_l2 = maybe_col(cols, "m4d_jw_mode_l2_1")
     jw_mode1 = maybe_col(cols, "m4d_jw_mode_1")
     charge_mode0 = maybe_col(cols, "m4d_charge_mode_0")
+    momx_mode0 = maybe_col(cols, "m4d_momx_mode_0")
+    momy_mode0 = maybe_col(cols, "m4d_momy_mode_0")
+    momz_mode0 = maybe_col(cols, "m4d_momz_mode_0")
+    momw_mode0 = maybe_col(cols, "m4d_momw_mode_0")
+    energy_mode0 = maybe_col(cols, "m4d_energy_mode_0")
     int_divj_mode0 = maybe_col(cols, "m4d_int_divj_mode0")
+    int_divmomx_mode0 = maybe_col(cols, "m4d_int_divmomx_mode0")
+    int_divmomy_mode0 = maybe_col(cols, "m4d_int_divmomy_mode0")
+    int_divmomz_mode0 = maybe_col(cols, "m4d_int_divmomz_mode0")
+    int_divmomw_mode0 = maybe_col(cols, "m4d_int_divmomw_mode0")
+    int_divenergy_mode0 = maybe_col(cols, "m4d_int_divenergy_mode0")
     cont_local_mode0_max_abs = maybe_col(cols, "m4d_cont_mode0_max_abs")
     cont_local_mode0_l1 = maybe_col(cols, "m4d_cont_mode0_l1")
     cont_local_mode0_l2 = maybe_col(cols, "m4d_cont_mode0_l2")
@@ -169,7 +179,27 @@ def analyze_case(
         "final_jw_mode_l2_1": jw_mode1_l2[-1] if jw_mode1_l2 is not None else math.nan,
         "final_jw_mode_1": jw_mode1[-1] if jw_mode1 is not None else math.nan,
         "final_charge_mode_0": charge_mode0[-1] if charge_mode0 is not None else math.nan,
+        "final_momx_mode_0": momx_mode0[-1] if momx_mode0 is not None else math.nan,
+        "final_momy_mode_0": momy_mode0[-1] if momy_mode0 is not None else math.nan,
+        "final_momz_mode_0": momz_mode0[-1] if momz_mode0 is not None else math.nan,
+        "final_momw_mode_0": momw_mode0[-1] if momw_mode0 is not None else math.nan,
+        "final_energy_mode_0": energy_mode0[-1] if energy_mode0 is not None else math.nan,
         "final_int_divj_mode0": int_divj_mode0[-1] if int_divj_mode0 is not None else math.nan,
+        "final_int_divmomx_mode0": int_divmomx_mode0[-1]
+        if int_divmomx_mode0 is not None
+        else math.nan,
+        "final_int_divmomy_mode0": int_divmomy_mode0[-1]
+        if int_divmomy_mode0 is not None
+        else math.nan,
+        "final_int_divmomz_mode0": int_divmomz_mode0[-1]
+        if int_divmomz_mode0 is not None
+        else math.nan,
+        "final_int_divmomw_mode0": int_divmomw_mode0[-1]
+        if int_divmomw_mode0 is not None
+        else math.nan,
+        "final_int_divenergy_mode0": int_divenergy_mode0[-1]
+        if int_divenergy_mode0 is not None
+        else math.nan,
         "corr_psi0_jw_mode_l2_1": pearson(psi, jw_mode1_l2)
         if jw_mode1_l2 is not None
         else math.nan,
@@ -226,7 +256,17 @@ def print_table(results):
         "final_jw_mode_l2_1",
         "final_jw_mode_1",
         "final_charge_mode_0",
+        "final_momx_mode_0",
+        "final_momy_mode_0",
+        "final_momz_mode_0",
+        "final_momw_mode_0",
+        "final_energy_mode_0",
         "final_int_divj_mode0",
+        "final_int_divmomx_mode0",
+        "final_int_divmomy_mode0",
+        "final_int_divmomz_mode0",
+        "final_int_divmomw_mode0",
+        "final_int_divenergy_mode0",
         "corr_psi0_s_leak",
         "corr_psi0_s_leak_abs",
         "corr_psi0_jw_ew",

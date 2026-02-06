@@ -539,9 +539,9 @@ TaskCollection HydroDriver::MakeTaskCollection(BlockList_t &blocks, int stage) {
 
     TaskID accumulate_plasma_divj = set_flx;
 #if ATHENAPK_ENABLE_4D_MODES
-    accumulate_plasma_divj = tl.AddTask(set_flx, Modes4D::AccumulateRhoTransportDivJ,
-                                        mu0.get(),
-                                        integrator->beta[stage - 1] * integrator->dt);
+    accumulate_plasma_divj =
+        tl.AddTask(set_flx, Modes4D::AccumulateTransportMode0Diagnostics, mu0.get(),
+                   integrator->beta[stage - 1] * integrator->dt);
 #endif
 
     // compute the divergence of fluxes of conserved variables

@@ -66,6 +66,7 @@ endif()
 option(AthenaPK_ENABLE_TESTING "Enable AthenaPK test" ON)
 option(AthenaPK_ENABLE_4D_MODES "Enable experimental 4D x modes package scaffold" ON)
 option(AthenaPK_ENABLE_4D_MODES_UNIT_TESTS "Build 4D modes unit-test executable" ON)
+option(AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET "Add tuned 4D Harris regression target" ON)
 set(PARTHENON_ENABLE_PYTHON_MODULE_CHECK ${AthenaPK_ENABLE_TESTING} CACHE BOOL "Check if local python version contains all modules required for running tests.")
 
 set(PARTHENON_ENABLE_TESTING OFF CACHE BOOL "Disable Parthenon testing.")
@@ -81,6 +82,23 @@ endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_subdirectory(src)
+
+if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
+  find_package(Python3 COMPONENTS Interpreter)
+  if(Python3_Interpreter_FOUND)
+    add_custom_target(
+      modes4d_harris_regression
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_regression
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_regression_tuned.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_harris_regression
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running tuned 4D Harris regression (closure + activity checks)")
+  else()
+    message(STATUS "Python3 interpreter not found; skipping modes4d_harris_regression target.")
+  endif()
+endif()
 
 if (AthenaPK_ENABLE_TESTING)
   include(CTest)

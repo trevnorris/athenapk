@@ -200,7 +200,7 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
   return TaskStatus::complete;
 }
 
-TaskStatus AccumulateRhoTransportDivJ(MeshData<Real> *md, const Real dt) {
+TaskStatus AccumulateTransportMode0Diagnostics(MeshData<Real> *md, const Real dt) {
   if (dt <= 0.0) {
     return TaskStatus::complete;
   }
@@ -232,25 +232,67 @@ TaskStatus AccumulateRhoTransportDivJ(MeshData<Real> *md, const Real dt) {
   const int ndim = plasma_pack.GetNdim();
   const int ion_rho_mode0 = PlasmaIndex(0, 0, kPlasmaRho, n_modes);
   const int ele_rho_mode0 = PlasmaIndex(1, 0, kPlasmaRho, n_modes);
+  const int ion_momx_mode0 = PlasmaIndex(0, 0, kPlasmaMomX, n_modes);
+  const int ele_momx_mode0 = PlasmaIndex(1, 0, kPlasmaMomX, n_modes);
+  const int ion_momy_mode0 = PlasmaIndex(0, 0, kPlasmaMomY, n_modes);
+  const int ele_momy_mode0 = PlasmaIndex(1, 0, kPlasmaMomY, n_modes);
+  const int ion_momz_mode0 = PlasmaIndex(0, 0, kPlasmaMomZ, n_modes);
+  const int ele_momz_mode0 = PlasmaIndex(1, 0, kPlasmaMomZ, n_modes);
+  const int ion_momw_mode0 = PlasmaIndex(0, 0, kPlasmaMomW, n_modes);
+  const int ele_momw_mode0 = PlasmaIndex(1, 0, kPlasmaMomW, n_modes);
+  const int ion_energy_mode0 = PlasmaIndex(0, 0, kPlasmaEnergy, n_modes);
+  const int ele_energy_mode0 = PlasmaIndex(1, 0, kPlasmaEnergy, n_modes);
 
-  Real divj_step = 0.0;
-  parthenon::par_reduce(
-      DEFAULT_LOOP_PATTERN, "Modes4DAccumulateRhoTransportDivJ", parthenon::DevExecSpace(),
-      0, plasma_pack.GetDim(5) - 1, kb.s, kb.e, jb.s, jb.e, ib.s, ib.e,
-      KOKKOS_LAMBDA(const int b, const int k, const int j, const int i, Real &local_sum) {
-        const auto &plasma = plasma_pack(b);
-        const auto &coords = plasma_pack.GetCoords(b);
-        const Real ion_flux_div =
-            parthenon::Update::FluxDivHelper(ion_rho_mode0, k, j, i, ndim, coords, plasma);
-        const Real ele_flux_div =
-            parthenon::Update::FluxDivHelper(ele_rho_mode0, k, j, i, ndim, coords, plasma);
-        const Real div_charge = -((qom_ion * ion_flux_div) + (qom_electron * ele_flux_div));
-        local_sum += dt * coords.CellVolume(k, j, i) * div_charge;
-      },
-      divj_step);
+  auto accumulate_transport = [&](const int ion_idx, const int ele_idx, const Real ion_weight,
+                                  const Real ele_weight, const char *kernel_name) {
+    Real step = 0.0;
+    parthenon::par_reduce(
+        DEFAULT_LOOP_PATTERN, kernel_name, parthenon::DevExecSpace(), 0,
+        plasma_pack.GetDim(5) - 1, kb.s, kb.e, jb.s, jb.e, ib.s, ib.e,
+        KOKKOS_LAMBDA(const int b, const int k, const int j, const int i, Real &local_sum) {
+          const auto &plasma = plasma_pack(b);
+          const auto &coords = plasma_pack.GetCoords(b);
+          const Real ion_flux_div =
+              parthenon::Update::FluxDivHelper(ion_idx, k, j, i, ndim, coords, plasma);
+          const Real ele_flux_div =
+              parthenon::Update::FluxDivHelper(ele_idx, k, j, i, ndim, coords, plasma);
+          const Real div_term = -((ion_weight * ion_flux_div) + (ele_weight * ele_flux_div));
+          local_sum += dt * coords.CellVolume(k, j, i) * div_term;
+        },
+        step);
+    return step;
+  };
+
+  const Real divj_step = accumulate_transport(ion_rho_mode0, ele_rho_mode0, qom_ion,
+                                              qom_electron, "Modes4DAccumulateDivJMode0");
+  const Real divmomx_step =
+      accumulate_transport(ion_momx_mode0, ele_momx_mode0, 1.0, 1.0,
+                           "Modes4DAccumulateDivMomXMode0");
+  const Real divmomy_step =
+      accumulate_transport(ion_momy_mode0, ele_momy_mode0, 1.0, 1.0,
+                           "Modes4DAccumulateDivMomYMode0");
+  const Real divmomz_step =
+      accumulate_transport(ion_momz_mode0, ele_momz_mode0, 1.0, 1.0,
+                           "Modes4DAccumulateDivMomZMode0");
+  const Real divmomw_step =
+      accumulate_transport(ion_momw_mode0, ele_momw_mode0, 1.0, 1.0,
+                           "Modes4DAccumulateDivMomWMode0");
+  const Real divenergy_step =
+      accumulate_transport(ion_energy_mode0, ele_energy_mode0, 1.0, 1.0,
+                           "Modes4DAccumulateDivEnergyMode0");
 
   auto *diag_divj_mode0 = modes_pkg->MutableParam<double>("diag/int_divj_mode0");
+  auto *diag_divmomx_mode0 = modes_pkg->MutableParam<double>("diag/int_divmomx_mode0");
+  auto *diag_divmomy_mode0 = modes_pkg->MutableParam<double>("diag/int_divmomy_mode0");
+  auto *diag_divmomz_mode0 = modes_pkg->MutableParam<double>("diag/int_divmomz_mode0");
+  auto *diag_divmomw_mode0 = modes_pkg->MutableParam<double>("diag/int_divmomw_mode0");
+  auto *diag_divenergy_mode0 = modes_pkg->MutableParam<double>("diag/int_divenergy_mode0");
   *diag_divj_mode0 += divj_step;
+  *diag_divmomx_mode0 += divmomx_step;
+  *diag_divmomy_mode0 += divmomy_step;
+  *diag_divmomz_mode0 += divmomz_step;
+  *diag_divmomw_mode0 += divmomw_step;
+  *diag_divenergy_mode0 += divenergy_step;
   return TaskStatus::complete;
 }
 
