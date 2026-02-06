@@ -17,6 +17,8 @@ Implemented now:
   - `m4d_plasma_cons2`
   - `m4d_int_jw_ew`
   - `m4d_int_s_leak`
+  - `m4d_em_a2_mode_<n>`
+  - `m4d_em_pi2_mode_<n>`
 
 Not implemented yet:
 - full EM RHS evolution in modes

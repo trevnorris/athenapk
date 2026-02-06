@@ -49,6 +49,34 @@ Real LeakAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_s_leak");
 }
 
+Real FieldModeL2Integral(MeshData<Real> *md, const std::string &field_name,
+                         const int mode_idx) {
+  auto *pmb = md->GetBlockData(0)->GetBlockPointer();
+  const auto &field_pack = md->PackVariables(std::vector<std::string>{field_name});
+
+  IndexRange ib = md->GetBlockData(0)->GetBoundsI(IndexDomain::interior);
+  IndexRange jb = md->GetBlockData(0)->GetBoundsJ(IndexDomain::interior);
+  IndexRange kb = md->GetBlockData(0)->GetBoundsK(IndexDomain::interior);
+
+  Real sum = 0.0;
+  pmb->par_reduce(
+      "Modes4DFieldModeL2", 0, field_pack.GetDim(5) - 1, kb.s, kb.e, jb.s, jb.e, ib.s,
+      ib.e,
+      KOKKOS_LAMBDA(const int b, const int k, const int j, const int i,
+                    Real &local_sum) {
+        const auto &field = field_pack(b);
+        const auto &coords = field_pack.GetCoords(b);
+        Real val2 = 0.0;
+        for (int c = 0; c < 5; ++c) {
+          const Real val = field(5 * mode_idx + c, k, j, i);
+          val2 += val * val;
+        }
+        local_sum += 0.5 * val2 * coords.CellVolume(k, j, i);
+      },
+      sum);
+  return sum;
+}
+
 } // namespace
 
 void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
@@ -70,6 +98,24 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     LeakAccumulatorHst,
                                                     "m4d_int_s_leak"));
+
+  const int n_modes = pkg->Param<int>("n_modes");
+  for (int n = 0; n < n_modes; ++n) {
+    const int mode_idx = n;
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) {
+          return FieldModeL2Integral(md, "em4d_a", mode_idx);
+        },
+        "m4d_em_a2_mode_" + std::to_string(mode_idx)));
+    hst_vars.emplace_back(parthenon::HistoryOutputVar(
+        parthenon::UserHistoryOperation::sum,
+        [mode_idx](MeshData<Real> *md) {
+          return FieldModeL2Integral(md, "em4d_pi", mode_idx);
+        },
+        "m4d_em_pi2_mode_" + std::to_string(mode_idx)));
+  }
+
   pkg->AddParam<>(parthenon::hist_param_key, hst_vars, true);
 }
 
