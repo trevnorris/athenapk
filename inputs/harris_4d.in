@@ -55,6 +55,7 @@ plasma_qom_electron = -1.0
 plasma_force_source_gain = 1.0
 plasma_momw_source_gain = 1.0
 plasma_momw_damping = 0.1
+plasma_rho_divj_gain = 1.0
 plasma_energy_source_gain = 1.0
 plasma_energy_floor = 0.0
 

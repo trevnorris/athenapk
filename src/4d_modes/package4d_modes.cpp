@@ -35,6 +35,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "plasma_momw_source_gain", 1.0);
   const double plasma_momw_damping =
       pin->GetOrAddReal("modes4d", "plasma_momw_damping", 0.0);
+  const double plasma_rho_divj_gain =
+      pin->GetOrAddReal("modes4d", "plasma_rho_divj_gain", 0.0);
   const double plasma_rho_floor = pin->GetOrAddReal("modes4d", "plasma_rho_floor", 1.0e-12);
   const double plasma_energy_source_gain =
       pin->GetOrAddReal("modes4d", "plasma_energy_source_gain", 1.0);
@@ -65,6 +67,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("plasma4d/force_source_gain", plasma_force_source_gain);
   pkg->AddParam<double>("plasma4d/momw_source_gain", plasma_momw_source_gain);
   pkg->AddParam<double>("plasma4d/momw_damping", plasma_momw_damping);
+  pkg->AddParam<double>("plasma4d/rho_divj_gain", plasma_rho_divj_gain);
   pkg->AddParam<double>("plasma4d/rho_floor", plasma_rho_floor);
   pkg->AddParam<double>("plasma4d/energy_source_gain", plasma_energy_source_gain);
   pkg->AddParam<double>("plasma4d/energy_floor", plasma_energy_floor);

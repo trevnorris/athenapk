@@ -66,8 +66,10 @@ def maybe_col(cols, key):
     return cols.get(key)
 
 
-def continuity_closure_metrics(times, charge_mode0, int_s_leak, abs_rate_tol):
+def continuity_closure_metrics(times, charge_mode0, int_s_leak, int_divj_mode0, abs_rate_tol):
     if len(times) < 2 or len(charge_mode0) != len(times) or len(int_s_leak) != len(times):
+        return (math.nan, math.nan, math.nan, math.nan)
+    if int_divj_mode0 is not None and len(int_divj_mode0) != len(times):
         return (math.nan, math.nan, math.nan, math.nan)
 
     norm_residuals = []
@@ -79,8 +81,11 @@ def continuity_closure_metrics(times, charge_mode0, int_s_leak, abs_rate_tol):
             continue
         dcharge_dt = (charge_mode0[i] - charge_mode0[i - 1]) / dt
         dsleak_dt = (int_s_leak[i] - int_s_leak[i - 1]) / dt
-        residual = dcharge_dt - dsleak_dt
-        scale = max(abs(dcharge_dt) + abs(dsleak_dt), abs_rate_tol)
+        ddivj_dt = 0.0
+        if int_divj_mode0 is not None:
+            ddivj_dt = (int_divj_mode0[i] - int_divj_mode0[i - 1]) / dt
+        residual = dcharge_dt - dsleak_dt + ddivj_dt
+        scale = max(abs(dcharge_dt) + abs(dsleak_dt) + abs(ddivj_dt), abs_rate_tol)
         norm_residuals.append(abs(residual) / scale)
         abs_residuals.append(abs(residual))
         final_residual = residual
@@ -109,6 +114,7 @@ def analyze_case(
     jw_mode1_l2 = maybe_col(cols, "m4d_jw_mode_l2_1")
     jw_mode1 = maybe_col(cols, "m4d_jw_mode_1")
     charge_mode0 = maybe_col(cols, "m4d_charge_mode_0")
+    int_divj_mode0 = maybe_col(cols, "m4d_int_divj_mode0")
     cont_local_mode0_max_abs = maybe_col(cols, "m4d_cont_mode0_max_abs")
     cont_local_mode0_l1 = maybe_col(cols, "m4d_cont_mode0_l1")
     cont_local_mode0_l2 = maybe_col(cols, "m4d_cont_mode0_l2")
@@ -125,7 +131,9 @@ def analyze_case(
             closure_rms_norm,
             closure_max_abs_rate,
             closure_final_residual,
-        ) = continuity_closure_metrics(times, charge_mode0, leak, closure_abs_rate_tol)
+        ) = continuity_closure_metrics(
+            times, charge_mode0, leak, int_divj_mode0, closure_abs_rate_tol
+        )
         if not math.isnan(closure_max_norm):
             closure_status = (
                 "PASS"
@@ -161,6 +169,7 @@ def analyze_case(
         "final_jw_mode_l2_1": jw_mode1_l2[-1] if jw_mode1_l2 is not None else math.nan,
         "final_jw_mode_1": jw_mode1[-1] if jw_mode1 is not None else math.nan,
         "final_charge_mode_0": charge_mode0[-1] if charge_mode0 is not None else math.nan,
+        "final_int_divj_mode0": int_divj_mode0[-1] if int_divj_mode0 is not None else math.nan,
         "corr_psi0_jw_mode_l2_1": pearson(psi, jw_mode1_l2)
         if jw_mode1_l2 is not None
         else math.nan,
@@ -217,6 +226,7 @@ def print_table(results):
         "final_jw_mode_l2_1",
         "final_jw_mode_1",
         "final_charge_mode_0",
+        "final_int_divj_mode0",
         "corr_psi0_s_leak",
         "corr_psi0_s_leak_abs",
         "corr_psi0_jw_ew",

@@ -23,9 +23,11 @@ Implemented now:
   - apply brane Lorentz terms `q/m * rho * (E + v x B + v_w C)` for `momx/momy/momz`
   - apply species work `q/m * rho * (v·E + v_w E_w)` for mode energy
   - project updated node values back to mode coefficients
-- split plasma mode-continuity coupling update:
-  - apply leakage coupling `d_t rho^(n) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
-  - defer brane transport divergence term to the future conservative flux path
+  - split plasma mode-continuity coupling update:
+  - apply mode continuity form
+    `d_t rho^(n) + div(j^a,(n)) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
+    using a face-centered central-difference `div(j^a,(n))` term with runtime gain
+    `plasma_rho_divj_gain`
   - write updated `plasma4d_cons` back each source step
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
 - `harris_4d` now uses the same unsplit equation-based EM source update during runtime
@@ -37,6 +39,7 @@ Implemented now:
   - `m4d_int_jw_ew`
   - `m4d_int_s_leak`
   - `m4d_int_s_leak_abs`
+  - `m4d_int_divj_mode0`
   - `m4d_brane_e2`
   - `m4d_brane_b2`
   - `m4d_brane_epar2`
@@ -149,6 +152,7 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_force_source_gain`
 - `plasma_momw_source_gain`
 - `plasma_momw_damping`
+- `plasma_rho_divj_gain`
 - `plasma_rho_floor`
 - `plasma_energy_source_gain`
 - `plasma_energy_floor`
@@ -167,7 +171,7 @@ python3 /projects/fluid-engine/athenapk/scripts/harris_scan_matrix.py \
 This prints a CSV table with final values and Pearson correlations between
 `m4d_psi0_span` and key ledger/reconnection proxy channels.
 It also reports continuity-closure metrics based on
-`m4d_charge_mode_0` and `m4d_int_s_leak`, with `closure_status`
+`m4d_charge_mode_0`, `m4d_int_s_leak`, and `m4d_int_divj_mode0`, with `closure_status`
 computed from a normalized residual threshold (`--closure-norm-tol`, default `5e-2`).
 Low-signal cases use `--closure-abs-rate-tol` (default `1e-8`) as an absolute-rate gate.
 The summary also includes local mode-0 closure residual channels from

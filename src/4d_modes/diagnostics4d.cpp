@@ -80,6 +80,11 @@ Real LeakAbsAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_s_leak_abs");
 }
 
+Real DivJMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_divj_mode0");
+}
+
 Real ContinuityLocalL1Hst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/continuity_local_l1");
@@ -488,6 +493,7 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_jw_ew", 0.0, true);
   pkg->AddParam<double>("diag/int_s_leak", 0.0, true);
   pkg->AddParam<double>("diag/int_s_leak_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_divj_mode0", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l1", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l2", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_max_abs", 0.0, true);
@@ -512,6 +518,9 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     LeakAbsAccumulatorHst,
                                                     "m4d_int_s_leak_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    DivJMode0AccumulatorHst,
+                                                    "m4d_int_divj_mode0"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ContinuityLocalL1Hst, "m4d_cont_local_l1"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
