@@ -42,7 +42,8 @@ int PlasmaIndex(const int species, const int mode, const int var, const int n_mo
 
 } // namespace
 
-void RegisterEMVariables(parthenon::StateDescriptor *pkg, const int n_modes) {
+void RegisterEMVariables(parthenon::StateDescriptor *pkg, const int n_modes,
+                         const bool enable_conservative_transport) {
   std::vector<std::string> labels(5 * n_modes);
   for (int n = 0; n < n_modes; ++n) {
     labels[5 * n + 0] = "a0_mode_" + std::to_string(n);
@@ -65,9 +66,81 @@ void RegisterEMVariables(parthenon::StateDescriptor *pkg, const int n_modes) {
     pi_labels[5 * n + 4] = "piw_mode_" + std::to_string(n);
   }
 
-  m = Metadata({Metadata::Cell, Metadata::Independent, Metadata::FillGhost},
-               std::vector<int>({5 * n_modes}), pi_labels);
+  std::vector<parthenon::MetadataFlag> pi_metadata{
+      Metadata::Cell, Metadata::Independent, Metadata::FillGhost};
+  if (enable_conservative_transport) {
+    pi_metadata.push_back(Metadata::WithFluxes);
+  }
+  m = Metadata(pi_metadata, std::vector<int>({5 * n_modes}), pi_labels);
   pkg->AddField("em4d_pi", m);
+}
+
+TaskStatus AddEMTransportFluxes(MeshData<Real> *md) {
+  auto pmb = md->GetBlockData(0)->GetBlockPointer();
+  auto modes_pkg = pmb->packages.Get("modes4d");
+  if (!modes_pkg->Param<bool>("enabled")) {
+    return TaskStatus::complete;
+  }
+  if (!modes_pkg->Param<bool>("em4d/use_conservative_transport")) {
+    return TaskStatus::complete;
+  }
+
+  const Real c_wave = modes_pkg->Param<double>("em4d/c_wave");
+  const Real c2 = c_wave * c_wave;
+  const auto &pi_pack =
+      md->PackVariablesAndFluxes(std::vector<std::string>{"em4d_pi"},
+                                 std::vector<std::string>{"em4d_pi"});
+  const auto &a_pack = md->PackVariables(std::vector<std::string>{"em4d_a"});
+  if (pi_pack.GetDim(4) == 0 || a_pack.GetDim(4) == 0) {
+    return TaskStatus::complete;
+  }
+
+  IndexRange ib = md->GetBlockData(0)->GetBoundsI(IndexDomain::interior);
+  IndexRange jb = md->GetBlockData(0)->GetBoundsJ(IndexDomain::interior);
+  IndexRange kb = md->GetBlockData(0)->GetBoundsK(IndexDomain::interior);
+  const int ndim = pmb->pmy_mesh->ndim;
+
+  parthenon::par_for(
+      DEFAULT_LOOP_PATTERN, "Modes4DEMFluxX1", parthenon::DevExecSpace(), 0,
+      pi_pack.GetDim(5) - 1, 0, pi_pack.GetDim(4) - 1, kb.s, kb.e, jb.s, jb.e, ib.s,
+      ib.e + 1,
+      KOKKOS_LAMBDA(const int b, const int v, const int k, const int j, const int i) {
+        auto &pi = pi_pack(b);
+        const auto &a = a_pack(b);
+        const auto &coords = pi_pack.GetCoords(b);
+        const Real dx = 0.5 * (coords.Dxc<1>(i - 1) + coords.Dxc<1>(i));
+        pi.flux(X1DIR, v, k, j, i) = -c2 * (a(v, k, j, i) - a(v, k, j, i - 1)) / dx;
+      });
+
+  if (ndim >= 2) {
+    parthenon::par_for(
+        DEFAULT_LOOP_PATTERN, "Modes4DEMFluxX2", parthenon::DevExecSpace(), 0,
+        pi_pack.GetDim(5) - 1, 0, pi_pack.GetDim(4) - 1, kb.s, kb.e, jb.s, jb.e + 1,
+        ib.s, ib.e,
+        KOKKOS_LAMBDA(const int b, const int v, const int k, const int j, const int i) {
+          auto &pi = pi_pack(b);
+          const auto &a = a_pack(b);
+          const auto &coords = pi_pack.GetCoords(b);
+          const Real dy = 0.5 * (coords.Dxc<2>(j - 1) + coords.Dxc<2>(j));
+          pi.flux(X2DIR, v, k, j, i) = -c2 * (a(v, k, j, i) - a(v, k, j - 1, i)) / dy;
+        });
+  }
+
+  if (ndim >= 3) {
+    parthenon::par_for(
+        DEFAULT_LOOP_PATTERN, "Modes4DEMFluxX3", parthenon::DevExecSpace(), 0,
+        pi_pack.GetDim(5) - 1, 0, pi_pack.GetDim(4) - 1, kb.s, kb.e + 1, jb.s, jb.e,
+        ib.s, ib.e,
+        KOKKOS_LAMBDA(const int b, const int v, const int k, const int j, const int i) {
+          auto &pi = pi_pack(b);
+          const auto &a = a_pack(b);
+          const auto &coords = pi_pack.GetCoords(b);
+          const Real dz = 0.5 * (coords.Dxc<3>(k - 1) + coords.Dxc<3>(k));
+          pi.flux(X3DIR, v, k, j, i) = -c2 * (a(v, k, j, i) - a(v, k - 1, j, i)) / dz;
+        });
+  }
+
+  return TaskStatus::complete;
 }
 
 void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt) {
@@ -86,6 +159,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real c_wave = modes_pkg->Param<double>("em4d/c_wave");
   const Real damping = modes_pkg->Param<double>("em4d/damping");
   const Real mu0 = modes_pkg->Param<double>("em4d/mu0");
+  const bool use_conservative_transport =
+      modes_pkg->Param<bool>("em4d/use_conservative_transport");
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
   const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
   const Real force_source_gain = modes_pkg->Param<double>("plasma4d/force_source_gain");
@@ -544,22 +619,38 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               grad_aw_z = gradient_z(a_old, idx_aw_prev, k, j, i);
             }
 
-            const Real rhs_a0 = (c2 * laplacian(a_old, idx_a0, k, j, i)) -
+            const Real lap_a0 = use_conservative_transport
+                                    ? 0.0
+                                    : (c2 * laplacian(a_old, idx_a0, k, j, i));
+            const Real lap_ax = use_conservative_transport
+                                    ? 0.0
+                                    : (c2 * laplacian(a_old, idx_ax, k, j, i));
+            const Real lap_ay = use_conservative_transport
+                                    ? 0.0
+                                    : (c2 * laplacian(a_old, idx_ay, k, j, i));
+            const Real lap_az = use_conservative_transport
+                                    ? 0.0
+                                    : (c2 * laplacian(a_old, idx_az, k, j, i));
+            const Real lap_aw = use_conservative_transport
+                                    ? 0.0
+                                    : (c2 * laplacian(a_old, idx_aw, k, j, i));
+
+            const Real rhs_a0 = lap_a0 -
                                 (c2 * mass_squared[n] * a_old(idx_a0, k, j, i)) -
                                 (mu0 * j0_modes[n]) - (damping * pi_old(idx_a0, k, j, i));
-            const Real rhs_ax = (c2 * laplacian(a_old, idx_ax, k, j, i)) -
+            const Real rhs_ax = lap_ax -
                                 (c2 * mass_squared[n] * a_old(idx_ax, k, j, i)) +
                                 (c2 * coupling_coeff * grad_aw_x) - (mu0 * jx_modes[n]) -
                                 (damping * pi_old(idx_ax, k, j, i));
-            const Real rhs_ay = (c2 * laplacian(a_old, idx_ay, k, j, i)) -
+            const Real rhs_ay = lap_ay -
                                 (c2 * mass_squared[n] * a_old(idx_ay, k, j, i)) +
                                 (c2 * coupling_coeff * grad_aw_y) - (mu0 * jy_modes[n]) -
                                 (damping * pi_old(idx_ay, k, j, i));
-            const Real rhs_az = (c2 * laplacian(a_old, idx_az, k, j, i)) -
+            const Real rhs_az = lap_az -
                                 (c2 * mass_squared[n] * a_old(idx_az, k, j, i)) +
                                 (c2 * coupling_coeff * grad_aw_z) - (mu0 * jz_modes[n]) -
                                 (damping * pi_old(idx_az, k, j, i));
-            const Real rhs_aw = (c2 * laplacian(a_old, idx_aw, k, j, i)) -
+            const Real rhs_aw = lap_aw -
                                 (mu0 * jw_modes[n]) - (damping * pi_old(idx_aw, k, j, i));
 
             pi_new(idx_a0, k, j, i) = pi_old(idx_a0, k, j, i) + (dt * rhs_a0);

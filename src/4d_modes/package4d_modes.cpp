@@ -26,6 +26,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   const double em_c_wave = pin->GetOrAddReal("modes4d", "em_c_wave", 1.0);
   const double em_damping = pin->GetOrAddReal("modes4d", "em_damping", 0.0);
   const double em_mu0 = pin->GetOrAddReal("modes4d", "em_mu0", 1.0);
+  const bool em_conservative_transport =
+      pin->GetOrAddBoolean("modes4d", "em_conservative_transport", false);
   const double plasma_qom_ion = pin->GetOrAddReal("modes4d", "plasma_qom_ion", 1.0);
   const double plasma_qom_electron =
       pin->GetOrAddReal("modes4d", "plasma_qom_electron", -1.0);
@@ -62,6 +64,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/c_wave", em_c_wave);
   pkg->AddParam<double>("em4d/damping", em_damping);
   pkg->AddParam<double>("em4d/mu0", em_mu0);
+  pkg->AddParam<bool>("em4d/use_conservative_transport", em_conservative_transport);
   pkg->AddParam<double>("plasma4d/qom_ion", plasma_qom_ion);
   pkg->AddParam<double>("plasma4d/qom_electron", plasma_qom_electron);
   pkg->AddParam<double>("plasma4d/force_source_gain", plasma_force_source_gain);
@@ -76,7 +79,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d_pulse/x0", pulse_x0);
   pkg->AddParam<ModeTables>("mode_tables", ModeTables(config));
 
-  RegisterEMVariables(pkg.get(), n_modes);
+  RegisterEMVariables(pkg.get(), n_modes, em_conservative_transport);
   RegisterPlasmaVariables(pkg.get(), n_modes);
   RegisterDiagnostics(pkg.get());
 

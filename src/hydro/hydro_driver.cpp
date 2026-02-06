@@ -23,6 +23,7 @@
 #include "../pgen/cluster/magnetic_tower.hpp"
 #include "../tracers/tracers.hpp"
 #if ATHENAPK_ENABLE_4D_MODES
+#include "../4d_modes/em4d_modes.hpp"
 #include "../4d_modes/plasma4d_modes.hpp"
 #endif
 #include "diffusion/diffusion.hpp"
@@ -525,10 +526,15 @@ TaskCollection HydroDriver::MakeTaskCollection(BlockList_t &blocks, int stage) {
                      integrator->beta[stage - 1] * integrator->dt);
     }
 
-    TaskID plasma_transport_flux = first_order_flux_correct;
+    TaskID em_transport_flux = first_order_flux_correct;
+#if ATHENAPK_ENABLE_4D_MODES
+    em_transport_flux =
+        tl.AddTask(first_order_flux_correct, Modes4D::AddEMTransportFluxes, mu0.get());
+#endif
+    TaskID plasma_transport_flux = em_transport_flux;
 #if ATHENAPK_ENABLE_4D_MODES
     plasma_transport_flux =
-        tl.AddTask(first_order_flux_correct, Modes4D::AddPlasmaTransportFluxes, mu0.get());
+        tl.AddTask(em_transport_flux, Modes4D::AddPlasmaTransportFluxes, mu0.get());
 #endif
 
     auto send_flx =

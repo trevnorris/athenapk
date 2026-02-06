@@ -15,6 +15,11 @@ Implemented now:
     and `J^nu` source deposition
   - scalar component includes Laplacian and `J^w` source deposition
   - scalar-photon work (`J^w E_w`) and leakage (`S_leak`) accumulators are updated
+- optional conservative EM transport path in the hydro flux pipeline:
+  - `modes4d/em_conservative_transport = true` registers `em4d_pi` with `WithFluxes`
+  - stage fluxes add `-c_wave^2 * grad(em4d_a)` transport for `em4d_pi`
+  - source-step Laplacian terms are disabled when this path is enabled to avoid
+    double counting
 - split plasma transverse-momentum (`momw`) source update:
   - reconstruct `E_w` and `C_a` at quadrature nodes from EM modes
   - apply species force `q/m * rho * (E_w - v^a C_a)` in node space
@@ -74,7 +79,8 @@ Implemented now:
 
 Not implemented yet:
 - full two-fluid mode dynamics beyond the current source + advective-transport bring-up
-- full conservative EM update in the AthenaPK flux pipeline (current path is source-step)
+- full conservative EM closure beyond the current brane-Laplacian transport path
+  (`em4d_pi` transport is now optional; remaining EM terms are still source-step)
 - full reconnection workflow/analysis
 
 Additional bring-up path now available:
@@ -163,6 +169,7 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `em_c_wave`
 - `em_damping`
 - `em_mu0`
+- `em_conservative_transport`
 - `plasma_qom_ion`
 - `plasma_qom_electron`
 - `plasma_force_source_gain`
@@ -294,7 +301,20 @@ This target runs `scripts/em4d_scalar_pulse_regression.py` against
 - `max(m4d_em_a2_mode_1)`
 - `|m4d_pulse_xc(final)-m4d_pulse_xc(initial)|`
 
-### 10) Run the dedicated tuned Harris regression target
+### 10) Run conservative-EM transport regression target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_em_conservative_regression
+```
+
+This target runs `scripts/modes4d_em_conservative_regression.py` and checks
+the optional conservative EM transport path
+(`modes4d/em_conservative_transport=true`) with:
+- scalar-channel pulse activity gates
+- short Harris full-case smoke with finite-history checks and mixed-channel activity
+
+### 11) Run the dedicated tuned Harris regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -312,7 +332,7 @@ controlled/full scan with fixed closure + activity thresholds for the tuned
 - `|corr_psi0_mixed_c2|`
 - `|corr_psi0_jw_mode_l2_1|`
 
-### 11) Run the Phase-10 validation bundle target
+### 12) Run the Phase-10 validation bundle target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -325,6 +345,7 @@ with fail-fast behavior on the first failing check:
 - `modes4d_controlled_parity_regression`
 - `modes4d_kk_coulomb_regression`
 - `modes4d_scalar_pulse_regression`
+- `modes4d_em_conservative_regression`
 - `modes4d_harris_regression`
 
 ## Input requirements for `harris_4d`
