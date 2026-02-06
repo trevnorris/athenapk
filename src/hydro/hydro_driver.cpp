@@ -528,7 +528,7 @@ TaskCollection HydroDriver::MakeTaskCollection(BlockList_t &blocks, int stage) {
     TaskID plasma_transport_flux = first_order_flux_correct;
 #if ATHENAPK_ENABLE_4D_MODES
     plasma_transport_flux =
-        tl.AddTask(first_order_flux_correct, Modes4D::AddRhoTransportFluxes, mu0.get());
+        tl.AddTask(first_order_flux_correct, Modes4D::AddPlasmaTransportFluxes, mu0.get());
 #endif
 
     auto send_flx =

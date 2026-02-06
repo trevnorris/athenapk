@@ -6,7 +6,7 @@
 namespace Modes4D {
 
 void RegisterPlasmaVariables(parthenon::StateDescriptor *pkg, int n_modes);
-parthenon::TaskStatus AddRhoTransportFluxes(parthenon::MeshData<parthenon::Real> *md);
+parthenon::TaskStatus AddPlasmaTransportFluxes(parthenon::MeshData<parthenon::Real> *md);
 parthenon::TaskStatus AccumulateRhoTransportDivJ(
     parthenon::MeshData<parthenon::Real> *md, const parthenon::Real dt);
 
