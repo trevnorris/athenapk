@@ -588,6 +588,7 @@ This target runs the full non-MPI Phase-10 validation stack in one command,
 with fail-fast behavior on the first failing check:
 - `modes4d_controlled_regression`
 - `modes4d_controlled_parity_regression`
+- `modes4d_cpaw_strict1d_regression`
 - `modes4d_kk_coulomb_regression`
 - `modes4d_scalar_pulse_regression`
 - `modes4d_em_timelike_regression`
@@ -729,6 +730,25 @@ It enforces, in short Harris runs:
   `em_source_timelike_gain=0` each suppress their corresponding channel
 - damping channel is exercised with `em_damping>0` and then suppressed by
   `em_source_damping_gain=0`
+
+### 23) Run strict-1D CPAW crash-regression gate
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_cpaw_strict1d_regression
+```
+
+This target runs `scripts/cpaw_strict1d_regression.py`, which:
+- executes `inputs/cpaw.in` with strict-1D overrides
+  (`nx2=nx3=1`, with matching meshblock overrides)
+- disables HDF5 output in non-HDF5 builds (`parthenon/output0/dt=-1`)
+- applies short crash-gating runtime limits (`tlim=0.01`, `nlim=50`)
+- verifies:
+  - zero exit status
+  - `"Driver completed."` in run logs
+  - at least one completed cycle (`final_cycle >= 1`)
+
+The same gate is included in `modes4d_phase10_regression`.
 
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable
