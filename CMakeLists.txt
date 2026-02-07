@@ -131,6 +131,29 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         DEPENDS athenaPK
         USES_TERMINAL
         COMMENT "Running strict-1D CPAW MPI+HDF5 regression check")
+      add_custom_target(
+        modes4d_mpi_hdf5_regression
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_mpi_hdf5_regression
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_mpi_hdf5_regression/cpaw_strict1d
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cpaw_strict1d_mpi_hdf5_regression.py
+          --binary $<TARGET_FILE:athenaPK>
+          --mpirun ${MPIEXEC_EXECUTABLE}
+          --ranks 2
+          --workdir ${CMAKE_BINARY_DIR}/modes4d_mpi_hdf5_regression/cpaw_strict1d
+          --output-dir ${CMAKE_BINARY_DIR}/modes4d_mpi_hdf5_regression/cpaw_strict1d/outputs
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_mpi_hdf5_regression/harris_full
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_harris_full_mpi_hdf5.sh
+          --binary $<TARGET_FILE:athenaPK>
+          --input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_full.in
+          --workdir ${CMAKE_BINARY_DIR}/modes4d_mpi_hdf5_regression/harris_full
+          --ranks 2
+          --tlim 0.02
+          --nlim 200
+          --output-dt 0.01
+          --mpirun ${MPIEXEC_EXECUTABLE}
+        DEPENDS athenaPK
+        USES_TERMINAL
+        COMMENT "Running MPI+HDF5 bundle regression (strict-1D CPAW + Harris full smoke)")
     endif()
     add_custom_target(
       modes4d_scalar_pulse_regression

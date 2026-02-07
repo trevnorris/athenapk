@@ -784,7 +784,26 @@ It runs `scripts/cpaw_strict1d_mpi_hdf5_regression.py`, which:
     - `mean(|B2|) >= 1e-4`
     - `mean(|B3|) >= 1e-4`
   - transverse parity:
-    - `|mean(|B2|)-mean(|B3|)| / max(mean(|B2|),mean(|B3|)) <= 1e-2`
+  - `|mean(|B2|)-mean(|B3|)| / max(mean(|B2|),mean(|B3|)) <= 1e-2`
+
+### 25) Run MPI+HDF5 regression bundle
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-mpi-hdf5 \
+  --target modes4d_mpi_hdf5_regression
+```
+
+This target is available only in MPI+HDF5-enabled builds and runs, in order:
+- `modes4d_cpaw_strict1d_mpi_hdf5_regression`
+- `scripts/run_harris_full_mpi_hdf5.sh` with:
+  - `--ranks 2`
+  - `--tlim 0.02`
+  - `--nlim 200`
+  - `--output-dt 0.01`
+
+It provides a one-command MPI smoke bundle covering:
+- strict-1D CPAW quantitative parity in `.phdf`
+- full-channel Harris runtime smoke with MPI/HDF5 outputs
 
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable
