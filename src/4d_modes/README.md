@@ -508,7 +508,9 @@ Current pressure-transport status for tuned Harris decks:
     low modes (default `0`, i.e. mode-0 only)
 - tested full-case behavior:
   - stable through `1e-3` (`1e-8`, `1e-7`, `1e-6`, `1e-3` verified)
-  - calibration sweeps at `gain=1e-3` and stress checks at `gain=1e-1`:
+  - pressure-on/off Lundquist comparison (`gain=0` vs `gain=1e-3`) under
+    the current scan gates shows no observable trend shift at printed precision
+- calibration sweeps at `gain=1e-3` and stress checks at `gain=1e-1`:
     - `plasma_pressure_transport_max_mode = 0..3`: PASS
     - `plasma_pressure_rusanov_gain = 0.25..4.0`: PASS
     - `plasma_pressure_flux_relative_cap = 10..200`: PASS
