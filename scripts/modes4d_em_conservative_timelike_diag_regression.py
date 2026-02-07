@@ -99,16 +99,28 @@ def main():
         help="Optional weak floor for aw_mode0 case; defaults to disabled (0.0)",
     )
     parser.add_argument(
+        "--max-aw0-a0-from-piw-abs-delta",
+        type=float,
+        default=1.0e-24,
+        help="Upper bound for aw_mode0 back-coupled a0<-piw diagnostic drift",
+    )
+    parser.add_argument(
+        "--max-aw0-aw-from-pi0-abs-final",
+        type=float,
+        default=1.0e-35,
+        help="Upper bound for aw_mode0 targeted aw<-pi0 diagnostic final absolute value",
+    )
+    parser.add_argument(
         "--min-a0mode1-a0-from-piw-abs-delta",
         type=float,
-        default=1.0e-25,
-        help="Weak floor for back-coupled a0<-piw diagnostic in a0_mode1 case",
+        default=1.0e-22,
+        help="Activation floor for back-coupled a0<-piw diagnostic in a0_mode1 case",
     )
     parser.add_argument(
         "--min-a0mode1-aw-from-pi0-abs-delta",
         type=float,
-        default=1.0e-50,
-        help="Weak floor for targeted aw<-pi0 diagnostic in a0_mode1 case",
+        default=1.0e-46,
+        help="Activation floor for targeted aw<-pi0 diagnostic in a0_mode1 case",
     )
     args = parser.parse_args()
 
@@ -150,6 +162,10 @@ def main():
         and aw0_a0_from_piw_abs_delta < args.min_aw0_a0_from_piw_abs_delta
     ):
         aw0_failures.append("aw0_timelike_a0_from_piw_abs_delta")
+    if aw0_a0_from_piw_abs_delta > args.max_aw0_a0_from_piw_abs_delta:
+        aw0_failures.append("aw0_timelike_a0_from_piw_abs_drift_high")
+    if aw0_aw_from_pi0_abs[-1] > args.max_aw0_aw_from_pi0_abs_final:
+        aw0_failures.append("aw0_timelike_aw_from_pi0_abs_high")
     cases.append(
         {
             "case": "aw0_conservative_timelike_diag",

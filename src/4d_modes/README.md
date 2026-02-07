@@ -422,6 +422,10 @@ terms are present, finite, and active where expected:
 - `m4d_int_src_timelike_aw_from_pi0`
 - `m4d_int_src_timelike_aw_from_pi0_abs`
 
+Default gates now enforce:
+- `aw_mode0` inactivity ceilings on conservative-path time-like diagnostics
+- `a0_mode1` activation floors for both absolute diagnostic deltas
+
 ### 11) Run the dedicated tuned Harris regression target
 
 ```bash
@@ -544,6 +548,7 @@ with fail-fast behavior on the first failing check:
 - `modes4d_kk_coulomb_regression`
 - `modes4d_scalar_pulse_regression`
 - `modes4d_em_timelike_regression`
+- `modes4d_em_conservative_timelike_diag_regression`
 - `modes4d_em_conservative_regression`
 - `modes4d_harris_regression`
 - `modes4d_harris_pseudospectral_regression`

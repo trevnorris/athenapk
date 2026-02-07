@@ -246,6 +246,11 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --binary $<TARGET_FILE:athenaPK>
         --workdir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_timelike
         --output-dir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_timelike/outputs
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_conservative_timelike_diag
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_em_conservative_timelike_diag_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_conservative_timelike_diag
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_conservative_timelike_diag/outputs
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_conservative
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_em_conservative_regression.py
         --binary $<TARGET_FILE:athenaPK>
