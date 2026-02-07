@@ -204,6 +204,44 @@ Expected output:
 modes4d_unit_tests: PASS
 ```
 
+### Full test bundle shortcut (concise output)
+
+```bash
+/projects/fluid-engine/athenapk/scripts/run_modes4d_validation.sh
+```
+
+This runs baseline `modes4d_unit_tests` + `modes4d_phase10_regression` and, by
+default, MPI/HDF5 `modes4d_mpi_hdf5_regression`, while writing full logs under
+`build-validation-logs/` and printing only stage-level `RUN/PASS/FAIL` lines.
+
+Useful flags:
+- `--skip-mpi` to run only baseline checks
+- `--skip-configure` to reuse already-configured build directories
+- `--verbose` to stream full command output
+
+### Production Lundquist scan shortcut (step-1 workflow)
+
+```bash
+/projects/fluid-engine/athenapk/scripts/run_harris_lundquist_production.sh
+```
+
+This runs a longer-horizon controlled/full `S` scan with strict closure +
+correlation gates and concise CSV summary output. Defaults:
+- `S = 250,500,1000,2000`
+- per-run overrides: `tlim=0.20`, `nlim=2000`, `output1/dt=0.02`
+- non-HDF5-safe override handling:
+  - `output0/dt=-1`
+  - `output1/dt=0.02`
+- local closure pass threshold:
+  - `--closure-local-mode0-abs-rate-tol 3.0e-8`
+- automatic plot generation from `lundquist_scan_summary.csv`:
+  - `plots/lundquist_primary_channels.png`
+  - `plots/lundquist_subscale_channels.png`
+  - `plots/lundquist_status.csv`
+- plotting controls:
+  - `--plot-output-dir <dir>`
+  - `--skip-plots`
+
 ### 3) Run Harris scaffold input
 
 ```bash
