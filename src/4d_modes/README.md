@@ -36,6 +36,11 @@ Implemented now:
     `rho/momx/momy/momz/momw/energy` each stage
   - runtime gain `plasma_rho_divj_gain` scales that conservative brane-transport path
   - write updated `plasma4d_cons` back each source step
+- conservative plasma transport now supports a pseudospectral mode-coupling path:
+  - reconstruct left/right face states at Gauss-Hermite nodes
+  - compute node-local directional fluxes
+  - project node fluxes back to modal flux coefficients
+  - runtime toggle: `modes4d/plasma_pseudospectral_transport`
 - `harris_4d` problem hook and zero-mode Harris initialization scaffold
 - `harris_4d` now uses the same unsplit equation-based EM source update during runtime
 - standalone unit-test executable for mode math (`modes4d_unit_tests`)
@@ -105,7 +110,7 @@ Implemented now:
     - `m4d_cont_mode0_max_abs`
 
 Not implemented yet:
-- full two-fluid mode dynamics beyond the current source + advective-transport bring-up
+- full two-fluid mode dynamics beyond the current source + conservative-transport bring-up
 - pressure-coupled transport physics calibration beyond the current stabilized
   experimental path (the numerics are now bounded, but this path remains
   outside baseline CI)
@@ -216,6 +221,7 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_pressure_flux_relative_cap`
 - `plasma_pressure_transport_max_mode`
 - `plasma_pressure_floor`
+- `plasma_pseudospectral_transport`
 
 `<problem/em4d_pulse>` also supports:
 - `component` (`ay_mode0`, `aw_mode0`, `aw_mode1`)
@@ -522,6 +528,15 @@ Current pressure-transport status for tuned Harris decks:
   - `plasma_pressure_flux_relative_cap = 50.0`
 - keep `plasma_pressure_transport_gain = 0.0` for baseline/CI unless explicitly
   testing the pressure-transport path
+
+Current nonlinear plasma-transport status for tuned Harris decks:
+- `modes4d/plasma_pseudospectral_transport` enables the docs-specified
+  `reconstruct -> multiply -> project` path for conservative plasma fluxes.
+- fallback mode-diagonal face fluxes remain available with
+  `modes4d/plasma_pseudospectral_transport=false`.
+- tuned full-case gate check with pseudospectral transport enabled:
+  - `python3 scripts/harris_scan_matrix.py ... --fail-on-check --check-transport-closure --full-arg modes4d/plasma_pseudospectral_transport=true`: PASS
+  - closure/transport/correlation/activity statuses remained `PASS`.
 
 ## Input requirements for `harris_4d`
 

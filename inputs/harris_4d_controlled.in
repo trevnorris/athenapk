@@ -58,8 +58,12 @@ plasma_momw_damping = 0.1
 plasma_rho_divj_gain = 1.0
 plasma_energy_source_gain = 1.0
 plasma_energy_floor = 0.0
+plasma_pseudospectral_transport = false
 plasma_pressure_transport_gain = 0.0
 plasma_pressure_rusanov_gain = 1.0
+plasma_pressure_signal_speed_cap = 10.0
+plasma_pressure_flux_relative_cap = 50.0
+plasma_pressure_transport_max_mode = 0
 plasma_pressure_floor = 0.0
 
 <problem/harris_4d>

@@ -56,6 +56,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "plasma_pressure_flux_relative_cap", 50.0);
   const int plasma_pressure_transport_max_mode =
       pin->GetOrAddInteger("modes4d", "plasma_pressure_transport_max_mode", 0);
+  const bool plasma_pseudospectral_transport =
+      pin->GetOrAddBoolean("modes4d", "plasma_pseudospectral_transport", false);
   const double plasma_pressure_floor =
       pin->GetOrAddReal("modes4d", "plasma_pressure_floor", 0.0);
   const double pulse_amp = pin->GetOrAddReal("problem/em4d_pulse", "amplitude", 1.0e-3);
@@ -106,6 +108,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                         plasma_pressure_flux_relative_cap);
   pkg->AddParam<int>("plasma4d/pressure_transport_max_mode",
                      plasma_pressure_transport_max_mode);
+  pkg->AddParam<bool>("plasma4d/use_pseudospectral_transport",
+                      plasma_pseudospectral_transport);
   pkg->AddParam<double>("plasma4d/pressure_floor", plasma_pressure_floor);
   pkg->AddParam<double>("em4d_pulse/amplitude", pulse_amp);
   pkg->AddParam<double>("em4d_pulse/sigma", pulse_sigma);

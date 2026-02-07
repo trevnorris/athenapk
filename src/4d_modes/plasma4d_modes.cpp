@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "interface/update.hpp"
+#include "mode_tables.hpp"
 
 namespace Modes4D {
 using namespace parthenon::package::prelude;
@@ -196,6 +197,80 @@ KOKKOS_INLINE_FUNCTION void ComputeDirectionalFlux(
   flux_energy = ((1.0 - blend) * adv_energy) + (blend * rus_energy_limited);
 }
 
+template <typename PlasmaPackView>
+KOKKOS_INLINE_FUNCTION void ComputePseudospectralFaceFlux(
+    const PlasmaPackView &plasma, const ModeTables &tables, const int dir, const int species,
+    const int mode_out, const int n_modes, const int n_quadrature, const int k_left,
+    const int j_left, const int i_left, const int k_right, const int j_right,
+    const int i_right, const Real rho_floor, const Real gamma, const Real gm1,
+    const Real pressure_floor, const Real pressure_transport_gain,
+    const int pressure_transport_max_mode, const Real pressure_rusanov_gain,
+    const Real pressure_signal_speed_cap, const Real pressure_flux_relative_cap, Real &flux_rho,
+    Real &flux_momx, Real &flux_momy, Real &flux_momz, Real &flux_momw, Real &flux_energy) {
+  flux_rho = 0.0;
+  flux_momx = 0.0;
+  flux_momy = 0.0;
+  flux_momz = 0.0;
+  flux_momw = 0.0;
+  flux_energy = 0.0;
+  const Real mode_pressure_gain =
+      (mode_out <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
+
+  for (int q = 0; q < n_quadrature; ++q) {
+    PlasmaState left{};
+    PlasmaState right{};
+    for (int n = 0; n < n_modes; ++n) {
+      const Real phi_nq = tables.Phi(n, q);
+      const int rho_idx = PlasmaIndex(species, n, kPlasmaRho, n_modes);
+      const int momx_idx = PlasmaIndex(species, n, kPlasmaMomX, n_modes);
+      const int momy_idx = PlasmaIndex(species, n, kPlasmaMomY, n_modes);
+      const int momz_idx = PlasmaIndex(species, n, kPlasmaMomZ, n_modes);
+      const int momw_idx = PlasmaIndex(species, n, kPlasmaMomW, n_modes);
+      const int energy_idx = PlasmaIndex(species, n, kPlasmaEnergy, n_modes);
+
+      left.rho += plasma(rho_idx, k_left, j_left, i_left) * phi_nq;
+      left.momx += plasma(momx_idx, k_left, j_left, i_left) * phi_nq;
+      left.momy += plasma(momy_idx, k_left, j_left, i_left) * phi_nq;
+      left.momz += plasma(momz_idx, k_left, j_left, i_left) * phi_nq;
+      left.momw += plasma(momw_idx, k_left, j_left, i_left) * phi_nq;
+      left.energy += plasma(energy_idx, k_left, j_left, i_left) * phi_nq;
+
+      right.rho += plasma(rho_idx, k_right, j_right, i_right) * phi_nq;
+      right.momx += plasma(momx_idx, k_right, j_right, i_right) * phi_nq;
+      right.momy += plasma(momy_idx, k_right, j_right, i_right) * phi_nq;
+      right.momz += plasma(momz_idx, k_right, j_right, i_right) * phi_nq;
+      right.momw += plasma(momw_idx, k_right, j_right, i_right) * phi_nq;
+      right.energy += plasma(energy_idx, k_right, j_right, i_right) * phi_nq;
+    }
+
+    left.pressure = SpeciesPressure(left.rho, left.momx, left.momy, left.momz, left.momw,
+                                    left.energy, rho_floor, gm1, pressure_floor);
+    right.pressure = SpeciesPressure(right.rho, right.momx, right.momy, right.momz,
+                                     right.momw, right.energy, rho_floor, gm1,
+                                     pressure_floor);
+
+    Real node_flux_rho = 0.0;
+    Real node_flux_momx = 0.0;
+    Real node_flux_momy = 0.0;
+    Real node_flux_momz = 0.0;
+    Real node_flux_momw = 0.0;
+    Real node_flux_energy = 0.0;
+    ComputeDirectionalFlux(dir, left, right, rho_floor, gamma, mode_pressure_gain,
+                           pressure_rusanov_gain, pressure_signal_speed_cap,
+                           pressure_flux_relative_cap, node_flux_rho, node_flux_momx,
+                           node_flux_momy, node_flux_momz, node_flux_momw,
+                           node_flux_energy);
+
+    const Real proj = tables.Weights()[q] * tables.Phi(mode_out, q);
+    flux_rho += proj * node_flux_rho;
+    flux_momx += proj * node_flux_momx;
+    flux_momy += proj * node_flux_momy;
+    flux_momz += proj * node_flux_momz;
+    flux_momw += proj * node_flux_momw;
+    flux_energy += proj * node_flux_energy;
+  }
+}
+
 } // namespace
 
 void RegisterPlasmaVariables(parthenon::StateDescriptor *pkg, const int n_modes) {
@@ -244,6 +319,10 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
   const int pressure_transport_max_mode =
       modes_pkg->Param<int>("plasma4d/pressure_transport_max_mode");
   const Real pressure_floor = modes_pkg->Param<double>("plasma4d/pressure_floor");
+  const bool use_pseudospectral_transport =
+      modes_pkg->Param<bool>("plasma4d/use_pseudospectral_transport");
+  const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
+  const int n_quadrature = modes_pkg->Param<int>("n_quadrature");
   if (n_modes < 1 || transport_gain == 0.0) {
     return TaskStatus::complete;
   }
@@ -274,39 +353,44 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
             const int momw_idx = PlasmaIndex(s, n, kPlasmaMomW, n_modes);
             const int energy_idx = PlasmaIndex(s, n, kPlasmaEnergy, n_modes);
 
-            const Real rho_l = plasma(rho_idx, k, j, i - 1);
-            const Real rho_r = plasma(rho_idx, k, j, i);
-            const Real momx_l = plasma(momx_idx, k, j, i - 1);
-            const Real momx_r = plasma(momx_idx, k, j, i);
-            const Real vx_l = momx_l / fmax(rho_l, rho_floor);
-            const Real vx_r = momx_r / fmax(rho_r, rho_floor);
-            const PlasmaState left{
-                rho_l, momx_l, plasma(momy_idx, k, j, i - 1), plasma(momz_idx, k, j, i - 1),
-                plasma(momw_idx, k, j, i - 1), plasma(energy_idx, k, j, i - 1), 0.0};
-            const PlasmaState right{
-                rho_r, momx_r, plasma(momy_idx, k, j, i), plasma(momz_idx, k, j, i),
-                plasma(momw_idx, k, j, i), plasma(energy_idx, k, j, i), 0.0};
-            PlasmaState left_eos = left;
-            PlasmaState right_eos = right;
-            left_eos.pressure =
-                SpeciesPressure(left.rho, left.momx, left.momy, left.momz, left.momw,
-                                left.energy, rho_floor, gm1, pressure_floor);
-            right_eos.pressure =
-                SpeciesPressure(right.rho, right.momx, right.momy, right.momz, right.momw,
-                                right.energy, rho_floor, gm1, pressure_floor);
             Real flux_rho = 0.0;
             Real flux_momx = 0.0;
             Real flux_momy = 0.0;
             Real flux_momz = 0.0;
             Real flux_momw = 0.0;
             Real flux_energy = 0.0;
-            const Real mode_pressure_gain =
-                (n <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
-            ComputeDirectionalFlux(X1DIR, left_eos, right_eos, rho_floor, gamma,
-                                   mode_pressure_gain, pressure_rusanov_gain,
-                                   pressure_signal_speed_cap, pressure_flux_relative_cap,
-                                   flux_rho, flux_momx, flux_momy, flux_momz, flux_momw,
-                                   flux_energy);
+            if (use_pseudospectral_transport) {
+              ComputePseudospectralFaceFlux(
+                  plasma, tables, X1DIR, s, n, n_modes, n_quadrature, k, j, i - 1, k, j, i,
+                  rho_floor, gamma, gm1, pressure_floor, pressure_transport_gain,
+                  pressure_transport_max_mode, pressure_rusanov_gain,
+                  pressure_signal_speed_cap, pressure_flux_relative_cap, flux_rho, flux_momx,
+                  flux_momy, flux_momz, flux_momw, flux_energy);
+            } else {
+              const PlasmaState left{
+                  plasma(rho_idx, k, j, i - 1), plasma(momx_idx, k, j, i - 1),
+                  plasma(momy_idx, k, j, i - 1), plasma(momz_idx, k, j, i - 1),
+                  plasma(momw_idx, k, j, i - 1), plasma(energy_idx, k, j, i - 1), 0.0};
+              const PlasmaState right{
+                  plasma(rho_idx, k, j, i), plasma(momx_idx, k, j, i),
+                  plasma(momy_idx, k, j, i), plasma(momz_idx, k, j, i),
+                  plasma(momw_idx, k, j, i), plasma(energy_idx, k, j, i), 0.0};
+              PlasmaState left_eos = left;
+              PlasmaState right_eos = right;
+              left_eos.pressure =
+                  SpeciesPressure(left.rho, left.momx, left.momy, left.momz, left.momw,
+                                  left.energy, rho_floor, gm1, pressure_floor);
+              right_eos.pressure =
+                  SpeciesPressure(right.rho, right.momx, right.momy, right.momz, right.momw,
+                                  right.energy, rho_floor, gm1, pressure_floor);
+              const Real mode_pressure_gain =
+                  (n <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
+              ComputeDirectionalFlux(X1DIR, left_eos, right_eos, rho_floor, gamma,
+                                     mode_pressure_gain, pressure_rusanov_gain,
+                                     pressure_signal_speed_cap, pressure_flux_relative_cap,
+                                     flux_rho, flux_momx, flux_momy, flux_momz, flux_momw,
+                                     flux_energy);
+            }
             plasma.flux(X1DIR, rho_idx, k, j, i) = transport_gain * flux_rho;
             plasma.flux(X1DIR, momx_idx, k, j, i) = transport_gain * flux_momx;
             plasma.flux(X1DIR, momy_idx, k, j, i) = transport_gain * flux_momy;
@@ -332,39 +416,44 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
               const int momw_idx = PlasmaIndex(s, n, kPlasmaMomW, n_modes);
               const int energy_idx = PlasmaIndex(s, n, kPlasmaEnergy, n_modes);
 
-              const Real rho_l = plasma(rho_idx, k, j - 1, i);
-              const Real rho_r = plasma(rho_idx, k, j, i);
-              const Real momy_l = plasma(momy_idx, k, j - 1, i);
-              const Real momy_r = plasma(momy_idx, k, j, i);
-              const Real vy_l = momy_l / fmax(rho_l, rho_floor);
-              const Real vy_r = momy_r / fmax(rho_r, rho_floor);
-              const PlasmaState left{
-                  rho_l, plasma(momx_idx, k, j - 1, i), momy_l, plasma(momz_idx, k, j - 1, i),
-                  plasma(momw_idx, k, j - 1, i), plasma(energy_idx, k, j - 1, i), 0.0};
-              const PlasmaState right{
-                  rho_r, plasma(momx_idx, k, j, i), momy_r, plasma(momz_idx, k, j, i),
-                  plasma(momw_idx, k, j, i), plasma(energy_idx, k, j, i), 0.0};
-              PlasmaState left_eos = left;
-              PlasmaState right_eos = right;
-              left_eos.pressure =
-                  SpeciesPressure(left.rho, left.momx, left.momy, left.momz, left.momw,
-                                  left.energy, rho_floor, gm1, pressure_floor);
-              right_eos.pressure =
-                  SpeciesPressure(right.rho, right.momx, right.momy, right.momz, right.momw,
-                                  right.energy, rho_floor, gm1, pressure_floor);
               Real flux_rho = 0.0;
               Real flux_momx = 0.0;
               Real flux_momy = 0.0;
               Real flux_momz = 0.0;
               Real flux_momw = 0.0;
               Real flux_energy = 0.0;
-              const Real mode_pressure_gain =
-                  (n <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
-              ComputeDirectionalFlux(X2DIR, left_eos, right_eos, rho_floor, gamma,
-                                     mode_pressure_gain, pressure_rusanov_gain,
-                                     pressure_signal_speed_cap, pressure_flux_relative_cap,
-                                     flux_rho, flux_momx, flux_momy, flux_momz, flux_momw,
-                                     flux_energy);
+              if (use_pseudospectral_transport) {
+                ComputePseudospectralFaceFlux(
+                    plasma, tables, X2DIR, s, n, n_modes, n_quadrature, k, j - 1, i, k, j, i,
+                    rho_floor, gamma, gm1, pressure_floor, pressure_transport_gain,
+                    pressure_transport_max_mode, pressure_rusanov_gain,
+                    pressure_signal_speed_cap, pressure_flux_relative_cap, flux_rho, flux_momx,
+                    flux_momy, flux_momz, flux_momw, flux_energy);
+              } else {
+                const PlasmaState left{
+                    plasma(rho_idx, k, j - 1, i), plasma(momx_idx, k, j - 1, i),
+                    plasma(momy_idx, k, j - 1, i), plasma(momz_idx, k, j - 1, i),
+                    plasma(momw_idx, k, j - 1, i), plasma(energy_idx, k, j - 1, i), 0.0};
+                const PlasmaState right{
+                    plasma(rho_idx, k, j, i), plasma(momx_idx, k, j, i),
+                    plasma(momy_idx, k, j, i), plasma(momz_idx, k, j, i),
+                    plasma(momw_idx, k, j, i), plasma(energy_idx, k, j, i), 0.0};
+                PlasmaState left_eos = left;
+                PlasmaState right_eos = right;
+                left_eos.pressure =
+                    SpeciesPressure(left.rho, left.momx, left.momy, left.momz, left.momw,
+                                    left.energy, rho_floor, gm1, pressure_floor);
+                right_eos.pressure =
+                    SpeciesPressure(right.rho, right.momx, right.momy, right.momz, right.momw,
+                                    right.energy, rho_floor, gm1, pressure_floor);
+                const Real mode_pressure_gain =
+                    (n <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
+                ComputeDirectionalFlux(X2DIR, left_eos, right_eos, rho_floor, gamma,
+                                       mode_pressure_gain, pressure_rusanov_gain,
+                                       pressure_signal_speed_cap, pressure_flux_relative_cap,
+                                       flux_rho, flux_momx, flux_momy, flux_momz, flux_momw,
+                                       flux_energy);
+              }
               plasma.flux(X2DIR, rho_idx, k, j, i) = transport_gain * flux_rho;
               plasma.flux(X2DIR, momx_idx, k, j, i) = transport_gain * flux_momx;
               plasma.flux(X2DIR, momy_idx, k, j, i) = transport_gain * flux_momy;
@@ -391,39 +480,44 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
               const int momw_idx = PlasmaIndex(s, n, kPlasmaMomW, n_modes);
               const int energy_idx = PlasmaIndex(s, n, kPlasmaEnergy, n_modes);
 
-              const Real rho_l = plasma(rho_idx, k - 1, j, i);
-              const Real rho_r = plasma(rho_idx, k, j, i);
-              const Real momz_l = plasma(momz_idx, k - 1, j, i);
-              const Real momz_r = plasma(momz_idx, k, j, i);
-              const Real vz_l = momz_l / fmax(rho_l, rho_floor);
-              const Real vz_r = momz_r / fmax(rho_r, rho_floor);
-              const PlasmaState left{
-                  rho_l, plasma(momx_idx, k - 1, j, i), plasma(momy_idx, k - 1, j, i), momz_l,
-                  plasma(momw_idx, k - 1, j, i), plasma(energy_idx, k - 1, j, i), 0.0};
-              const PlasmaState right{
-                  rho_r, plasma(momx_idx, k, j, i), plasma(momy_idx, k, j, i), momz_r,
-                  plasma(momw_idx, k, j, i), plasma(energy_idx, k, j, i), 0.0};
-              PlasmaState left_eos = left;
-              PlasmaState right_eos = right;
-              left_eos.pressure =
-                  SpeciesPressure(left.rho, left.momx, left.momy, left.momz, left.momw,
-                                  left.energy, rho_floor, gm1, pressure_floor);
-              right_eos.pressure =
-                  SpeciesPressure(right.rho, right.momx, right.momy, right.momz, right.momw,
-                                  right.energy, rho_floor, gm1, pressure_floor);
               Real flux_rho = 0.0;
               Real flux_momx = 0.0;
               Real flux_momy = 0.0;
               Real flux_momz = 0.0;
               Real flux_momw = 0.0;
               Real flux_energy = 0.0;
-              const Real mode_pressure_gain =
-                  (n <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
-              ComputeDirectionalFlux(X3DIR, left_eos, right_eos, rho_floor, gamma,
-                                     mode_pressure_gain, pressure_rusanov_gain,
-                                     pressure_signal_speed_cap, pressure_flux_relative_cap,
-                                     flux_rho, flux_momx, flux_momy, flux_momz, flux_momw,
-                                     flux_energy);
+              if (use_pseudospectral_transport) {
+                ComputePseudospectralFaceFlux(
+                    plasma, tables, X3DIR, s, n, n_modes, n_quadrature, k - 1, j, i, k, j, i,
+                    rho_floor, gamma, gm1, pressure_floor, pressure_transport_gain,
+                    pressure_transport_max_mode, pressure_rusanov_gain,
+                    pressure_signal_speed_cap, pressure_flux_relative_cap, flux_rho, flux_momx,
+                    flux_momy, flux_momz, flux_momw, flux_energy);
+              } else {
+                const PlasmaState left{
+                    plasma(rho_idx, k - 1, j, i), plasma(momx_idx, k - 1, j, i),
+                    plasma(momy_idx, k - 1, j, i), plasma(momz_idx, k - 1, j, i),
+                    plasma(momw_idx, k - 1, j, i), plasma(energy_idx, k - 1, j, i), 0.0};
+                const PlasmaState right{
+                    plasma(rho_idx, k, j, i), plasma(momx_idx, k, j, i),
+                    plasma(momy_idx, k, j, i), plasma(momz_idx, k, j, i),
+                    plasma(momw_idx, k, j, i), plasma(energy_idx, k, j, i), 0.0};
+                PlasmaState left_eos = left;
+                PlasmaState right_eos = right;
+                left_eos.pressure =
+                    SpeciesPressure(left.rho, left.momx, left.momy, left.momz, left.momw,
+                                    left.energy, rho_floor, gm1, pressure_floor);
+                right_eos.pressure =
+                    SpeciesPressure(right.rho, right.momx, right.momy, right.momz, right.momw,
+                                    right.energy, rho_floor, gm1, pressure_floor);
+                const Real mode_pressure_gain =
+                    (n <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
+                ComputeDirectionalFlux(X3DIR, left_eos, right_eos, rho_floor, gamma,
+                                       mode_pressure_gain, pressure_rusanov_gain,
+                                       pressure_signal_speed_cap, pressure_flux_relative_cap,
+                                       flux_rho, flux_momx, flux_momy, flux_momz, flux_momw,
+                                       flux_energy);
+              }
               plasma.flux(X3DIR, rho_idx, k, j, i) = transport_gain * flux_rho;
               plasma.flux(X3DIR, momx_idx, k, j, i) = transport_gain * flux_momx;
               plasma.flux(X3DIR, momy_idx, k, j, i) = transport_gain * flux_momy;
