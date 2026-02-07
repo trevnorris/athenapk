@@ -113,13 +113,13 @@ def main():
     parser.add_argument(
         "--psi-w0-enhancement-min",
         type=float,
-        default=1.0,
+        default=1.2,
         help="Minimum min(full psi_w0 span / controlled psi_w0 span) for PASS",
     )
     parser.add_argument(
         "--max-abs-dpsi-w0-enhancement-min",
         type=float,
-        default=1.0,
+        default=1.2,
         help="Minimum min(full max_abs_dpsi_w0_dt / controlled max_abs_dpsi_w0_dt) for PASS",
     )
     parser.add_argument(

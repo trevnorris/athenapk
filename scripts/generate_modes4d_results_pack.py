@@ -152,11 +152,11 @@ def build_lundquist_gate_table(rows):
         return min(vals)
 
     enhancement_specs = [
-        ("min(full/controlled psi_w0_span) >= 1.0e+00", min_finite_from_col("ratio_full_over_controlled_psi_w0_span"), 1.0),
+        ("min(full/controlled psi_w0_span) >= 1.2e+00", min_finite_from_col("ratio_full_over_controlled_psi_w0_span"), 1.2),
         (
-            "min(full/controlled max_abs_dpsi_w0_dt) >= 1.0e+00",
+            "min(full/controlled max_abs_dpsi_w0_dt) >= 1.2e+00",
             min_finite_from_col("ratio_full_over_controlled_max_abs_dpsi_w0_dt"),
-            1.0,
+            1.2,
         ),
     ]
     for condition, value, threshold in enhancement_specs:

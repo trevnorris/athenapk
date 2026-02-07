@@ -204,8 +204,8 @@ def main():
     parser.add_argument("--controlled-max-jw-ew-abs", type=float, default=1.0e-12)
     parser.add_argument("--controlled-max-s-leak-abs", type=float, default=1.0e-12)
     parser.add_argument("--max-abs-dpsi0-enhancement-min", type=float, default=1.0)
-    parser.add_argument("--psi-w0-enhancement-min", type=float, default=1.0)
-    parser.add_argument("--max-abs-dpsi-w0-enhancement-min", type=float, default=1.0)
+    parser.add_argument("--psi-w0-enhancement-min", type=float, default=1.2)
+    parser.add_argument("--max-abs-dpsi-w0-enhancement-min", type=float, default=1.2)
     args = parser.parse_args()
 
     summary_csv = Path(args.summary_csv).resolve()

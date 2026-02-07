@@ -23,8 +23,8 @@ FULL_MIN_ABS_HELICITY_SUB="1.0e-11"
 FULL_MIN_ABS_EDOTB_SUB="1.0e-10"
 PSI0_ENHANCEMENT_MIN="1.0"
 MAX_ABS_DPSI0_ENHANCEMENT_MIN="1.0"
-PSI_W0_ENHANCEMENT_MIN="1.0"
-MAX_ABS_DPSI_W0_ENHANCEMENT_MIN="1.0"
+PSI_W0_ENHANCEMENT_MIN="1.2"
+MAX_ABS_DPSI_W0_ENHANCEMENT_MIN="1.2"
 CONTROLLED_MAX_JW_EW_ABS="1.0e-12"
 CONTROLLED_MAX_S_LEAK_ABS="1.0e-12"
 CONTROLLED_MAX_JW_MODE_ACTIVITY_PROXY="1.0e-12"
@@ -79,9 +79,9 @@ Options:
   --max-abs-dpsi0-enhancement-min FLOAT
                           Minimum min(full/control max|dpsi0/dt| ratio) report gate (default: 1.0)
   --psi-w0-enhancement-min FLOAT
-                          Minimum min(full/control psi_w0 span ratio) report gate (default: 1.0)
+                          Minimum min(full/control psi_w0 span ratio) report gate (default: 1.2)
   --max-abs-dpsi-w0-enhancement-min FLOAT
-                          Minimum min(full/control max|dpsi_w0/dt| ratio) report gate (default: 1.0)
+                          Minimum min(full/control max|dpsi_w0/dt| ratio) report gate (default: 1.2)
   --controlled-max-jw-ew-abs FLOAT
                           Maximum max controlled |J^wE_w| report gate (default: 1.0e-12)
   --controlled-max-s-leak-abs FLOAT
