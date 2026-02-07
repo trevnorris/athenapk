@@ -367,7 +367,7 @@ def main():
         )
         else "FAIL"
     )
-    rate_enhancement = gate_rows[5][3]
+    legacy_dpsi0_rate_enhancement = gate_rows[5][3]
     w0_span_enhancement = gate_rows[6][3]
     w0_rate_enhancement = gate_rows[7][3]
 
@@ -387,7 +387,6 @@ def main():
             for status in [
                 controlled_inactivity,
                 full_activation,
-                rate_enhancement,
                 w0_span_enhancement,
                 w0_rate_enhancement,
                 ledger_status,
@@ -407,7 +406,7 @@ def main():
         [
             ("controlled_inactivity", controlled_inactivity),
             ("full_activation", full_activation),
-            ("rate_enhancement", rate_enhancement),
+            ("legacy_dpsi0_rate_enhancement", legacy_dpsi0_rate_enhancement),
             ("w0_span_enhancement", w0_span_enhancement),
             ("w0_rate_enhancement", w0_rate_enhancement),
             ("ledger_status", ledger_status),
@@ -424,7 +423,7 @@ def main():
         f"- Overall status: **{overall}**",
         f"- Controlled inactivity: **{controlled_inactivity}**",
         f"- Full activation: **{full_activation}**",
-        f"- Rate enhancement: **{rate_enhancement}**",
+        f"- Legacy dpsi0 rate enhancement (informational): **{legacy_dpsi0_rate_enhancement}**",
         f"- w0 span enhancement: **{w0_span_enhancement}**",
         f"- w0 rate enhancement: **{w0_rate_enhancement}**",
         f"- Ledger status (from scan row): **{ledger_status}**",
