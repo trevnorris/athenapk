@@ -53,6 +53,12 @@ jobs:
           # Pick GPU with most available memory
           export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=memory.free,index --format=csv,nounits,noheader | sort -nr | head -1 | awk '{ print $NF }')
           cmake --build build -t modes4d_mpi_hdf5_regression
+      - name: Run Production Modes4D Lundquist Bundle
+        if: ${{ matrix.parallel == 'serial' }}
+        run: |
+          # Pick GPU with most available memory
+          export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=memory.free,index --format=csv,nounits,noheader | sort -nr | head -1 | awk '{ print $NF }')
+          cmake --build build -t modes4d_harris_lundquist_production
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
@@ -76,4 +82,9 @@ jobs:
             build/modes4d_mpi_hdf5_regression/cpaw_strict1d/parthenon.out0.final.phdf
             build/modes4d_mpi_hdf5_regression/harris_full/parthenon.out0.final.phdf
             build/modes4d_mpi_hdf5_regression/harris_full/parthenon.out1.hst
+            build/modes4d_harris_lundquist_production/outputs/lundquist_scan_summary.csv
+            build/modes4d_harris_lundquist_production/outputs/production_report.md
+            build/modes4d_harris_lundquist_production/outputs/plots/lundquist_primary_channels.png
+            build/modes4d_harris_lundquist_production/outputs/plots/lundquist_subscale_channels.png
+            build/modes4d_harris_lundquist_production/outputs/plots/lundquist_status.csv
           retention-days: 3

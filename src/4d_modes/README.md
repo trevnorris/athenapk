@@ -874,6 +874,13 @@ It provides a one-command MPI smoke bundle covering:
 CI integration:
 - `.github/workflows/ci.yml` runs this bundle in the `mpi` matrix leg on
   pull requests before merge.
+- `.github/workflows/ci.yml` also runs
+  `modes4d_harris_lundquist_production` in the `serial` matrix leg and uploads:
+  - `build/modes4d_harris_lundquist_production/outputs/lundquist_scan_summary.csv`
+  - `build/modes4d_harris_lundquist_production/outputs/production_report.md`
+  - `build/modes4d_harris_lundquist_production/outputs/plots/lundquist_primary_channels.png`
+  - `build/modes4d_harris_lundquist_production/outputs/plots/lundquist_subscale_channels.png`
+  - `build/modes4d_harris_lundquist_production/outputs/plots/lundquist_status.csv`
 
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable
