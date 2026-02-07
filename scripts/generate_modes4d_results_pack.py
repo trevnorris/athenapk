@@ -143,6 +143,27 @@ def build_lundquist_gate_table(rows):
         if status != "PASS":
             overall = "FAIL"
         gate_rows.append((condition, value, status))
+
+    def min_finite_from_col(col):
+        vals = [parse_float(r, col) for r in rows_sorted]
+        vals = [v for v in vals if math.isfinite(v)]
+        if not vals:
+            return math.nan
+        return min(vals)
+
+    enhancement_specs = [
+        ("min(full/controlled psi_w0_span) >= 1.0e+00", min_finite_from_col("ratio_full_over_controlled_psi_w0_span"), 1.0),
+        (
+            "min(full/controlled max_abs_dpsi_w0_dt) >= 1.0e+00",
+            min_finite_from_col("ratio_full_over_controlled_max_abs_dpsi_w0_dt"),
+            1.0,
+        ),
+    ]
+    for condition, value, threshold in enhancement_specs:
+        status = "PASS" if (math.isfinite(value) and value >= threshold) else "FAIL"
+        if status != "PASS":
+            overall = "FAIL"
+        gate_rows.append((condition, value, status))
     return gate_rows, overall
 
 

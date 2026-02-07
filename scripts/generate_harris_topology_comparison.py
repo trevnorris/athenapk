@@ -134,13 +134,19 @@ def render_plot(path, ctrl, full):
     times_f = full["time"]
     psi_c = ctrl["psi0"]
     psi_f = full["psi0"]
+    psi_w0_c = ctrl["psi_w0"]
+    psi_w0_f = full["psi_w0"]
     dpsi_t_c, dpsi_c = derive_dpsi_dt(times_c, psi_c)
     dpsi_t_f, dpsi_f = derive_dpsi_dt(times_f, psi_f)
+    dpsi_w0_t_c, dpsi_w0_c = derive_dpsi_dt(times_c, psi_w0_c)
+    dpsi_w0_t_f, dpsi_w0_f = derive_dpsi_dt(times_f, psi_w0_f)
 
     fig, axs = plt.subplots(2, 2, figsize=(14, 10), constrained_layout=True)
 
     axs[0, 0].plot(times_c, psi_c, label="controlled", lw=2)
     axs[0, 0].plot(times_f, psi_f, label="full", lw=2)
+    axs[0, 0].plot(times_c, psi_w0_c, "--", label="controlled w0", lw=2)
+    axs[0, 0].plot(times_f, psi_w0_f, "--", label="full w0", lw=2)
     axs[0, 0].set_title("psi0_span")
     axs[0, 0].set_xlabel("time")
     axs[0, 0].set_ylabel("psi0_span")
@@ -148,6 +154,8 @@ def render_plot(path, ctrl, full):
 
     axs[0, 1].plot(dpsi_t_c, abs_series(dpsi_c), label="controlled", lw=2)
     axs[0, 1].plot(dpsi_t_f, abs_series(dpsi_f), label="full", lw=2)
+    axs[0, 1].plot(dpsi_w0_t_c, abs_series(dpsi_w0_c), "--", label="controlled w0", lw=2)
+    axs[0, 1].plot(dpsi_w0_t_f, abs_series(dpsi_w0_f), "--", label="full w0", lw=2)
     axs[0, 1].set_title("|d(psi0_span)/dt|")
     axs[0, 1].set_xlabel("time")
     axs[0, 1].set_ylabel("rate")
@@ -196,6 +204,8 @@ def main():
     parser.add_argument("--controlled-max-jw-ew-abs", type=float, default=1.0e-12)
     parser.add_argument("--controlled-max-s-leak-abs", type=float, default=1.0e-12)
     parser.add_argument("--max-abs-dpsi0-enhancement-min", type=float, default=1.0)
+    parser.add_argument("--psi-w0-enhancement-min", type=float, default=1.0)
+    parser.add_argument("--max-abs-dpsi-w0-enhancement-min", type=float, default=1.0)
     args = parser.parse_args()
 
     summary_csv = Path(args.summary_csv).resolve()
@@ -232,6 +242,7 @@ def main():
     ctrl = {
         "time": maybe_col(cols_c, "time"),
         "psi0": maybe_col(cols_c, "m4d_psi0_span"),
+        "psi_w0": maybe_col(cols_c, "m4d_psi_w0_span") or maybe_col(cols_c, "m4d_psi0_span"),
         "jw_ew": maybe_col(cols_c, "m4d_int_jw_ew"),
         "s_leak_abs": maybe_col(cols_c, "m4d_int_s_leak_abs") or abs_series(maybe_col(cols_c, "m4d_int_s_leak")),
         "mixed_ew2": maybe_col(cols_c, "m4d_mixed_ew2"),
@@ -240,6 +251,7 @@ def main():
     full = {
         "time": maybe_col(cols_f, "time"),
         "psi0": maybe_col(cols_f, "m4d_psi0_span"),
+        "psi_w0": maybe_col(cols_f, "m4d_psi_w0_span") or maybe_col(cols_f, "m4d_psi0_span"),
         "jw_ew": maybe_col(cols_f, "m4d_int_jw_ew"),
         "s_leak_abs": maybe_col(cols_f, "m4d_int_s_leak_abs") or abs_series(maybe_col(cols_f, "m4d_int_s_leak")),
         "mixed_ew2": maybe_col(cols_f, "m4d_mixed_ew2"),
@@ -248,7 +260,10 @@ def main():
 
     dpsi_t_c, dpsi_c = derive_dpsi_dt(ctrl["time"], ctrl["psi0"])
     dpsi_t_f, dpsi_f = derive_dpsi_dt(full["time"], full["psi0"])
+    dpsi_w0_t_c, dpsi_w0_c = derive_dpsi_dt(ctrl["time"], ctrl["psi_w0"])
+    dpsi_w0_t_f, dpsi_w0_f = derive_dpsi_dt(full["time"], full["psi_w0"])
     del dpsi_t_c, dpsi_t_f
+    del dpsi_w0_t_c, dpsi_w0_t_f
 
     ctrl_max_abs_jw_ew = series_max(abs_series(ctrl["jw_ew"]))
     ctrl_max_s_leak_abs = series_max(ctrl["s_leak_abs"])
@@ -258,6 +273,17 @@ def main():
     ctrl_max_abs_dpsi = series_max(abs_series(dpsi_c))
     full_max_abs_dpsi = series_max(abs_series(dpsi_f))
     ratio_max_abs_dpsi = safe_ratio(full_max_abs_dpsi, ctrl_max_abs_dpsi)
+    ctrl_max_abs_dpsi_w0 = series_max(abs_series(dpsi_w0_c))
+    full_max_abs_dpsi_w0 = series_max(abs_series(dpsi_w0_f))
+    ratio_max_abs_dpsi_w0 = parse_float(row.get("ratio_full_over_controlled_max_abs_dpsi_w0_dt"))
+    if not math.isfinite(ratio_max_abs_dpsi_w0):
+        ratio_max_abs_dpsi_w0 = safe_ratio(full_max_abs_dpsi_w0, ctrl_max_abs_dpsi_w0)
+    ratio_psi_w0_span = parse_float(row.get("ratio_full_over_controlled_psi_w0_span"))
+    if not math.isfinite(ratio_psi_w0_span):
+        ratio_psi_w0_span = safe_ratio(
+            parse_float(row.get("full_final_psi_w0_span")),
+            parse_float(row.get("controlled_final_psi_w0_span")),
+        )
 
     gate_rows = []
     gate_rows.append(
@@ -308,6 +334,22 @@ def main():
             gate_min(ratio_max_abs_dpsi, args.max_abs_dpsi0_enhancement_min),
         )
     )
+    gate_rows.append(
+        (
+            "psi_w0_span_full / controlled >= floor",
+            ratio_psi_w0_span,
+            args.psi_w0_enhancement_min,
+            gate_min(ratio_psi_w0_span, args.psi_w0_enhancement_min),
+        )
+    )
+    gate_rows.append(
+        (
+            "max|dpsi_w0/dt|_full / controlled >= floor",
+            ratio_max_abs_dpsi_w0,
+            args.max_abs_dpsi_w0_enhancement_min,
+            gate_min(ratio_max_abs_dpsi_w0, args.max_abs_dpsi_w0_enhancement_min),
+        )
+    )
 
     controlled_inactivity = (
         "PASS"
@@ -326,6 +368,8 @@ def main():
         else "FAIL"
     )
     rate_enhancement = gate_rows[5][3]
+    w0_span_enhancement = gate_rows[6][3]
+    w0_rate_enhancement = gate_rows[7][3]
 
     ledger_fields = [
         "full_closure_status",
@@ -340,7 +384,14 @@ def main():
         "PASS"
         if all(
             status == "PASS"
-            for status in [controlled_inactivity, full_activation, rate_enhancement, ledger_status]
+            for status in [
+                controlled_inactivity,
+                full_activation,
+                rate_enhancement,
+                w0_span_enhancement,
+                w0_rate_enhancement,
+                ledger_status,
+            ]
         )
         else "FAIL"
     )
@@ -357,6 +408,8 @@ def main():
             ("controlled_inactivity", controlled_inactivity),
             ("full_activation", full_activation),
             ("rate_enhancement", rate_enhancement),
+            ("w0_span_enhancement", w0_span_enhancement),
+            ("w0_rate_enhancement", w0_rate_enhancement),
             ("ledger_status", ledger_status),
             ("overall", overall),
         ],
@@ -372,6 +425,8 @@ def main():
         f"- Controlled inactivity: **{controlled_inactivity}**",
         f"- Full activation: **{full_activation}**",
         f"- Rate enhancement: **{rate_enhancement}**",
+        f"- w0 span enhancement: **{w0_span_enhancement}**",
+        f"- w0 rate enhancement: **{w0_rate_enhancement}**",
         f"- Ledger status (from scan row): **{ledger_status}**",
         "",
         "## Artifacts",

@@ -437,5 +437,7 @@ if [[ "${SKIP_TOPOLOGY}" -eq 0 ]]; then
     --controlled-max-jw-ew-abs "${CONTROLLED_MAX_JW_EW_ABS}" \
     --controlled-max-s-leak-abs "${CONTROLLED_MAX_S_LEAK_ABS}" \
     --max-abs-dpsi0-enhancement-min "${MAX_ABS_DPSI0_ENHANCEMENT_MIN}" \
+    --psi-w0-enhancement-min "${PSI_W0_ENHANCEMENT_MIN}" \
+    --max-abs-dpsi-w0-enhancement-min "${MAX_ABS_DPSI_W0_ENHANCEMENT_MIN}" \
     "${TOPOLOGY_ARGS[@]}"
 fi
