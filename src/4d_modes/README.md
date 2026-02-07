@@ -238,6 +238,9 @@ correlation gates and concise CSV summary output. Defaults:
   - `plots/lundquist_primary_channels.png`
   - `plots/lundquist_subscale_channels.png`
   - `plots/lundquist_status.csv`
+- automatic markdown report:
+  - `production_report.md` (default: `<output-dir>/production_report.md`)
+  - contains scan-gate table + per-`S` status table + artifact paths
 - non-degenerate mode-current proxy:
   - summary CSV includes `full_final_jw_mode_activity_proxy =
     max(full_final_jw_mode_l2_1, |full_final_jw_ew|)`
@@ -247,6 +250,9 @@ correlation gates and concise CSV summary output. Defaults:
 - plotting controls:
   - `--plot-output-dir <dir>`
   - `--skip-plots`
+- report controls:
+  - `--report-path <path>`
+  - `--skip-report`
 
 ### 3) Run Harris scaffold input
 
@@ -696,7 +702,7 @@ The scan script can also be used directly with custom gates:
 - `--scan-min-corr metric=threshold`
 - `--scan-max-corr metric=threshold`
 
-Production one-command target (longer horizon + plots):
+Production one-command target (longer horizon + plots + report):
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -708,6 +714,8 @@ This target wraps `scripts/run_harris_lundquist_production.sh` and runs:
 - strict closure/transport/correlation/activity gating
 - automatic plot generation under:
   - `build-baseline/modes4d_harris_lundquist_production/outputs/plots/`
+- automatic markdown report:
+  - `build-baseline/modes4d_harris_lundquist_production/outputs/production_report.md`
 
 ### 18) Run MPI + HDF5 Harris full-case helper
 

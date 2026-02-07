@@ -318,7 +318,7 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --output-dir ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_production/outputs
       DEPENDS athenaPK
       USES_TERMINAL
-      COMMENT "Running longer-horizon 4D Harris production Lundquist scan + plots")
+      COMMENT "Running longer-horizon 4D Harris production Lundquist scan + plots + report")
     add_custom_target(
       modes4d_phase10_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression

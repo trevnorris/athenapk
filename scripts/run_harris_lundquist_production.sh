@@ -16,6 +16,8 @@ OUTPUT_DT="0.02"
 CLOSURE_LOCAL_MODE0_ABS_RATE_TOL="3.0e-8"
 PLOT_OUTPUT_DIR=""
 SKIP_PLOTS=0
+REPORT_PATH=""
+SKIP_REPORT=0
 
 usage() {
   cat <<'EOF'
@@ -39,6 +41,8 @@ Options:
                           harris_scan_matrix.py (default: 3.0e-8)
   --plot-output-dir DIR   Plot output directory (default: <output-dir>/plots)
   --skip-plots            Skip post-scan plotting
+  --report-path PATH      Markdown report path (default: <output-dir>/production_report.md)
+  --skip-report           Skip markdown report generation
   -h, --help               Show this help
 EOF
 }
@@ -91,6 +95,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-plots)
       SKIP_PLOTS=1
+      shift
+      ;;
+    --report-path)
+      REPORT_PATH="$2"
+      shift 2
+      ;;
+    --skip-report)
+      SKIP_REPORT=1
       shift
       ;;
     -h|--help)
@@ -185,4 +197,17 @@ if [[ "${SKIP_PLOTS}" -eq 0 ]]; then
   python3 "${REPO_ROOT}/scripts/plot_harris_lundquist_summary.py" \
     --summary-csv "${SUMMARY_CSV}" \
     --output-dir "${PLOT_OUTPUT_DIR}"
+fi
+
+if [[ "${SKIP_REPORT}" -eq 0 ]]; then
+  if [[ -z "${PLOT_OUTPUT_DIR}" ]]; then
+    PLOT_OUTPUT_DIR="${OUTPUT_DIR}/plots"
+  fi
+  if [[ -z "${REPORT_PATH}" ]]; then
+    REPORT_PATH="${OUTPUT_DIR}/production_report.md"
+  fi
+  python3 "${REPO_ROOT}/scripts/generate_harris_lundquist_report.py" \
+    --summary-csv "${SUMMARY_CSV}" \
+    --plots-dir "${PLOT_OUTPUT_DIR}" \
+    --report-path "${REPORT_PATH}"
 fi
