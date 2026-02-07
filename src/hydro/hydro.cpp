@@ -153,7 +153,9 @@ Real HydroHst(MeshData<Real> *md) {
   auto hydro_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("Hydro");
 
   const auto &cons_pack = md->PackVariables(std::vector<std::string>{"cons"});
-  const bool three_d = cons_pack.GetNdim() == 3;
+  const int ndim = cons_pack.GetNdim();
+  const bool two_d_or_more = ndim >= 2;
+  const bool three_d = ndim >= 3;
 
   IndexRange ib = md->GetBlockData(0)->GetBoundsI(IndexDomain::interior);
   IndexRange jb = md->GetBlockData(0)->GetBoundsJ(IndexDomain::interior);
@@ -190,20 +192,28 @@ Real HydroHst(MeshData<Real> *md) {
           // relative divergence of B error, i.e., L * |div(B)| / |B|
         } else if (hst == Hst::divb) {
           Real divb =
-              (cons(IB1, k, j, i + 1) - cons(IB1, k, j, i - 1)) / coords.Dxc<1>(k, j, i) +
-              (cons(IB2, k, j + 1, i) - cons(IB2, k, j - 1, i)) / coords.Dxc<2>(k, j, i);
+              (cons(IB1, k, j, i + 1) - cons(IB1, k, j, i - 1)) / coords.Dxc<1>(k, j, i);
+          if (two_d_or_more) {
+            divb +=
+                (cons(IB2, k, j + 1, i) - cons(IB2, k, j - 1, i)) / coords.Dxc<2>(k, j, i);
+          }
           if (three_d) {
             divb += (cons(IB3, k + 1, j, i) - cons(IB3, k - 1, j, i)) /
                     coords.Dxc<3>(k, j, i);
           }
 
+          Real cell_len_sq = SQR(coords.Dxc<1>(k, j, i));
+          if (two_d_or_more) {
+            cell_len_sq += SQR(coords.Dxc<2>(k, j, i));
+          }
+          if (three_d) {
+            cell_len_sq += SQR(coords.Dxc<3>(k, j, i));
+          }
           Real abs_b = std::sqrt(SQR(cons(IB1, k, j, i)) + SQR(cons(IB2, k, j, i)) +
                                  SQR(cons(IB3, k, j, i)));
 
           lsum += (abs_b != 0) ? 0.5 *
-                                     (std::sqrt(SQR(coords.Dxc<1>(k, j, i)) +
-                                                SQR(coords.Dxc<2>(k, j, i)) +
-                                                SQR(coords.Dxc<3>(k, j, i)))) *
+                                     std::sqrt(cell_len_sq) *
                                      std::abs(divb) / abs_b * coords.CellVolume(k, j, i)
                                : 0; // Add zero when abs_b ==0
         }

@@ -5,7 +5,7 @@
 <comment>
 problem = Brio-Wu MHD shock tube
 reference = Brio and Wu, JCP 75, 400 (1988)
-note = thin-2D deck (nx2=4) used because strict 1D GLMMHD (nx2=1) currently segfaults in this baseline build
+note = strict-1D GLMMHD deck (nx2=1, nx3=1)
 
 <job>
 problem_id = brio_wu
@@ -41,7 +41,7 @@ x1max = 0.5
 ix1_bc = outflow
 ox1_bc = outflow
 
-nx2 = 4
+nx2 = 1
 x2min = -0.5
 x2max = 0.5
 ix2_bc = periodic
@@ -55,7 +55,7 @@ ox3_bc = periodic
 
 <parthenon/meshblock>
 nx1 = 128
-nx2 = 4
+nx2 = 1
 nx3 = 1
 
 <parthenon/output0>
