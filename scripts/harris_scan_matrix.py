@@ -155,9 +155,12 @@ def analyze_case(
     leak = cols["m4d_int_s_leak"]
     leak_abs = cols.get("m4d_int_s_leak_abs", leak)
     jw_ew = cols["m4d_int_jw_ew"]
+    ja_ea = maybe_col(cols, "m4d_int_ja_ea")
     epar2 = cols["m4d_brane_epar2"]
     mixed_ew2 = cols["m4d_mixed_ew2"]
     mixed_c2 = cols["m4d_mixed_c2"]
+    em_u_bulk = maybe_col(cols, "m4d_em_u_bulk")
+    em_u_resolved = maybe_col(cols, "m4d_em_u_resolved")
     em_a2_mode1 = maybe_col(cols, "m4d_em_a2_mode_1")
     jw_mode1_l2 = maybe_col(cols, "m4d_jw_mode_l2_1")
     jw_mode1 = maybe_col(cols, "m4d_jw_mode_1")
@@ -196,6 +199,13 @@ def analyze_case(
     cont_local_mode0_max_abs = maybe_col(cols, "m4d_cont_mode0_max_abs")
     cont_local_mode0_l1 = maybe_col(cols, "m4d_cont_mode0_l1")
     cont_local_mode0_l2 = maybe_col(cols, "m4d_cont_mode0_l2")
+    em_u_sub = None
+    if (
+        em_u_bulk is not None
+        and em_u_resolved is not None
+        and len(em_u_bulk) == len(em_u_resolved)
+    ):
+        em_u_sub = [ub - ur for ub, ur in zip(em_u_bulk, em_u_resolved)]
 
     closure_max_norm = math.nan
     closure_rms_norm = math.nan
@@ -378,15 +388,22 @@ def analyze_case(
         "final_s_leak": leak[-1],
         "final_s_leak_abs": leak_abs[-1],
         "final_jw_ew": jw_ew[-1],
+        "final_ja_ea": ja_ea[-1] if ja_ea is not None else math.nan,
         "final_brane_epar2": epar2[-1],
         "final_mixed_ew2": mixed_ew2[-1],
         "final_mixed_c2": mixed_c2[-1],
+        "final_em_u_bulk": em_u_bulk[-1] if em_u_bulk is not None else math.nan,
+        "final_em_u_resolved": em_u_resolved[-1]
+        if em_u_resolved is not None
+        else math.nan,
+        "final_em_u_sub": em_u_sub[-1] if em_u_sub is not None else math.nan,
         "corr_psi0_s_leak": pearson(psi, leak),
         "corr_psi0_s_leak_abs": pearson(psi, leak_abs),
         "corr_psi0_jw_ew": pearson(psi, jw_ew),
         "corr_psi0_brane_epar2": pearson(psi, epar2),
         "corr_psi0_mixed_ew2": pearson(psi, mixed_ew2),
         "corr_psi0_mixed_c2": pearson(psi, mixed_c2),
+        "corr_psi0_em_u_sub": pearson(psi, em_u_sub) if em_u_sub is not None else math.nan,
         "final_em_a2_mode_1": em_a2_mode1[-1] if em_a2_mode1 is not None else math.nan,
         "final_jw_mode_l2_1": jw_mode1_l2[-1] if jw_mode1_l2 is not None else math.nan,
         "final_jw_mode_1": jw_mode1[-1] if jw_mode1 is not None else math.nan,
@@ -558,9 +575,13 @@ def print_table(results):
         "final_s_leak",
         "final_s_leak_abs",
         "final_jw_ew",
+        "final_ja_ea",
         "final_brane_epar2",
         "final_mixed_ew2",
         "final_mixed_c2",
+        "final_em_u_bulk",
+        "final_em_u_resolved",
+        "final_em_u_sub",
         "final_em_a2_mode_1",
         "final_jw_mode_l2_1",
         "final_jw_mode_1",
@@ -597,6 +618,7 @@ def print_table(results):
         "corr_psi0_brane_epar2",
         "corr_psi0_mixed_ew2",
         "corr_psi0_mixed_c2",
+        "corr_psi0_em_u_sub",
         "corr_psi0_jw_mode_l2_1",
         "closure_max_norm",
         "closure_rms_norm",

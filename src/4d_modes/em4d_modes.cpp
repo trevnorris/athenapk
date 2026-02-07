@@ -255,6 +255,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const auto &mass_squared = tables.MassSquared();
 
   Real diag_jw_ew_step = 0.0;
+  Real diag_ja_ea_step = 0.0;
   Real diag_s_leak_step = 0.0;
   Real diag_s_leak_abs_step = 0.0;
   Real diag_cont_local_l1_step = 0.0;
@@ -779,19 +780,33 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
           }
 
           Real jw_ew_density = 0.0;
+          Real ja_ea_density = 0.0;
           for (int q = 0; q < tables.NumQuadrature(); ++q) {
+            Real jx_at_node = 0.0;
+            Real jy_at_node = 0.0;
+            Real jz_at_node = 0.0;
             Real jw_at_node = 0.0;
             Real ew_at_node = 0.0;
             for (int n = 0; n < n_modes; ++n) {
               const Real phi_nq = tables.Phi(n, q);
+              jx_at_node += jx_modes[n] * phi_nq;
+              jy_at_node += jy_modes[n] * phi_nq;
+              jz_at_node += jz_modes[n] * phi_nq;
               jw_at_node += jw_modes[n] * phi_nq;
               ew_at_node += ew_modes[n] * phi_nq;
             }
+            const Real ex = ex_nodes[q];
+            const Real ey = ey_nodes[q];
+            const Real ez = ez_nodes[q];
+            ja_ea_density +=
+                weights[q] *
+                ((jx_at_node * ex) + (jy_at_node * ey) + (jz_at_node * ez));
             jw_ew_density += weights[q] * jw_at_node * ew_at_node;
           }
 
           const Real s_leak_density =
               (n_modes > 1) ? (-(inv_lambda_root2 * jw_modes[1])) : 0.0;
+          diag_ja_ea_step += dt * cell_volume * ja_ea_density;
           diag_jw_ew_step += dt * cell_volume * jw_ew_density;
           diag_s_leak_step += dt * cell_volume * s_leak_density;
           diag_s_leak_abs_step += dt * cell_volume * std::abs(s_leak_density);
@@ -805,6 +820,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   }
 
   auto *diag_jw_ew = modes_pkg->MutableParam<double>("diag/int_jw_ew");
+  auto *diag_ja_ea = modes_pkg->MutableParam<double>("diag/int_ja_ea");
   auto *diag_s_leak = modes_pkg->MutableParam<double>("diag/int_s_leak");
   auto *diag_s_leak_abs = modes_pkg->MutableParam<double>("diag/int_s_leak_abs");
   auto *diag_cont_local_l1 = modes_pkg->MutableParam<double>("diag/continuity_local_l1");
@@ -826,6 +842,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   auto *diag_srcpiy_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiy_mode0");
   auto *diag_srcpiz_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiz_mode0");
   auto *diag_srcpiw_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiw_mode0");
+  *diag_ja_ea += diag_ja_ea_step;
   *diag_jw_ew += diag_jw_ew_step;
   *diag_s_leak += diag_s_leak_step;
   *diag_s_leak_abs += diag_s_leak_abs_step;

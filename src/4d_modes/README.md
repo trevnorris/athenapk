@@ -44,6 +44,7 @@ Implemented now:
   - `m4d_em_pi2`
   - `m4d_plasma_cons2`
   - `m4d_int_jw_ew`
+  - `m4d_int_ja_ea`
   - `m4d_int_s_leak`
   - `m4d_int_s_leak_abs`
   - `m4d_int_divj_mode0`
@@ -72,6 +73,8 @@ Implemented now:
   - `m4d_brane_epar2`
   - `m4d_mixed_ew2`
   - `m4d_mixed_c2`
+  - `m4d_em_u_bulk`
+  - `m4d_em_u_resolved`
   - `m4d_psi0_span`
   - `m4d_pulse_xc`
   - `m4d_em_a2_mode_<n>`
