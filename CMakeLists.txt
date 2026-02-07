@@ -145,6 +145,18 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --controlled-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_controlled.in
         --full-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_full.in
         --output-dir ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_scan/outputs
+        --fail-on-check
+        --check-transport-closure
+        --fail-on-scan-check
+        --scan-min-abs-corr corr_logS_full_final_psi0_span=7.0e-1
+        --scan-min-abs-corr corr_logS_full_final_s_leak_abs=5.0e-1
+        --scan-min-abs-corr corr_logS_full_final_jw_ew_abs=5.0e-1
+        --scan-min-abs-corr corr_logS_full_final_mixed_ew2=7.0e-1
+        --scan-min-abs-corr corr_logS_full_final_em_leak_w_abs=2.0e-1
+        --scan-min-abs-corr corr_logS_full_final_helicity_sub_abs=5.0e-1
+        --scan-min-abs-corr corr_logS_full_final_edotb_sub_abs=5.0e-1
+        --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1
+        --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1
       DEPENDS athenaPK
       USES_TERMINAL
       COMMENT "Running 4D Harris Lundquist scan (controlled vs full)")

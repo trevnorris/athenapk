@@ -427,6 +427,26 @@ Each scan point forwards resistive runtime overrides to AthenaPK:
 It reports per-`S` closure/transport/correlation/activity statuses from
 `harris_scan_matrix.py` and scan-level correlations versus `log10(S)`.
 
+This CMake target enforces scan-level acceptance gates and exits nonzero on
+failure:
+- minimum absolute correlations:
+  - `|corr_logS_full_final_psi0_span| >= 0.7`
+  - `|corr_logS_full_final_s_leak_abs| >= 0.5`
+  - `|corr_logS_full_final_jw_ew_abs| >= 0.5`
+  - `|corr_logS_full_final_mixed_ew2| >= 0.7`
+  - `|corr_logS_full_final_em_leak_w_abs| >= 0.2`
+  - `|corr_logS_full_final_helicity_sub_abs| >= 0.5`
+  - `|corr_logS_full_final_edotb_sub_abs| >= 0.5`
+- signed trend checks:
+  - `corr_logS_full_final_helicity_sub_abs <= -0.2`
+  - `corr_logS_full_final_edotb_sub_abs <= -0.2`
+
+The scan script can also be used directly with custom gates:
+- `--scan-min-abs-corr metric=threshold`
+- `--scan-min-corr metric=threshold`
+- `--scan-max-corr metric=threshold`
+- `--fail-on-scan-check`
+
 ## Input requirements for `harris_4d`
 
 Required right now:

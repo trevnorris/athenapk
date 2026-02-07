@@ -94,6 +94,53 @@ def pearson(xs, ys):
     return cov / math.sqrt(vx * vy)
 
 
+def parse_threshold_specs(specs, label, require_non_negative=False):
+    parsed = {}
+    for spec in specs:
+        if "=" not in spec:
+            raise ValueError(f"{label} entries must be metric=threshold. Got '{spec}'")
+        metric, raw_value = spec.split("=", 1)
+        metric = metric.strip()
+        if not metric:
+            raise ValueError(f"{label} entry has empty metric in '{spec}'")
+        threshold = float(raw_value.strip())
+        if require_non_negative and threshold < 0.0:
+            raise ValueError(f"{label} threshold must be >= 0 for '{metric}'")
+        parsed[metric] = threshold
+    return parsed
+
+
+def evaluate_scan_summary(scan_summary, min_abs_corr, min_corr, max_corr):
+    failures = []
+    for metric, threshold in min_abs_corr.items():
+        value = scan_summary.get(metric, math.nan)
+        if math.isnan(value) or abs(value) < threshold:
+            failures.append(
+                f"{metric}: |{value:.6e}| < {threshold:.6e}"
+                if not math.isnan(value)
+                else f"{metric}: nan < {threshold:.6e}"
+            )
+    for metric, threshold in min_corr.items():
+        value = scan_summary.get(metric, math.nan)
+        if math.isnan(value) or value < threshold:
+            failures.append(
+                f"{metric}: {value:.6e} < {threshold:.6e}"
+                if not math.isnan(value)
+                else f"{metric}: nan < {threshold:.6e}"
+            )
+    for metric, threshold in max_corr.items():
+        value = scan_summary.get(metric, math.nan)
+        if math.isnan(value) or value > threshold:
+            failures.append(
+                f"{metric}: {value:.6e} > {threshold:.6e}"
+                if not math.isnan(value)
+                else f"{metric}: nan > {threshold:.6e}"
+            )
+    if failures:
+        return ("FAIL", "|".join(failures))
+    return ("PASS", "none")
+
+
 def resolve_input_path(raw_value, repo_root, workdir):
     path = Path(raw_value)
     if path.is_absolute():
@@ -162,6 +209,29 @@ def main():
         default=[],
         help="Additional argument forwarded to harris_scan_matrix.py",
     )
+    parser.add_argument(
+        "--scan-min-abs-corr",
+        action="append",
+        default=[],
+        help="Scan-level gate metric=threshold requiring |corr| >= threshold",
+    )
+    parser.add_argument(
+        "--scan-min-corr",
+        action="append",
+        default=[],
+        help="Scan-level gate metric=threshold requiring corr >= threshold",
+    )
+    parser.add_argument(
+        "--scan-max-corr",
+        action="append",
+        default=[],
+        help="Scan-level gate metric=threshold requiring corr <= threshold",
+    )
+    parser.add_argument(
+        "--fail-on-scan-check",
+        action="store_true",
+        help="Exit nonzero when any scan-level correlation gate fails",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
@@ -180,6 +250,12 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     s_values = parse_s_values(args.s_values)
+    min_abs_corr = parse_threshold_specs(
+        args.scan_min_abs_corr, "--scan-min-abs-corr", require_non_negative=True
+    )
+    min_corr = parse_threshold_specs(args.scan_min_corr, "--scan-min-corr")
+    max_corr = parse_threshold_specs(args.scan_max_corr, "--scan-max-corr")
+
     sections = parse_input_sections(full_input)
     x1min = get_float(sections, "parthenon/mesh", "x1min", -1.0)
     x1max = get_float(sections, "parthenon/mesh", "x1max", 1.0)
@@ -303,6 +379,9 @@ def main():
             log_s, [abs(r["full_final_edotb_sub"]) for r in rows]
         ),
     }
+    scan_check_status, scan_check_failures = evaluate_scan_summary(
+        scan_summary, min_abs_corr, min_corr, max_corr
+    )
 
     summary_csv = output_dir / args.summary_csv
     fieldnames = list(rows[0].keys())
@@ -318,11 +397,18 @@ def main():
         "scan_summary,"
         + ",".join(f"{k}={v:.6e}" for k, v in scan_summary.items())
     )
+    print(f"scan_check_status,{scan_check_status}")
+    print(f"scan_check_failures,{scan_check_failures}")
     print(f"summary_csv,{summary_csv}")
     print(
         "scan_settings,"
         f"L={length_scale:.6e},Va={alfven_speed:.6e},b0={b0:.6e},n_bg={n_bg:.6e},mu0={mu0:.6e}"
     )
+    if args.fail_on_scan_check and scan_check_status == "FAIL":
+        raise RuntimeError(
+            "Lundquist scan-level correlation checks failed: "
+            f"{scan_check_failures}"
+        )
 
 
 if __name__ == "__main__":
