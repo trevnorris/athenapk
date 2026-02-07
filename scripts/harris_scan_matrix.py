@@ -66,6 +66,17 @@ def maybe_col(cols, key):
     return cols.get(key)
 
 
+def mode_activity_proxy(jw_mode_l2, jw_ew):
+    candidates = []
+    if isinstance(jw_mode_l2, float) and math.isfinite(jw_mode_l2):
+        candidates.append(jw_mode_l2)
+    if isinstance(jw_ew, float) and math.isfinite(jw_ew):
+        candidates.append(abs(jw_ew))
+    if not candidates:
+        return math.nan
+    return max(candidates)
+
+
 def resolve_input_path(raw_value, repo_root, workdir):
     path = Path(raw_value)
     if path.is_absolute():
@@ -195,6 +206,47 @@ def em_bulk_ledger_abs_rate_metrics(
     return (max_abs, rms_abs, final_rate)
 
 
+def reconnection_rate_metrics(times, psi, skip_initial_interval=True):
+    if len(times) < 2 or len(psi) != len(times):
+        return (math.nan, math.nan, math.nan, math.nan, math.nan, math.nan)
+
+    max_rate = -math.inf
+    min_rate = math.inf
+    max_abs_rate = -math.inf
+    final_rate = math.nan
+    time_at_max_rate = math.nan
+    time_at_max_abs_rate = math.nan
+
+    for i in range(1, len(times)):
+        if skip_initial_interval and i == 1:
+            continue
+        dt = times[i] - times[i - 1]
+        if dt <= 0.0:
+            continue
+        rate = (psi[i] - psi[i - 1]) / dt
+        final_rate = rate
+        if rate > max_rate:
+            max_rate = rate
+            time_at_max_rate = times[i]
+        if rate < min_rate:
+            min_rate = rate
+        if abs(rate) > max_abs_rate:
+            max_abs_rate = abs(rate)
+            time_at_max_abs_rate = times[i]
+
+    if max_rate == -math.inf:
+        return (math.nan, math.nan, math.nan, final_rate, math.nan, math.nan)
+
+    return (
+        max_rate,
+        min_rate,
+        max_abs_rate,
+        final_rate,
+        time_at_max_rate,
+        time_at_max_abs_rate,
+    )
+
+
 def analyze_case(
     case_name,
     cols,
@@ -315,6 +367,14 @@ def analyze_case(
         )
         else ("N/A" if math.isnan(em_bulk_ledger_max_abs_rate) else "FAIL")
     )
+    (
+        max_dpsi0_dt,
+        min_dpsi0_dt,
+        max_abs_dpsi0_dt,
+        final_dpsi0_dt,
+        time_at_max_dpsi0_dt,
+        time_at_max_abs_dpsi0_dt,
+    ) = reconnection_rate_metrics(times, psi)
 
     (
         momx_transport_max_norm,
@@ -606,6 +666,12 @@ def analyze_case(
         if cont_local_mode0_l2 is not None
         else math.nan,
         "closure_local_mode0_status": closure_local_mode0_status,
+        "max_dpsi0_dt": max_dpsi0_dt,
+        "min_dpsi0_dt": min_dpsi0_dt,
+        "max_abs_dpsi0_dt": max_abs_dpsi0_dt,
+        "final_dpsi0_dt": final_dpsi0_dt,
+        "time_at_max_dpsi0_dt": time_at_max_dpsi0_dt,
+        "time_at_max_abs_dpsi0_dt": time_at_max_abs_dpsi0_dt,
         "em_bulk_ledger_max_abs_rate": em_bulk_ledger_max_abs_rate,
         "em_bulk_ledger_rms_abs_rate": em_bulk_ledger_rms_abs_rate,
         "em_bulk_ledger_final_rate": em_bulk_ledger_final_rate,
@@ -762,6 +828,12 @@ def print_table(results):
         "closure_local_mode0_final_l1",
         "closure_local_mode0_final_l2",
         "closure_local_mode0_status",
+        "max_dpsi0_dt",
+        "min_dpsi0_dt",
+        "max_abs_dpsi0_dt",
+        "final_dpsi0_dt",
+        "time_at_max_dpsi0_dt",
+        "time_at_max_abs_dpsi0_dt",
         "em_bulk_ledger_max_abs_rate",
         "em_bulk_ledger_rms_abs_rate",
         "em_bulk_ledger_final_rate",
@@ -836,6 +908,7 @@ def evaluate_full_activity(
     min_em_a2_mode_1,
     min_em_pi2_mode_1,
     min_jw_mode_l2_1,
+    min_jw_mode_activity_proxy,
     min_em_leak_w_abs,
     min_helicity_sub_abs,
     min_edotb_sub_abs,
@@ -858,6 +931,14 @@ def evaluate_full_activity(
         failures.append("em_pi2_mode_1")
     if min_jw_mode_l2_1 > 0.0 and row["final_jw_mode_l2_1"] < min_jw_mode_l2_1:
         failures.append("jw_mode_l2_1")
+    jw_mode_activity_proxy = mode_activity_proxy(
+        row["final_jw_mode_l2_1"], row["final_jw_ew"]
+    )
+    if (
+        min_jw_mode_activity_proxy > 0.0
+        and jw_mode_activity_proxy < min_jw_mode_activity_proxy
+    ):
+        failures.append("jw_mode_activity_proxy")
     if min_em_leak_w_abs > 0.0 and abs(row["final_em_leak_w"]) < min_em_leak_w_abs:
         failures.append("em_leak_w")
     if min_helicity_sub_abs > 0.0 and abs(row["final_helicity_sub"]) < min_helicity_sub_abs:
@@ -1041,6 +1122,12 @@ def main():
         help="Minimum final_jw_mode_l2_1 required for full-case activity PASS (disabled when 0)",
     )
     parser.add_argument(
+        "--full-min-jw-mode-activity-proxy",
+        type=float,
+        default=0.0,
+        help="Minimum max(final_jw_mode_l2_1, |final_jw_ew|) required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
         "--full-min-abs-em-leak-w",
         type=float,
         default=0.0,
@@ -1219,6 +1306,7 @@ def main():
                 args.full_min_em_a2_mode_1,
                 args.full_min_em_pi2_mode_1,
                 args.full_min_jw_mode_l2_1,
+                args.full_min_jw_mode_activity_proxy,
                 args.full_min_abs_em_leak_w,
                 args.full_min_abs_helicity_sub,
                 args.full_min_abs_edotb_sub,

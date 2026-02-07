@@ -719,11 +719,29 @@ failure:
 - signed trend checks:
   - `corr_logS_full_final_helicity_sub_abs <= -0.2`
   - `corr_logS_full_final_edotb_sub_abs <= -0.2`
+- minimum full-case scan magnitudes:
+  - `min_full_final_jw_ew_abs >= 1.0e-14`
+  - `min_full_final_s_leak_abs >= 5.0e-14`
+  - `min_full_final_mixed_ew2 >= 1.0e-2`
+  - `min_full_final_jw_mode_activity_proxy >= 1.0e-14`
+  - `min_full_final_em_leak_w_abs >= 1.0e-4`
+  - `min_full_final_helicity_sub_abs >= 1.0e-12`
+  - `min_full_final_edotb_sub_abs >= 1.0e-10`
+- correlation degeneracy guards (signal-variation floors):
+  - `span_for_corr_logS_full_final_psi0_span >= 1.0e-7`
+  - `span_for_corr_logS_full_final_jw_ew_abs >= 1.0e-18`
+  - `span_for_corr_logS_full_final_s_leak_abs >= 1.0e-17`
+  - `span_for_corr_logS_full_final_jw_mode_activity_proxy >= 1.0e-18`
 
 The scan script can also be used directly with custom gates:
 - `--scan-min-abs-corr metric=threshold`
 - `--scan-min-corr metric=threshold`
 - `--scan-max-corr metric=threshold`
+- `--scan-min-metric metric=threshold`
+- `--scan-min-abs-metric metric=threshold`
+- `--scan-max-metric metric=threshold`
+- `--scan-min-corr-span corr_metric=threshold`
+- `--scan-min-corr-std corr_metric=threshold`
 
 Production one-command target (longer horizon + plots + report):
 
@@ -735,10 +753,23 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 This target wraps `scripts/run_harris_lundquist_production.sh` and runs:
 - longer-horizon scan defaults (`tlim=0.20`, `nlim=2000`)
 - strict closure/transport/correlation/activity gating
+- per-run full-case activity floors forwarded into each controlled/full scan:
+  - `--full-min-jw-ew-abs`
+  - `--full-min-s-leak-abs`
+  - `--full-min-mixed-ew2`
+  - `--full-min-jw-mode-activity-proxy`
+  - `--full-min-abs-em-leak-w`
+  - `--full-min-abs-helicity-sub`
+  - `--full-min-abs-edotb-sub`
+- scan-level magnitude floors and correlation-signal span guards
 - automatic plot generation under:
   - `build-baseline/modes4d_harris_lundquist_production/outputs/plots/`
 - automatic markdown report:
   - `build-baseline/modes4d_harris_lundquist_production/outputs/production_report.md`
+  - report now includes:
+    - controlled-vs-full per-`S` ratios/deltas
+    - controlled-inactivity and full-activation gate table
+    - rate-like reconnection proxy (`max|d(psi0_span)/dt|`) with scan correlations
 
 Ablation one-command target:
 

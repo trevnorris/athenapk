@@ -294,6 +294,20 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --fail-on-check
         --check-transport-closure
         --fail-on-scan-check
+        --scan-arg=--full-min-jw-ew-abs
+        --scan-arg=1.0e-14
+        --scan-arg=--full-min-s-leak-abs
+        --scan-arg=5.0e-14
+        --scan-arg=--full-min-mixed-ew2
+        --scan-arg=1.0e-2
+        --scan-arg=--full-min-jw-mode-activity-proxy
+        --scan-arg=1.0e-14
+        --scan-arg=--full-min-abs-em-leak-w
+        --scan-arg=1.0e-4
+        --scan-arg=--full-min-abs-helicity-sub
+        --scan-arg=1.0e-12
+        --scan-arg=--full-min-abs-edotb-sub
+        --scan-arg=1.0e-10
         --scan-min-abs-corr corr_logS_full_final_psi0_span=7.0e-1
         --scan-min-abs-corr corr_logS_full_final_s_leak_abs=5.0e-1
         --scan-min-abs-corr corr_logS_full_final_jw_ew_abs=5.0e-1
@@ -302,6 +316,17 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --scan-min-abs-corr corr_logS_full_final_helicity_sub_abs=5.0e-1
         --scan-min-abs-corr corr_logS_full_final_edotb_sub_abs=5.0e-1
         --scan-min-abs-corr corr_logS_full_final_jw_mode_activity_proxy=5.0e-1
+        --scan-min-metric min_full_final_jw_ew_abs=1.0e-14
+        --scan-min-metric min_full_final_s_leak_abs=5.0e-14
+        --scan-min-metric min_full_final_mixed_ew2=1.0e-2
+        --scan-min-metric min_full_final_jw_mode_activity_proxy=1.0e-14
+        --scan-min-metric min_full_final_em_leak_w_abs=1.0e-4
+        --scan-min-metric min_full_final_helicity_sub_abs=1.0e-12
+        --scan-min-metric min_full_final_edotb_sub_abs=1.0e-10
+        --scan-min-corr-span corr_logS_full_final_psi0_span=1.0e-7
+        --scan-min-corr-span corr_logS_full_final_jw_ew_abs=1.0e-18
+        --scan-min-corr-span corr_logS_full_final_s_leak_abs=1.0e-17
+        --scan-min-corr-span corr_logS_full_final_jw_mode_activity_proxy=1.0e-18
         --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1
         --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1
       DEPENDS athenaPK
@@ -428,6 +453,20 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --fail-on-check
         --check-transport-closure
         --fail-on-scan-check
+        --scan-arg=--full-min-jw-ew-abs
+        --scan-arg=1.0e-14
+        --scan-arg=--full-min-s-leak-abs
+        --scan-arg=5.0e-14
+        --scan-arg=--full-min-mixed-ew2
+        --scan-arg=1.0e-2
+        --scan-arg=--full-min-jw-mode-activity-proxy
+        --scan-arg=1.0e-14
+        --scan-arg=--full-min-abs-em-leak-w
+        --scan-arg=1.0e-4
+        --scan-arg=--full-min-abs-helicity-sub
+        --scan-arg=1.0e-12
+        --scan-arg=--full-min-abs-edotb-sub
+        --scan-arg=1.0e-10
         --scan-min-abs-corr corr_logS_full_final_psi0_span=7.0e-1
         --scan-min-abs-corr corr_logS_full_final_s_leak_abs=5.0e-1
         --scan-min-abs-corr corr_logS_full_final_jw_ew_abs=5.0e-1
@@ -436,6 +475,17 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --scan-min-abs-corr corr_logS_full_final_helicity_sub_abs=5.0e-1
         --scan-min-abs-corr corr_logS_full_final_edotb_sub_abs=5.0e-1
         --scan-min-abs-corr corr_logS_full_final_jw_mode_activity_proxy=5.0e-1
+        --scan-min-metric min_full_final_jw_ew_abs=1.0e-14
+        --scan-min-metric min_full_final_s_leak_abs=5.0e-14
+        --scan-min-metric min_full_final_mixed_ew2=1.0e-2
+        --scan-min-metric min_full_final_jw_mode_activity_proxy=1.0e-14
+        --scan-min-metric min_full_final_em_leak_w_abs=1.0e-4
+        --scan-min-metric min_full_final_helicity_sub_abs=1.0e-12
+        --scan-min-metric min_full_final_edotb_sub_abs=1.0e-10
+        --scan-min-corr-span corr_logS_full_final_psi0_span=1.0e-7
+        --scan-min-corr-span corr_logS_full_final_jw_ew_abs=1.0e-18
+        --scan-min-corr-span corr_logS_full_final_s_leak_abs=1.0e-17
+        --scan-min-corr-span corr_logS_full_final_jw_mode_activity_proxy=1.0e-18
         --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1
         --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1
       DEPENDS athenaPK

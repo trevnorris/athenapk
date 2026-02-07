@@ -94,6 +94,58 @@ def pearson(xs, ys):
     return cov / math.sqrt(vx * vy)
 
 
+def finite_values(values):
+    return [value for value in values if math.isfinite(value)]
+
+
+def series_min(values):
+    vals = finite_values(values)
+    if not vals:
+        return math.nan
+    return min(vals)
+
+
+def series_max(values):
+    vals = finite_values(values)
+    if not vals:
+        return math.nan
+    return max(vals)
+
+
+def series_span(values):
+    vals = finite_values(values)
+    if not vals:
+        return math.nan
+    return max(vals) - min(vals)
+
+
+def series_std(values):
+    vals = finite_values(values)
+    if not vals:
+        return math.nan
+    mean = sum(vals) / len(vals)
+    return math.sqrt(sum((value - mean) * (value - mean) for value in vals) / len(vals))
+
+
+def safe_ratio(numerator, denominator):
+    if not math.isfinite(numerator) or not math.isfinite(denominator):
+        return math.nan
+    if abs(denominator) <= 0.0:
+        return math.nan
+    return numerator / denominator
+
+
+def mode_activity_proxy(jw_mode_l2, jw_ew):
+    candidates = []
+    if math.isfinite(jw_mode_l2):
+        candidates.append(jw_mode_l2)
+    if math.isfinite(jw_ew):
+        candidates.append(abs(jw_ew))
+    if not candidates:
+        return math.nan
+    return max(candidates)
+
+
 def parse_threshold_specs(specs, label, require_non_negative=False):
     parsed = {}
     for spec in specs:
@@ -110,7 +162,17 @@ def parse_threshold_specs(specs, label, require_non_negative=False):
     return parsed
 
 
-def evaluate_scan_summary(scan_summary, min_abs_corr, min_corr, max_corr):
+def evaluate_scan_summary(
+    scan_summary,
+    min_abs_corr,
+    min_corr,
+    max_corr,
+    min_metric,
+    min_abs_metric,
+    max_metric,
+    min_corr_span,
+    min_corr_std,
+):
     failures = []
     for metric, threshold in min_abs_corr.items():
         value = scan_summary.get(metric, math.nan)
@@ -135,6 +197,48 @@ def evaluate_scan_summary(scan_summary, min_abs_corr, min_corr, max_corr):
                 f"{metric}: {value:.6e} > {threshold:.6e}"
                 if not math.isnan(value)
                 else f"{metric}: nan > {threshold:.6e}"
+            )
+    for metric, threshold in min_metric.items():
+        value = scan_summary.get(metric, math.nan)
+        if math.isnan(value) or value < threshold:
+            failures.append(
+                f"{metric}: {value:.6e} < {threshold:.6e}"
+                if not math.isnan(value)
+                else f"{metric}: nan < {threshold:.6e}"
+            )
+    for metric, threshold in min_abs_metric.items():
+        value = scan_summary.get(metric, math.nan)
+        if math.isnan(value) or abs(value) < threshold:
+            failures.append(
+                f"{metric}: |{value:.6e}| < {threshold:.6e}"
+                if not math.isnan(value)
+                else f"{metric}: |nan| < {threshold:.6e}"
+            )
+    for metric, threshold in max_metric.items():
+        value = scan_summary.get(metric, math.nan)
+        if math.isnan(value) or value > threshold:
+            failures.append(
+                f"{metric}: {value:.6e} > {threshold:.6e}"
+                if not math.isnan(value)
+                else f"{metric}: nan > {threshold:.6e}"
+            )
+    for metric, threshold in min_corr_span.items():
+        key = f"span_for_{metric}"
+        value = scan_summary.get(key, math.nan)
+        if math.isnan(value) or value < threshold:
+            failures.append(
+                f"{key}: {value:.6e} < {threshold:.6e}"
+                if not math.isnan(value)
+                else f"{key}: nan < {threshold:.6e}"
+            )
+    for metric, threshold in min_corr_std.items():
+        key = f"std_for_{metric}"
+        value = scan_summary.get(key, math.nan)
+        if math.isnan(value) or value < threshold:
+            failures.append(
+                f"{key}: {value:.6e} < {threshold:.6e}"
+                if not math.isnan(value)
+                else f"{key}: nan < {threshold:.6e}"
             )
     if failures:
         return ("FAIL", "|".join(failures))
@@ -228,6 +332,36 @@ def main():
         help="Scan-level gate metric=threshold requiring corr <= threshold",
     )
     parser.add_argument(
+        "--scan-min-metric",
+        action="append",
+        default=[],
+        help="Scan-level gate metric=threshold requiring metric >= threshold",
+    )
+    parser.add_argument(
+        "--scan-min-abs-metric",
+        action="append",
+        default=[],
+        help="Scan-level gate metric=threshold requiring |metric| >= threshold",
+    )
+    parser.add_argument(
+        "--scan-max-metric",
+        action="append",
+        default=[],
+        help="Scan-level gate metric=threshold requiring metric <= threshold",
+    )
+    parser.add_argument(
+        "--scan-min-corr-span",
+        action="append",
+        default=[],
+        help="Scan-level gate corr_metric=threshold requiring span_for_<corr_metric> >= threshold",
+    )
+    parser.add_argument(
+        "--scan-min-corr-std",
+        action="append",
+        default=[],
+        help="Scan-level gate corr_metric=threshold requiring std_for_<corr_metric> >= threshold",
+    )
+    parser.add_argument(
         "--fail-on-scan-check",
         action="store_true",
         help="Exit nonzero when any scan-level correlation gate fails",
@@ -255,6 +389,17 @@ def main():
     )
     min_corr = parse_threshold_specs(args.scan_min_corr, "--scan-min-corr")
     max_corr = parse_threshold_specs(args.scan_max_corr, "--scan-max-corr")
+    min_metric = parse_threshold_specs(args.scan_min_metric, "--scan-min-metric")
+    min_abs_metric = parse_threshold_specs(
+        args.scan_min_abs_metric, "--scan-min-abs-metric", require_non_negative=True
+    )
+    max_metric = parse_threshold_specs(args.scan_max_metric, "--scan-max-metric")
+    min_corr_span = parse_threshold_specs(
+        args.scan_min_corr_span, "--scan-min-corr-span", require_non_negative=True
+    )
+    min_corr_std = parse_threshold_specs(
+        args.scan_min_corr_std, "--scan-min-corr-std", require_non_negative=True
+    )
 
     sections = parse_input_sections(full_input)
     x1min = get_float(sections, "parthenon/mesh", "x1min", -1.0)
@@ -327,25 +472,81 @@ def main():
         parsed = parse_scan_csv(proc.stdout)
         full_row = parsed["full"]
         controlled_row = parsed["controlled"]
+        controlled_final_jw_ew = parse_float(controlled_row, "final_jw_ew")
+        controlled_final_s_leak_abs = parse_float(controlled_row, "final_s_leak_abs")
+        controlled_final_mixed_ew2 = parse_float(controlled_row, "final_mixed_ew2")
+        controlled_final_mixed_c2 = parse_float(controlled_row, "final_mixed_c2")
+        controlled_final_em_leak_w = parse_float(controlled_row, "final_em_leak_w")
+        controlled_final_helicity_sub = parse_float(controlled_row, "final_helicity_sub")
+        controlled_final_edotb_sub = parse_float(controlled_row, "final_edotb_sub")
+        controlled_final_jw_mode_l2_1 = parse_float(controlled_row, "final_jw_mode_l2_1")
+        controlled_final_jw_mode_activity_proxy = mode_activity_proxy(
+            controlled_final_jw_mode_l2_1, controlled_final_jw_ew
+        )
+        controlled_max_abs_dpsi0_dt = parse_float(controlled_row, "max_abs_dpsi0_dt")
+        controlled_max_dpsi0_dt = parse_float(controlled_row, "max_dpsi0_dt")
+        full_final_jw_ew = parse_float(full_row, "final_jw_ew")
+        full_final_s_leak_abs = parse_float(full_row, "final_s_leak_abs")
+        full_final_mixed_ew2 = parse_float(full_row, "final_mixed_ew2")
+        full_final_mixed_c2 = parse_float(full_row, "final_mixed_c2")
+        full_final_em_leak_w = parse_float(full_row, "final_em_leak_w")
+        full_final_helicity_sub = parse_float(full_row, "final_helicity_sub")
+        full_final_edotb_sub = parse_float(full_row, "final_edotb_sub")
+        full_final_jw_mode_l2_1 = parse_float(full_row, "final_jw_mode_l2_1")
+        full_final_jw_mode_activity_proxy = mode_activity_proxy(
+            full_final_jw_mode_l2_1, full_final_jw_ew
+        )
+        full_max_abs_dpsi0_dt = parse_float(full_row, "max_abs_dpsi0_dt")
+        full_max_dpsi0_dt = parse_float(full_row, "max_dpsi0_dt")
+        controlled_final_psi0_span = parse_float(controlled_row, "final_psi0_span")
+        full_final_psi0_span = parse_float(full_row, "final_psi0_span")
         rows.append(
             {
                 "S": s_value,
                 "eta": eta,
-                "controlled_final_psi0_span": parse_float(controlled_row, "final_psi0_span"),
-                "full_final_psi0_span": parse_float(full_row, "final_psi0_span"),
-                "full_final_jw_ew": parse_float(full_row, "final_jw_ew"),
-                "full_final_s_leak_abs": parse_float(full_row, "final_s_leak_abs"),
-                "full_final_mixed_ew2": parse_float(full_row, "final_mixed_ew2"),
-                "full_final_mixed_c2": parse_float(full_row, "final_mixed_c2"),
-                "full_final_em_leak_w": parse_float(full_row, "final_em_leak_w"),
-                "full_final_helicity_sub": parse_float(full_row, "final_helicity_sub"),
-                "full_final_edotb_sub": parse_float(full_row, "final_edotb_sub"),
+                "controlled_final_psi0_span": controlled_final_psi0_span,
+                "controlled_final_jw_ew": controlled_final_jw_ew,
+                "controlled_final_s_leak_abs": controlled_final_s_leak_abs,
+                "controlled_final_mixed_ew2": controlled_final_mixed_ew2,
+                "controlled_final_mixed_c2": controlled_final_mixed_c2,
+                "controlled_final_em_leak_w": controlled_final_em_leak_w,
+                "controlled_final_helicity_sub": controlled_final_helicity_sub,
+                "controlled_final_edotb_sub": controlled_final_edotb_sub,
+                "controlled_final_jw_mode_l2_1": controlled_final_jw_mode_l2_1,
+                "controlled_final_jw_mode_activity_proxy": controlled_final_jw_mode_activity_proxy,
+                "controlled_max_abs_dpsi0_dt": controlled_max_abs_dpsi0_dt,
+                "controlled_max_dpsi0_dt": controlled_max_dpsi0_dt,
+                "full_final_psi0_span": full_final_psi0_span,
+                "full_final_jw_ew": full_final_jw_ew,
+                "full_final_s_leak_abs": full_final_s_leak_abs,
+                "full_final_mixed_ew2": full_final_mixed_ew2,
+                "full_final_mixed_c2": full_final_mixed_c2,
+                "full_final_em_leak_w": full_final_em_leak_w,
+                "full_final_helicity_sub": full_final_helicity_sub,
+                "full_final_edotb_sub": full_final_edotb_sub,
                 "full_final_em_a2_mode_1": parse_float(full_row, "final_em_a2_mode_1"),
                 "full_final_em_pi2_mode_1": parse_float(full_row, "final_em_pi2_mode_1"),
-                "full_final_jw_mode_l2_1": parse_float(full_row, "final_jw_mode_l2_1"),
-                "full_final_jw_mode_activity_proxy": max(
-                    parse_float(full_row, "final_jw_mode_l2_1"),
-                    abs(parse_float(full_row, "final_jw_ew")),
+                "full_final_jw_mode_l2_1": full_final_jw_mode_l2_1,
+                "full_final_jw_mode_activity_proxy": full_final_jw_mode_activity_proxy,
+                "full_max_abs_dpsi0_dt": full_max_abs_dpsi0_dt,
+                "full_max_dpsi0_dt": full_max_dpsi0_dt,
+                "ratio_full_over_controlled_psi0_span": safe_ratio(
+                    full_final_psi0_span, controlled_final_psi0_span
+                ),
+                "ratio_full_over_controlled_jw_ew_abs": safe_ratio(
+                    abs(full_final_jw_ew), abs(controlled_final_jw_ew)
+                ),
+                "ratio_full_over_controlled_s_leak_abs": safe_ratio(
+                    full_final_s_leak_abs, controlled_final_s_leak_abs
+                ),
+                "ratio_full_over_controlled_mixed_ew2": safe_ratio(
+                    full_final_mixed_ew2, controlled_final_mixed_ew2
+                ),
+                "ratio_full_over_controlled_mixed_c2": safe_ratio(
+                    full_final_mixed_c2, controlled_final_mixed_c2
+                ),
+                "ratio_full_over_controlled_max_abs_dpsi0_dt": safe_ratio(
+                    full_max_abs_dpsi0_dt, controlled_max_abs_dpsi0_dt
                 ),
                 "full_corr_psi0_s_leak_abs": parse_float(full_row, "corr_psi0_s_leak_abs"),
                 "full_corr_psi0_jw_ew": parse_float(full_row, "corr_psi0_jw_ew"),
@@ -364,43 +565,60 @@ def main():
         )
 
     log_s = [math.log10(r["S"]) for r in rows]
-    scan_summary = {
-        "corr_logS_full_final_psi0_span": pearson(
-            log_s, [r["full_final_psi0_span"] for r in rows]
-        ),
-        "corr_logS_full_final_s_leak_abs": pearson(
-            log_s, [r["full_final_s_leak_abs"] for r in rows]
-        ),
-        "corr_logS_full_final_jw_ew_abs": pearson(
-            log_s, [abs(r["full_final_jw_ew"]) for r in rows]
-        ),
-        "corr_logS_full_final_mixed_ew2": pearson(
-            log_s, [r["full_final_mixed_ew2"] for r in rows]
-        ),
-        "corr_logS_full_final_em_leak_w_abs": pearson(
-            log_s, [abs(r["full_final_em_leak_w"]) for r in rows]
-        ),
-        "corr_logS_full_final_helicity_sub_abs": pearson(
-            log_s, [abs(r["full_final_helicity_sub"]) for r in rows]
-        ),
-        "corr_logS_full_final_edotb_sub_abs": pearson(
-            log_s, [abs(r["full_final_edotb_sub"]) for r in rows]
-        ),
-        "corr_logS_full_final_em_a2_mode_1": pearson(
-            log_s, [r["full_final_em_a2_mode_1"] for r in rows]
-        ),
-        "corr_logS_full_final_em_pi2_mode_1": pearson(
-            log_s, [r["full_final_em_pi2_mode_1"] for r in rows]
-        ),
-        "corr_logS_full_final_jw_mode_l2_1": pearson(
-            log_s, [r["full_final_jw_mode_l2_1"] for r in rows]
-        ),
-        "corr_logS_full_final_jw_mode_activity_proxy": pearson(
-            log_s, [r["full_final_jw_mode_activity_proxy"] for r in rows]
-        ),
+    corr_series = {
+        "corr_logS_full_final_psi0_span": [r["full_final_psi0_span"] for r in rows],
+        "corr_logS_full_final_s_leak_abs": [r["full_final_s_leak_abs"] for r in rows],
+        "corr_logS_full_final_jw_ew_abs": [abs(r["full_final_jw_ew"]) for r in rows],
+        "corr_logS_full_final_mixed_ew2": [r["full_final_mixed_ew2"] for r in rows],
+        "corr_logS_full_final_em_leak_w_abs": [abs(r["full_final_em_leak_w"]) for r in rows],
+        "corr_logS_full_final_helicity_sub_abs": [
+            abs(r["full_final_helicity_sub"]) for r in rows
+        ],
+        "corr_logS_full_final_edotb_sub_abs": [abs(r["full_final_edotb_sub"]) for r in rows],
+        "corr_logS_full_final_em_a2_mode_1": [r["full_final_em_a2_mode_1"] for r in rows],
+        "corr_logS_full_final_em_pi2_mode_1": [r["full_final_em_pi2_mode_1"] for r in rows],
+        "corr_logS_full_final_jw_mode_l2_1": [r["full_final_jw_mode_l2_1"] for r in rows],
+        "corr_logS_full_final_jw_mode_activity_proxy": [
+            r["full_final_jw_mode_activity_proxy"] for r in rows
+        ],
+        "corr_logS_full_max_abs_dpsi0_dt": [r["full_max_abs_dpsi0_dt"] for r in rows],
+        "corr_logS_full_max_dpsi0_dt": [r["full_max_dpsi0_dt"] for r in rows],
     }
+    scan_summary = {}
+    for metric, values in corr_series.items():
+        scan_summary[metric] = pearson(log_s, values)
+        scan_summary[f"span_for_{metric}"] = series_span(values)
+        scan_summary[f"std_for_{metric}"] = series_std(values)
+    metric_series = {
+        "full_final_psi0_span": [r["full_final_psi0_span"] for r in rows],
+        "full_final_s_leak_abs": [r["full_final_s_leak_abs"] for r in rows],
+        "full_final_jw_ew_abs": [abs(r["full_final_jw_ew"]) for r in rows],
+        "full_final_mixed_ew2": [r["full_final_mixed_ew2"] for r in rows],
+        "full_final_mixed_c2": [r["full_final_mixed_c2"] for r in rows],
+        "full_final_em_leak_w_abs": [abs(r["full_final_em_leak_w"]) for r in rows],
+        "full_final_helicity_sub_abs": [abs(r["full_final_helicity_sub"]) for r in rows],
+        "full_final_edotb_sub_abs": [abs(r["full_final_edotb_sub"]) for r in rows],
+        "full_final_jw_mode_activity_proxy": [
+            r["full_final_jw_mode_activity_proxy"] for r in rows
+        ],
+        "full_max_abs_dpsi0_dt": [r["full_max_abs_dpsi0_dt"] for r in rows],
+        "full_max_dpsi0_dt": [r["full_max_dpsi0_dt"] for r in rows],
+    }
+    for metric, values in metric_series.items():
+        scan_summary[f"min_{metric}"] = series_min(values)
+        scan_summary[f"max_{metric}"] = series_max(values)
+        scan_summary[f"span_{metric}"] = series_span(values)
+        scan_summary[f"std_{metric}"] = series_std(values)
     scan_check_status, scan_check_failures = evaluate_scan_summary(
-        scan_summary, min_abs_corr, min_corr, max_corr
+        scan_summary,
+        min_abs_corr,
+        min_corr,
+        max_corr,
+        min_metric,
+        min_abs_metric,
+        max_metric,
+        min_corr_span,
+        min_corr_std,
     )
 
     summary_csv = output_dir / args.summary_csv
@@ -426,7 +644,7 @@ def main():
     )
     if args.fail_on_scan_check and scan_check_status == "FAIL":
         raise RuntimeError(
-            "Lundquist scan-level correlation checks failed: "
+            "Lundquist scan-level checks failed: "
             f"{scan_check_failures}"
         )
 
