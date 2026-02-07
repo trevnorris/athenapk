@@ -21,6 +21,7 @@ constexpr int kPlasmaMomW = 4;
 constexpr int kPlasmaEnergy = 5;
 constexpr Real kTransportSignalRhoFloor = 1.0e-3;
 constexpr Real kTransportSignalSpeedCap = 10.0;
+constexpr Real kPressureFluxRelativeCap = 50.0;
 
 struct PlasmaState {
   Real rho;
@@ -60,6 +61,18 @@ KOKKOS_INLINE_FUNCTION Real NormalVelocity(const PlasmaState &state, const int d
   return state.momz / rho_safe;
 }
 
+KOKKOS_INLINE_FUNCTION Real ClampMagnitude(const Real value, const Real cap) {
+  if (value > cap) return cap;
+  if (value < -cap) return -cap;
+  return value;
+}
+
+KOKKOS_INLINE_FUNCTION Real LimitRelativeToAdvective(const Real candidate, const Real advective) {
+  constexpr Real kSmall = 1.0e-12;
+  const Real cap = kPressureFluxRelativeCap * (fabs(advective) + kSmall);
+  return ClampMagnitude(candidate, cap);
+}
+
 KOKKOS_INLINE_FUNCTION void ComputeDirectionalFlux(
     const int dir, const PlasmaState &left, const PlasmaState &right, const Real rho_floor,
     const Real gamma, const Real pressure_transport_gain, const Real pressure_rusanov_gain,
@@ -89,13 +102,16 @@ KOKKOS_INLINE_FUNCTION void ComputeDirectionalFlux(
   }
 
   const Real blend = fmin(1.0, fmax(0.0, pressure_transport_gain));
+  const Real vn_cap = kTransportSignalSpeedCap;
+  const Real vn_l_rus = ClampMagnitude(vn_l, vn_cap);
+  const Real vn_r_rus = ClampMagnitude(vn_r, vn_cap);
   const Real signal_rho_floor = fmax(rho_floor, kTransportSignalRhoFloor);
   const Real csl =
       sqrt(fmax(0.0, gamma * left.pressure / fmax(left.rho, signal_rho_floor)));
   const Real csr =
       sqrt(fmax(0.0, gamma * right.pressure / fmax(right.rho, signal_rho_floor)));
   const Real alpha_uncapped = fmax(0.0, pressure_rusanov_gain) *
-                              fmax(fabs(vn_l) + csl, fabs(vn_r) + csr);
+                              fmax(fabs(vn_l_rus) + csl, fabs(vn_r_rus) + csr);
   const Real alpha = fmin(alpha_uncapped, kTransportSignalSpeedCap);
 
   Real fl_rho = 0.0;
@@ -112,43 +128,43 @@ KOKKOS_INLINE_FUNCTION void ComputeDirectionalFlux(
   Real fr_energy = 0.0;
   if (dir == X1DIR) {
     fl_rho = left.momx;
-    fl_momx = left.momx * vn_l + left.pressure;
-    fl_momy = left.momy * vn_l;
-    fl_momz = left.momz * vn_l;
-    fl_momw = left.momw * vn_l;
-    fl_energy = (left.energy + left.pressure) * vn_l;
+    fl_momx = left.momx * vn_l_rus + left.pressure;
+    fl_momy = left.momy * vn_l_rus;
+    fl_momz = left.momz * vn_l_rus;
+    fl_momw = left.momw * vn_l_rus;
+    fl_energy = (left.energy + left.pressure) * vn_l_rus;
     fr_rho = right.momx;
-    fr_momx = right.momx * vn_r + right.pressure;
-    fr_momy = right.momy * vn_r;
-    fr_momz = right.momz * vn_r;
-    fr_momw = right.momw * vn_r;
-    fr_energy = (right.energy + right.pressure) * vn_r;
+    fr_momx = right.momx * vn_r_rus + right.pressure;
+    fr_momy = right.momy * vn_r_rus;
+    fr_momz = right.momz * vn_r_rus;
+    fr_momw = right.momw * vn_r_rus;
+    fr_energy = (right.energy + right.pressure) * vn_r_rus;
   } else if (dir == X2DIR) {
     fl_rho = left.momy;
-    fl_momx = left.momx * vn_l;
-    fl_momy = left.momy * vn_l + left.pressure;
-    fl_momz = left.momz * vn_l;
-    fl_momw = left.momw * vn_l;
-    fl_energy = (left.energy + left.pressure) * vn_l;
+    fl_momx = left.momx * vn_l_rus;
+    fl_momy = left.momy * vn_l_rus + left.pressure;
+    fl_momz = left.momz * vn_l_rus;
+    fl_momw = left.momw * vn_l_rus;
+    fl_energy = (left.energy + left.pressure) * vn_l_rus;
     fr_rho = right.momy;
-    fr_momx = right.momx * vn_r;
-    fr_momy = right.momy * vn_r + right.pressure;
-    fr_momz = right.momz * vn_r;
-    fr_momw = right.momw * vn_r;
-    fr_energy = (right.energy + right.pressure) * vn_r;
+    fr_momx = right.momx * vn_r_rus;
+    fr_momy = right.momy * vn_r_rus + right.pressure;
+    fr_momz = right.momz * vn_r_rus;
+    fr_momw = right.momw * vn_r_rus;
+    fr_energy = (right.energy + right.pressure) * vn_r_rus;
   } else {
     fl_rho = left.momz;
-    fl_momx = left.momx * vn_l;
-    fl_momy = left.momy * vn_l;
-    fl_momz = left.momz * vn_l + left.pressure;
-    fl_momw = left.momw * vn_l;
-    fl_energy = (left.energy + left.pressure) * vn_l;
+    fl_momx = left.momx * vn_l_rus;
+    fl_momy = left.momy * vn_l_rus;
+    fl_momz = left.momz * vn_l_rus + left.pressure;
+    fl_momw = left.momw * vn_l_rus;
+    fl_energy = (left.energy + left.pressure) * vn_l_rus;
     fr_rho = right.momz;
-    fr_momx = right.momx * vn_r;
-    fr_momy = right.momy * vn_r;
-    fr_momz = right.momz * vn_r + right.pressure;
-    fr_momw = right.momw * vn_r;
-    fr_energy = (right.energy + right.pressure) * vn_r;
+    fr_momx = right.momx * vn_r_rus;
+    fr_momy = right.momy * vn_r_rus;
+    fr_momz = right.momz * vn_r_rus + right.pressure;
+    fr_momw = right.momw * vn_r_rus;
+    fr_energy = (right.energy + right.pressure) * vn_r_rus;
   }
 
   const Real rus_rho = 0.5 * (fl_rho + fr_rho) - 0.5 * alpha * (right.rho - left.rho);
@@ -159,12 +175,19 @@ KOKKOS_INLINE_FUNCTION void ComputeDirectionalFlux(
   const Real rus_energy =
       0.5 * (fl_energy + fr_energy) - 0.5 * alpha * (right.energy - left.energy);
 
-  flux_rho = ((1.0 - blend) * adv_rho) + (blend * rus_rho);
-  flux_momx = ((1.0 - blend) * adv_momx) + (blend * rus_momx);
-  flux_momy = ((1.0 - blend) * adv_momy) + (blend * rus_momy);
-  flux_momz = ((1.0 - blend) * adv_momz) + (blend * rus_momz);
-  flux_momw = ((1.0 - blend) * adv_momw) + (blend * rus_momw);
-  flux_energy = ((1.0 - blend) * adv_energy) + (blend * rus_energy);
+  const Real rus_rho_limited = LimitRelativeToAdvective(rus_rho, adv_rho);
+  const Real rus_momx_limited = LimitRelativeToAdvective(rus_momx, adv_momx);
+  const Real rus_momy_limited = LimitRelativeToAdvective(rus_momy, adv_momy);
+  const Real rus_momz_limited = LimitRelativeToAdvective(rus_momz, adv_momz);
+  const Real rus_momw_limited = LimitRelativeToAdvective(rus_momw, adv_momw);
+  const Real rus_energy_limited = LimitRelativeToAdvective(rus_energy, adv_energy);
+
+  flux_rho = ((1.0 - blend) * adv_rho) + (blend * rus_rho_limited);
+  flux_momx = ((1.0 - blend) * adv_momx) + (blend * rus_momx_limited);
+  flux_momy = ((1.0 - blend) * adv_momy) + (blend * rus_momy_limited);
+  flux_momz = ((1.0 - blend) * adv_momz) + (blend * rus_momz_limited);
+  flux_momw = ((1.0 - blend) * adv_momw) + (blend * rus_momw_limited);
+  flux_energy = ((1.0 - blend) * adv_energy) + (blend * rus_energy_limited);
 }
 
 } // namespace
@@ -208,6 +231,8 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
       modes_pkg->Param<double>("plasma4d/pressure_transport_gain");
   const Real pressure_rusanov_gain =
       modes_pkg->Param<double>("plasma4d/pressure_rusanov_gain");
+  const int pressure_transport_max_mode =
+      modes_pkg->Param<int>("plasma4d/pressure_transport_max_mode");
   const Real pressure_floor = modes_pkg->Param<double>("plasma4d/pressure_floor");
   if (n_modes < 1 || transport_gain == 0.0) {
     return TaskStatus::complete;
@@ -265,8 +290,10 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
             Real flux_momz = 0.0;
             Real flux_momw = 0.0;
             Real flux_energy = 0.0;
+            const Real mode_pressure_gain =
+                (n <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
             ComputeDirectionalFlux(X1DIR, left_eos, right_eos, rho_floor, gamma,
-                                   pressure_transport_gain, pressure_rusanov_gain, flux_rho,
+                                   mode_pressure_gain, pressure_rusanov_gain, flux_rho,
                                    flux_momx, flux_momy, flux_momz, flux_momw, flux_energy);
             plasma.flux(X1DIR, rho_idx, k, j, i) = transport_gain * flux_rho;
             plasma.flux(X1DIR, momx_idx, k, j, i) = transport_gain * flux_momx;
@@ -319,8 +346,10 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
               Real flux_momz = 0.0;
               Real flux_momw = 0.0;
               Real flux_energy = 0.0;
+              const Real mode_pressure_gain =
+                  (n <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
               ComputeDirectionalFlux(X2DIR, left_eos, right_eos, rho_floor, gamma,
-                                     pressure_transport_gain, pressure_rusanov_gain, flux_rho,
+                                     mode_pressure_gain, pressure_rusanov_gain, flux_rho,
                                      flux_momx, flux_momy, flux_momz, flux_momw, flux_energy);
               plasma.flux(X2DIR, rho_idx, k, j, i) = transport_gain * flux_rho;
               plasma.flux(X2DIR, momx_idx, k, j, i) = transport_gain * flux_momx;
@@ -374,8 +403,10 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
               Real flux_momz = 0.0;
               Real flux_momw = 0.0;
               Real flux_energy = 0.0;
+              const Real mode_pressure_gain =
+                  (n <= pressure_transport_max_mode) ? pressure_transport_gain : 0.0;
               ComputeDirectionalFlux(X3DIR, left_eos, right_eos, rho_floor, gamma,
-                                     pressure_transport_gain, pressure_rusanov_gain, flux_rho,
+                                     mode_pressure_gain, pressure_rusanov_gain, flux_rho,
                                      flux_momx, flux_momy, flux_momz, flux_momw, flux_energy);
               plasma.flux(X3DIR, rho_idx, k, j, i) = transport_gain * flux_rho;
               plasma.flux(X3DIR, momx_idx, k, j, i) = transport_gain * flux_momx;

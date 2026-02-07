@@ -106,8 +106,9 @@ Implemented now:
 
 Not implemented yet:
 - full two-fluid mode dynamics beyond the current source + advective-transport bring-up
-- robust finite-strength pressure-coupled plasma transport in the Harris regressions
-  (`plasma_pressure_transport_gain` currently has only a narrow stable window)
+- pressure-coupled transport physics calibration beyond the current stabilized
+  experimental path (the numerics are now bounded, but this path remains
+  outside baseline CI)
 - full conservative EM closure beyond the current brane-Laplacian transport path
   (`em4d_pi` transport is now optional; remaining EM terms are still source-step)
 - full reconnection workflow/analysis
@@ -211,6 +212,7 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_gamma`
 - `plasma_pressure_transport_gain`
 - `plasma_pressure_rusanov_gain`
+- `plasma_pressure_transport_max_mode`
 - `plasma_pressure_floor`
 
 `<problem/em4d_pulse>` also supports:
@@ -395,7 +397,7 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 
 This target runs the same tuned Harris gate set as `modes4d_harris_regression`,
 but adds a full-case override:
-- `modes4d/plasma_pressure_transport_gain=1.0e-9`
+- `modes4d/plasma_pressure_transport_gain=1.0e-3`
 
 It is an experimental check for the stabilized nonzero pressure-transport path
 and is not part of `modes4d_phase10_regression`.
@@ -470,14 +472,17 @@ The scan script can also be used directly with custom gates:
 
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable
-- nonzero pressure transport now uses a blended Rusanov path for stability:
+- nonzero pressure transport now uses a bounded blended Rusanov path:
   - `plasma_pressure_transport_gain` is a blend factor in `[0,1]`
     between the baseline upwind transport (`0`) and pressure-coupled Rusanov
     transport (`1`)
   - `plasma_pressure_rusanov_gain` scales the Rusanov signal speed
+  - `plasma_pressure_transport_max_mode` limits pressure-coupled transport to
+    low modes (default `0`, i.e. mode-0 only)
+  - pressure-branch normal velocity and Rusanov components are bounded relative
+    to the baseline advective flux
 - tested full-case behavior:
-  - stable at very small gain (`1e-9`)
-  - unstable/nonphysical by `1e-8` and larger
+  - stable through `1e-3` (`1e-8`, `1e-7`, `1e-6`, `1e-3` verified)
 - keep `plasma_pressure_transport_gain = 0.0` for baseline/CI unless explicitly
   testing the pressure-transport path
 

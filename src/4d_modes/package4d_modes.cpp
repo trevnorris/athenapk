@@ -50,6 +50,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "plasma_pressure_transport_gain", 0.0);
   const double plasma_pressure_rusanov_gain =
       pin->GetOrAddReal("modes4d", "plasma_pressure_rusanov_gain", 1.0);
+  const int plasma_pressure_transport_max_mode =
+      pin->GetOrAddInteger("modes4d", "plasma_pressure_transport_max_mode", 0);
   const double plasma_pressure_floor =
       pin->GetOrAddReal("modes4d", "plasma_pressure_floor", 0.0);
   const double pulse_amp = pin->GetOrAddReal("problem/em4d_pulse", "amplitude", 1.0e-3);
@@ -63,6 +65,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   PARTHENON_REQUIRE(plasma_gamma > 1.0, "modes4d/plasma_gamma must be > 1");
   PARTHENON_REQUIRE(plasma_pressure_rusanov_gain >= 0.0,
                     "modes4d/plasma_pressure_rusanov_gain must be >= 0");
+  PARTHENON_REQUIRE(plasma_pressure_transport_max_mode >= 0,
+                    "modes4d/plasma_pressure_transport_max_mode must be >= 0");
 
   ModeConfig config;
   config.n_modes = n_modes;
@@ -88,6 +92,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("plasma4d/energy_floor", plasma_energy_floor);
   pkg->AddParam<double>("plasma4d/pressure_transport_gain", plasma_pressure_transport_gain);
   pkg->AddParam<double>("plasma4d/pressure_rusanov_gain", plasma_pressure_rusanov_gain);
+  pkg->AddParam<int>("plasma4d/pressure_transport_max_mode",
+                     plasma_pressure_transport_max_mode);
   pkg->AddParam<double>("plasma4d/pressure_floor", plasma_pressure_floor);
   pkg->AddParam<double>("em4d_pulse/amplitude", pulse_amp);
   pkg->AddParam<double>("em4d_pulse/sigma", pulse_sigma);
