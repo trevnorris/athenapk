@@ -292,6 +292,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real c_wave = modes_pkg->Param<double>("em4d/c_wave");
   const Real damping = modes_pkg->Param<double>("em4d/damping");
   const Real mu0 = modes_pkg->Param<double>("em4d/mu0");
+  const Real em_source_mass_gain = modes_pkg->Param<double>("em4d/source_mass_gain");
+  const Real em_source_current_gain = modes_pkg->Param<double>("em4d/source_current_gain");
+  const Real em_source_damping_gain = modes_pkg->Param<double>("em4d/source_damping_gain");
+  const Real em_source_timelike_gain = modes_pkg->Param<double>("em4d/source_timelike_gain");
   const bool use_conservative_transport =
       modes_pkg->Param<bool>("em4d/use_conservative_transport");
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
@@ -338,6 +342,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_src_timelike_a0_from_piw_abs_step = 0.0;
   Real diag_src_timelike_aw_from_pi0_step = 0.0;
   Real diag_src_timelike_aw_from_pi0_abs_step = 0.0;
+  Real diag_src_em_laplacian_abs_step = 0.0;
+  Real diag_src_em_mass_abs_step = 0.0;
+  Real diag_src_em_current_abs_step = 0.0;
+  Real diag_src_em_damping_abs_step = 0.0;
+  Real diag_src_em_spatial_mixed_abs_step = 0.0;
+  Real diag_src_em_timelike_abs_step = 0.0;
 
   const int num_blocks = md->NumBlocks();
   for (int b = 0; b < num_blocks; ++b) {
@@ -955,34 +965,58 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             const Real lap_aw = use_conservative_transport
                                     ? 0.0
                                     : (c2 * laplacian(a_old, idx_aw, k, j, i));
-            const Real rhs_a0_timelike_from_piw =
-                -(c2 * coupling_coeff * mixed_dt_aw_prev);
-            const Real rhs_aw_timelike_from_pi0 =
-                -(c2 * coupling_raise * mixed_dt_a0_next);
+            const Real src_a0_lap = lap_a0;
+            const Real src_ax_lap = lap_ax;
+            const Real src_ay_lap = lap_ay;
+            const Real src_az_lap = lap_az;
+            const Real src_aw_lap = lap_aw;
 
-            const Real rhs_a0 = lap_a0 -
-                                (c2 * mass_squared[n] * a_old(idx_a0, k, j, i)) -
-                                (mu0 * j0_modes[n]) - (damping * pi_old(idx_a0, k, j, i)) +
-                                rhs_a0_timelike_from_piw;
-            const Real rhs_ax = lap_ax -
-                                (c2 * mass_squared[n] * a_old(idx_ax, k, j, i)) +
-                                (c2 * coupling_coeff * mixed_grad_aw_x) -
-                                (mu0 * jx_modes[n]) -
-                                (damping * pi_old(idx_ax, k, j, i));
-            const Real rhs_ay = lap_ay -
-                                (c2 * mass_squared[n] * a_old(idx_ay, k, j, i)) +
-                                (c2 * coupling_coeff * mixed_grad_aw_y) -
-                                (mu0 * jy_modes[n]) -
-                                (damping * pi_old(idx_ay, k, j, i));
-            const Real rhs_az = lap_az -
-                                (c2 * mass_squared[n] * a_old(idx_az, k, j, i)) +
-                                (c2 * coupling_coeff * mixed_grad_aw_z) -
-                                (mu0 * jz_modes[n]) -
-                                (damping * pi_old(idx_az, k, j, i));
-            const Real rhs_aw = lap_aw - (c2 * mixed_div_a_next) -
-                                (mu0 * jw_modes[n]) -
-                                (damping * pi_old(idx_aw, k, j, i)) +
-                                rhs_aw_timelike_from_pi0;
+            const Real src_a0_mass =
+                -em_source_mass_gain * (c2 * mass_squared[n] * a_old(idx_a0, k, j, i));
+            const Real src_ax_mass =
+                -em_source_mass_gain * (c2 * mass_squared[n] * a_old(idx_ax, k, j, i));
+            const Real src_ay_mass =
+                -em_source_mass_gain * (c2 * mass_squared[n] * a_old(idx_ay, k, j, i));
+            const Real src_az_mass =
+                -em_source_mass_gain * (c2 * mass_squared[n] * a_old(idx_az, k, j, i));
+
+            const Real src_a0_current = -em_source_current_gain * (mu0 * j0_modes[n]);
+            const Real src_ax_current = -em_source_current_gain * (mu0 * jx_modes[n]);
+            const Real src_ay_current = -em_source_current_gain * (mu0 * jy_modes[n]);
+            const Real src_az_current = -em_source_current_gain * (mu0 * jz_modes[n]);
+            const Real src_aw_current = -em_source_current_gain * (mu0 * jw_modes[n]);
+
+            const Real src_a0_damping =
+                -em_source_damping_gain * (damping * pi_old(idx_a0, k, j, i));
+            const Real src_ax_damping =
+                -em_source_damping_gain * (damping * pi_old(idx_ax, k, j, i));
+            const Real src_ay_damping =
+                -em_source_damping_gain * (damping * pi_old(idx_ay, k, j, i));
+            const Real src_az_damping =
+                -em_source_damping_gain * (damping * pi_old(idx_az, k, j, i));
+            const Real src_aw_damping =
+                -em_source_damping_gain * (damping * pi_old(idx_aw, k, j, i));
+
+            const Real src_ax_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_x;
+            const Real src_ay_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_y;
+            const Real src_az_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_z;
+            const Real src_aw_spatial_mixed = -(c2 * mixed_div_a_next);
+
+            const Real rhs_a0_timelike_from_piw =
+                -em_source_timelike_gain * (c2 * coupling_coeff * mixed_dt_aw_prev);
+            const Real rhs_aw_timelike_from_pi0 =
+                -em_source_timelike_gain * (c2 * coupling_raise * mixed_dt_a0_next);
+
+            const Real rhs_a0 = src_a0_lap + src_a0_mass + src_a0_current +
+                                src_a0_damping + rhs_a0_timelike_from_piw;
+            const Real rhs_ax = src_ax_lap + src_ax_mass + src_ax_spatial_mixed +
+                                src_ax_current + src_ax_damping;
+            const Real rhs_ay = src_ay_lap + src_ay_mass + src_ay_spatial_mixed +
+                                src_ay_current + src_ay_damping;
+            const Real rhs_az = src_az_lap + src_az_mass + src_az_spatial_mixed +
+                                src_az_current + src_az_damping;
+            const Real rhs_aw = src_aw_lap + src_aw_spatial_mixed + src_aw_current +
+                                src_aw_damping + rhs_aw_timelike_from_pi0;
 
             // Track the time-like mixed couplings explicitly so conservative-path runs
             // can be diagnosed before tightening behavioral gates.
@@ -994,6 +1028,31 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 dt * cell_volume * rhs_aw_timelike_from_pi0;
             diag_src_timelike_aw_from_pi0_abs_step +=
                 dt * cell_volume * std::abs(rhs_aw_timelike_from_pi0);
+            diag_src_em_laplacian_abs_step +=
+                dt * cell_volume *
+                (std::abs(src_a0_lap) + std::abs(src_ax_lap) + std::abs(src_ay_lap) +
+                 std::abs(src_az_lap) + std::abs(src_aw_lap));
+            diag_src_em_mass_abs_step +=
+                dt * cell_volume *
+                (std::abs(src_a0_mass) + std::abs(src_ax_mass) + std::abs(src_ay_mass) +
+                 std::abs(src_az_mass));
+            diag_src_em_current_abs_step +=
+                dt * cell_volume *
+                (std::abs(src_a0_current) + std::abs(src_ax_current) +
+                 std::abs(src_ay_current) + std::abs(src_az_current) +
+                 std::abs(src_aw_current));
+            diag_src_em_damping_abs_step +=
+                dt * cell_volume *
+                (std::abs(src_a0_damping) + std::abs(src_ax_damping) +
+                 std::abs(src_ay_damping) + std::abs(src_az_damping) +
+                 std::abs(src_aw_damping));
+            diag_src_em_spatial_mixed_abs_step +=
+                dt * cell_volume *
+                (std::abs(src_ax_spatial_mixed) + std::abs(src_ay_spatial_mixed) +
+                 std::abs(src_az_spatial_mixed) + std::abs(src_aw_spatial_mixed));
+            diag_src_em_timelike_abs_step +=
+                dt * cell_volume *
+                (std::abs(rhs_a0_timelike_from_piw) + std::abs(rhs_aw_timelike_from_pi0));
 
             pi_new(idx_a0, k, j, i) = pi_old(idx_a0, k, j, i) + (dt * rhs_a0);
             pi_new(idx_ax, k, j, i) = pi_old(idx_ax, k, j, i) + (dt * rhs_ax);
@@ -1097,6 +1156,18 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/int_src_timelike_aw_from_pi0");
   auto *diag_src_timelike_aw_from_pi0_abs =
       modes_pkg->MutableParam<double>("diag/int_src_timelike_aw_from_pi0_abs");
+  auto *diag_src_em_laplacian_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_em_laplacian_abs");
+  auto *diag_src_em_mass_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_em_mass_abs");
+  auto *diag_src_em_current_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_em_current_abs");
+  auto *diag_src_em_damping_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_em_damping_abs");
+  auto *diag_src_em_spatial_mixed_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_em_spatial_mixed_abs");
+  auto *diag_src_em_timelike_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_em_timelike_abs");
   *diag_ja_ea += diag_ja_ea_step;
   *diag_jw_ew += diag_jw_ew_step;
   *diag_s_leak += diag_s_leak_step;
@@ -1121,6 +1192,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_src_timelike_a0_from_piw_abs += diag_src_timelike_a0_from_piw_abs_step;
   *diag_src_timelike_aw_from_pi0 += diag_src_timelike_aw_from_pi0_step;
   *diag_src_timelike_aw_from_pi0_abs += diag_src_timelike_aw_from_pi0_abs_step;
+  *diag_src_em_laplacian_abs += diag_src_em_laplacian_abs_step;
+  *diag_src_em_mass_abs += diag_src_em_mass_abs_step;
+  *diag_src_em_current_abs += diag_src_em_current_abs_step;
+  *diag_src_em_damping_abs += diag_src_em_damping_abs_step;
+  *diag_src_em_spatial_mixed_abs += diag_src_em_spatial_mixed_abs_step;
+  *diag_src_em_timelike_abs += diag_src_em_timelike_abs_step;
 }
 
 } // namespace Modes4D

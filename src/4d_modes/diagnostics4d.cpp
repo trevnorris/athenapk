@@ -224,6 +224,36 @@ Real SrcTimelikeAwFromPi0AbsAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_src_timelike_aw_from_pi0_abs");
 }
 
+Real SrcEMLaplacianAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_laplacian_abs");
+}
+
+Real SrcEMMassAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_mass_abs");
+}
+
+Real SrcEMCurrentAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_current_abs");
+}
+
+Real SrcEMDampingAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_damping_abs");
+}
+
+Real SrcEMSpatialMixedAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_spatial_mixed_abs");
+}
+
+Real SrcEMTimelikeAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_timelike_abs");
+}
+
 Real ContinuityLocalL1Hst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/continuity_local_l1");
@@ -1415,6 +1445,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_src_timelike_a0_from_piw_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_src_timelike_aw_from_pi0", 0.0, true);
   pkg->AddParam<double>("diag/int_src_timelike_aw_from_pi0_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_laplacian_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_mass_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_current_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_damping_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_spatial_mixed_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_timelike_abs", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l1", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l2", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_max_abs", 0.0, true);
@@ -1517,6 +1553,24 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, SrcTimelikeAwFromPi0AbsAccumulatorHst,
       "m4d_int_src_timelike_aw_from_pi0_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMLaplacianAbsAccumulatorHst,
+      "m4d_int_src_em_laplacian_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMMassAbsAccumulatorHst,
+      "m4d_int_src_em_mass_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMCurrentAbsAccumulatorHst,
+      "m4d_int_src_em_current_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMDampingAbsAccumulatorHst,
+      "m4d_int_src_em_damping_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMSpatialMixedAbsAccumulatorHst,
+      "m4d_int_src_em_spatial_mixed_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMTimelikeAbsAccumulatorHst,
+      "m4d_int_src_em_timelike_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ContinuityLocalL1Hst, "m4d_cont_local_l1"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(

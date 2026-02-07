@@ -233,6 +233,10 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `em_damping`
 - `em_mu0`
 - `em_conservative_transport`
+- `em_source_mass_gain`
+- `em_source_current_gain`
+- `em_source_damping_gain`
+- `em_source_timelike_gain`
 - `plasma_qom_ion`
 - `plasma_qom_electron`
 - `plasma_force_source_gain`
@@ -556,6 +560,7 @@ with fail-fast behavior on the first failing check:
 - `modes4d_em_conservative_timelike_diag_regression`
 - `modes4d_em_conservative_regression`
 - `modes4d_em_conservative_transport_ledger_regression`
+- `modes4d_em_conservative_source_channels_regression`
 - `modes4d_harris_regression`
 - `modes4d_harris_pseudospectral_regression`
 - `modes4d_harris_nw_convergence_regression`
@@ -666,6 +671,31 @@ EM transport closure settings:
 It keeps scalar/mixed-channel conservative checks and enforces mode-0
 `em4d_pi` transport/source ledger closure in conservative mode.
 
+### 22) Run conservative EM source-channel decomposition/gain gate
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_em_conservative_source_channels_regression
+```
+
+This target runs `scripts/modes4d_em_conservative_source_channels_regression.py`
+and checks the term-resolved conservative EM source diagnostics:
+- `m4d_int_src_em_laplacian_abs`
+- `m4d_int_src_em_mass_abs`
+- `m4d_int_src_em_current_abs`
+- `m4d_int_src_em_damping_abs`
+- `m4d_int_src_em_spatial_mixed_abs`
+- `m4d_int_src_em_timelike_abs`
+
+It enforces, in short Harris runs:
+- conservative path suppresses Laplacian and spatial-mixed source channels
+- non-conservative path activates Laplacian and spatial-mixed source channels
+- mass/current/timelike channels remain active in conservative baseline
+- `em_source_mass_gain=0`, `em_source_current_gain=0`,
+  `em_source_timelike_gain=0` each suppress their corresponding channel
+- damping channel is exercised with `em_damping>0` and then suppressed by
+  `em_source_damping_gain=0`
+
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable
 - nonzero pressure transport now uses a bounded blended Rusanov path:
@@ -733,6 +763,8 @@ Current transverse two-fluid source status for tuned Harris decks:
   - `cmake --build build-baseline --target modes4d_harris_wflux_regression`: PASS
 - dedicated CMake gate:
   - `cmake --build build-baseline --target modes4d_em_conservative_transport_ledger_regression`: PASS
+- dedicated CMake gate:
+  - `cmake --build build-baseline --target modes4d_em_conservative_source_channels_regression`: PASS
 - tuned Harris regression (`modes4d_harris_regression`): PASS
 
 Current `N_w`-convergence status for tuned Harris decks:
