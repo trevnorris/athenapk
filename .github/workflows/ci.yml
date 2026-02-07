@@ -87,6 +87,9 @@ jobs:
             build/modes4d_harris_lundquist_production/outputs/plots/lundquist_primary_channels.png
             build/modes4d_harris_lundquist_production/outputs/plots/lundquist_subscale_channels.png
             build/modes4d_harris_lundquist_production/outputs/plots/lundquist_status.csv
+            build/modes4d_harris_lundquist_production/outputs/topology/topology_timeseries.png
+            build/modes4d_harris_lundquist_production/outputs/topology/topology_status.csv
+            build/modes4d_harris_lundquist_production/outputs/topology/topology_comparison_report.md
             build/modes4d_harris_ablation_campaign/outputs/ablation_summary.csv
             build/modes4d_harris_ablation_campaign/outputs/ablation_report.md
             build/modes4d_harris_ablation_campaign/outputs/plots/ablation_channels.png

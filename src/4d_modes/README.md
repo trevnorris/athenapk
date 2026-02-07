@@ -770,6 +770,15 @@ This target wraps `scripts/run_harris_lundquist_production.sh` and runs:
     - controlled-vs-full per-`S` ratios/deltas
     - controlled-inactivity and full-activation gate table
     - rate-like reconnection proxy (`max|d(psi0_span)/dt|`) with scan correlations
+- automatic controlled-vs-full topology export:
+  - `build-baseline/modes4d_harris_lundquist_production/outputs/topology/topology_timeseries.png`
+  - `build-baseline/modes4d_harris_lundquist_production/outputs/topology/topology_status.csv`
+  - `build-baseline/modes4d_harris_lundquist_production/outputs/topology/topology_gate_details.csv`
+  - `build-baseline/modes4d_harris_lundquist_production/outputs/topology/topology_comparison_report.md`
+  - runner controls:
+    - `--topology-s-value`
+    - `--topology-output-dir`
+    - `--skip-topology`
 
 Ablation one-command target:
 
@@ -794,6 +803,12 @@ This target depends on both production and ablation targets and then generates:
 - `build-baseline/modes4d_results_pack/modes4d_results_panel.png`
 - `build-baseline/modes4d_results_pack/modes4d_results_status.csv`
 - `build-baseline/modes4d_results_pack/modes4d_results_pack.md`
+
+The results-pack gate summary now includes:
+- `lundquist_gates`
+- `topology_gates`
+- `ablation_gates`
+- `overall`
 
 Script wrapper alternative:
 
@@ -968,6 +983,9 @@ CI integration:
   - `build/modes4d_harris_lundquist_production/outputs/plots/lundquist_primary_channels.png`
   - `build/modes4d_harris_lundquist_production/outputs/plots/lundquist_subscale_channels.png`
   - `build/modes4d_harris_lundquist_production/outputs/plots/lundquist_status.csv`
+  - `build/modes4d_harris_lundquist_production/outputs/topology/topology_timeseries.png`
+  - `build/modes4d_harris_lundquist_production/outputs/topology/topology_status.csv`
+  - `build/modes4d_harris_lundquist_production/outputs/topology/topology_comparison_report.md`
 
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable

@@ -34,6 +34,9 @@ PLOT_OUTPUT_DIR=""
 SKIP_PLOTS=0
 REPORT_PATH=""
 SKIP_REPORT=0
+TOPOLOGY_OUTPUT_DIR=""
+TOPOLOGY_S_VALUE=""
+SKIP_TOPOLOGY=0
 
 usage() {
   cat <<'EOF'
@@ -91,6 +94,11 @@ Options:
   --skip-plots            Skip post-scan plotting
   --report-path PATH      Markdown report path (default: <output-dir>/production_report.md)
   --skip-report           Skip markdown report generation
+  --topology-output-dir DIR
+                          Topology artifact directory (default: <output-dir>/topology)
+  --topology-s-value FLOAT
+                          Select nearest S case for topology comparison (default: lowest S)
+  --skip-topology         Skip controlled-vs-full topology comparison export
   -h, --help               Show this help
 EOF
 }
@@ -215,6 +223,18 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-report)
       SKIP_REPORT=1
+      shift
+      ;;
+    --topology-output-dir)
+      TOPOLOGY_OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    --topology-s-value)
+      TOPOLOGY_S_VALUE="$2"
+      shift 2
+      ;;
+    --skip-topology)
+      SKIP_TOPOLOGY=1
       shift
       ;;
     -h|--help)
@@ -366,4 +386,25 @@ if [[ "${SKIP_REPORT}" -eq 0 ]]; then
     --full-min-jw-ew-abs "${FULL_MIN_JW_EW_ABS}" \
     --full-min-s-leak-abs "${FULL_MIN_S_LEAK_ABS}" \
     --full-min-jw-mode-activity-proxy "${FULL_MIN_JW_MODE_ACTIVITY_PROXY}"
+fi
+
+if [[ "${SKIP_TOPOLOGY}" -eq 0 ]]; then
+  TOPOLOGY_ARGS=()
+  if [[ -n "${TOPOLOGY_OUTPUT_DIR}" ]]; then
+    TOPOLOGY_ARGS+=(--output-dir "${TOPOLOGY_OUTPUT_DIR}")
+  fi
+  if [[ -n "${TOPOLOGY_S_VALUE}" ]]; then
+    TOPOLOGY_ARGS+=(--s-value "${TOPOLOGY_S_VALUE}")
+  fi
+
+  python3 "${REPO_ROOT}/scripts/generate_harris_topology_comparison.py" \
+    --summary-csv "${SUMMARY_CSV}" \
+    --scan-output-dir "${OUTPUT_DIR}" \
+    --full-min-jw-ew-abs "${FULL_MIN_JW_EW_ABS}" \
+    --full-min-s-leak-abs "${FULL_MIN_S_LEAK_ABS}" \
+    --full-min-mixed-ew2 "${FULL_MIN_MIXED_EW2}" \
+    --controlled-max-jw-ew-abs "${CONTROLLED_MAX_JW_EW_ABS}" \
+    --controlled-max-s-leak-abs "${CONTROLLED_MAX_S_LEAK_ABS}" \
+    --max-abs-dpsi0-enhancement-min "${MAX_ABS_DPSI0_ENHANCEMENT_MIN}" \
+    "${TOPOLOGY_ARGS[@]}"
 fi

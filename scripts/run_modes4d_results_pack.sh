@@ -61,6 +61,10 @@ python3 "${REPO_ROOT}/scripts/generate_modes4d_results_pack.py" \
   --lundquist-report "${BUILD_DIR}/modes4d_harris_lundquist_production/outputs/production_report.md" \
   --lundquist-primary-plot "${BUILD_DIR}/modes4d_harris_lundquist_production/outputs/plots/lundquist_primary_channels.png" \
   --lundquist-subscale-plot "${BUILD_DIR}/modes4d_harris_lundquist_production/outputs/plots/lundquist_subscale_channels.png" \
+  --topology-report "${BUILD_DIR}/modes4d_harris_lundquist_production/outputs/topology/topology_comparison_report.md" \
+  --topology-plot "${BUILD_DIR}/modes4d_harris_lundquist_production/outputs/topology/topology_timeseries.png" \
+  --topology-status-csv "${BUILD_DIR}/modes4d_harris_lundquist_production/outputs/topology/topology_status.csv" \
+  --topology-gates-csv "${BUILD_DIR}/modes4d_harris_lundquist_production/outputs/topology/topology_gate_details.csv" \
   --ablation-summary-csv "${BUILD_DIR}/modes4d_harris_ablation_campaign/outputs/ablation_summary.csv" \
   --ablation-report "${BUILD_DIR}/modes4d_harris_ablation_campaign/outputs/ablation_report.md" \
   --ablation-plot "${BUILD_DIR}/modes4d_harris_ablation_campaign/outputs/plots/ablation_channels.png" \

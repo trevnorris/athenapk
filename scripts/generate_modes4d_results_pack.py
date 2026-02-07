@@ -20,6 +20,15 @@ def parse_float(row, key):
         return math.nan
 
 
+def parse_scalar_float(raw):
+    if raw is None or raw == "":
+        return math.nan
+    try:
+        return float(raw)
+    except ValueError:
+        return math.nan
+
+
 def fmt(value):
     if not math.isfinite(value):
         return "nan"
@@ -45,6 +54,34 @@ def load_csv_rows(path):
     if not rows:
         raise RuntimeError(f"CSV has no rows: {path}")
     return rows
+
+
+def load_status_map(path):
+    rows = load_csv_rows(path)
+    status_map = {}
+    for row in rows:
+        component = (row.get("component") or "").strip()
+        status = (row.get("status") or "").strip()
+        if component:
+            status_map[component] = status
+    if not status_map:
+        raise RuntimeError(f"Status CSV has no component rows: {path}")
+    return status_map
+
+
+def load_topology_gate_rows(path):
+    rows = load_csv_rows(path)
+    gate_rows = []
+    for row in rows:
+        gate_rows.append(
+            (
+                row.get("gate", ""),
+                parse_scalar_float(row.get("value", "")),
+                parse_scalar_float(row.get("threshold", "")),
+                (row.get("status", "") or "FAIL").strip(),
+            )
+        )
+    return gate_rows
 
 
 def build_lundquist_gate_table(rows):
@@ -134,12 +171,13 @@ def build_ablation_table(rows):
     return table_rows, overall
 
 
-def write_summary_csv(path, lundquist_status, ablation_status, overall_status):
+def write_summary_csv(path, lundquist_status, ablation_status, topology_status, overall_status):
     with path.open("w", encoding="utf-8", newline="") as fp:
         writer = csv.writer(fp)
         writer.writerow(["component", "status"])
         writer.writerow(["lundquist_gates", lundquist_status])
         writer.writerow(["ablation_gates", ablation_status])
+        writer.writerow(["topology_gates", topology_status])
         writer.writerow(["overall", overall_status])
 
 
@@ -147,12 +185,15 @@ def write_markdown_report(
     path,
     lundquist_summary_csv,
     lundquist_report,
+    topology_report,
     ablation_summary_csv,
     ablation_report,
     panel_png,
     lundquist_gate_rows,
+    topology_gate_rows,
     ablation_rows,
     lundquist_status,
+    topology_status,
     ablation_status,
     overall_status,
 ):
@@ -162,12 +203,14 @@ def write_markdown_report(
     lines.append(f"- Generated (UTC): {datetime.now(timezone.utc).isoformat()}")
     lines.append(f"- Overall status: **{overall_status}**")
     lines.append(f"- Lundquist gate status: **{lundquist_status}**")
+    lines.append(f"- Topology gate status: **{topology_status}**")
     lines.append(f"- Ablation gate status: **{ablation_status}**")
     lines.append("")
     lines.append("## Artifacts")
     lines.append("")
     lines.append(f"- Lundquist summary CSV: `{lundquist_summary_csv}`")
     lines.append(f"- Lundquist report: `{lundquist_report}`")
+    lines.append(f"- Topology report: `{topology_report}`")
     lines.append(f"- Ablation summary CSV: `{ablation_summary_csv}`")
     lines.append(f"- Ablation report: `{ablation_report}`")
     lines.append(f"- Combined panel: `{panel_png}`")
@@ -178,6 +221,13 @@ def write_markdown_report(
     lines.append("| :--- | ---: | :---: |")
     for cond, value, status in lundquist_gate_rows:
         lines.append(f"| `{cond}` | `{fmt(value)}` | `{status}` |")
+    lines.append("")
+    lines.append("## Topology Gates")
+    lines.append("")
+    lines.append("| Gate | Value | Threshold | Status |")
+    lines.append("| :--- | ---: | ---: | :---: |")
+    for gate, value, threshold, status in topology_gate_rows:
+        lines.append(f"| `{gate}` | `{fmt(value)}` | `{fmt(threshold)}` | `{status}` |")
     lines.append("")
     lines.append("## Ablation Causality Checks")
     lines.append("")
@@ -206,12 +256,14 @@ def render_panel(
     panel_path,
     lundquist_primary_png,
     lundquist_subscale_png,
+    topology_png,
     ablation_png,
     lundquist_status,
+    topology_status,
     ablation_status,
     overall_status,
 ):
-    fig, axs = plt.subplots(2, 2, figsize=(16, 10), constrained_layout=True)
+    fig, axs = plt.subplots(2, 3, figsize=(20, 10), constrained_layout=True)
 
     axs[0, 0].imshow(plt.imread(lundquist_primary_png))
     axs[0, 0].set_title("Lundquist Primary Channels")
@@ -220,6 +272,10 @@ def render_panel(
     axs[0, 1].imshow(plt.imread(lundquist_subscale_png))
     axs[0, 1].set_title("Lundquist Subscale Channels")
     axs[0, 1].axis("off")
+
+    axs[0, 2].imshow(plt.imread(topology_png))
+    axs[0, 2].set_title("Controlled vs Full Topology")
+    axs[0, 2].axis("off")
 
     axs[1, 0].imshow(plt.imread(ablation_png))
     axs[1, 0].set_title("Ablation Channels")
@@ -231,16 +287,19 @@ def render_panel(
             "Modes4D Results Pack",
             "",
             f"Lundquist gates: {lundquist_status}",
+            f"Topology gates: {topology_status}",
             f"Ablation gates: {ablation_status}",
             f"Overall: {overall_status}",
             "",
             "Novelty evidence bundle:",
             "- scan-level S trends with ledger closure",
+            "- controlled-vs-full topology comparison",
             "- channel-causality ablations",
             "- combined report/plots for PR review",
         ]
     )
     axs[1, 1].text(0.0, 0.95, summary_text, va="top", fontsize=12)
+    axs[1, 2].axis("off")
 
     fig.savefig(panel_path, dpi=150)
     plt.close(fig)
@@ -252,6 +311,10 @@ def main():
     parser.add_argument("--lundquist-report", required=True)
     parser.add_argument("--lundquist-primary-plot", required=True)
     parser.add_argument("--lundquist-subscale-plot", required=True)
+    parser.add_argument("--topology-report", required=True)
+    parser.add_argument("--topology-plot", required=True)
+    parser.add_argument("--topology-status-csv", required=True)
+    parser.add_argument("--topology-gates-csv", required=True)
     parser.add_argument("--ablation-summary-csv", required=True)
     parser.add_argument("--ablation-report", required=True)
     parser.add_argument("--ablation-plot", required=True)
@@ -265,6 +328,10 @@ def main():
     lundquist_report = Path(args.lundquist_report).resolve()
     lundquist_primary_png = Path(args.lundquist_primary_plot).resolve()
     lundquist_subscale_png = Path(args.lundquist_subscale_plot).resolve()
+    topology_report = Path(args.topology_report).resolve()
+    topology_png = Path(args.topology_plot).resolve()
+    topology_status_csv = Path(args.topology_status_csv).resolve()
+    topology_gates_csv = Path(args.topology_gates_csv).resolve()
     ablation_summary_csv = Path(args.ablation_summary_csv).resolve()
     ablation_report = Path(args.ablation_report).resolve()
     ablation_png = Path(args.ablation_plot).resolve()
@@ -274,6 +341,10 @@ def main():
         lundquist_report,
         lundquist_primary_png,
         lundquist_subscale_png,
+        topology_report,
+        topology_png,
+        topology_status_csv,
+        topology_gates_csv,
         ablation_summary_csv,
         ablation_report,
         ablation_png,
@@ -282,11 +353,18 @@ def main():
             raise FileNotFoundError(f"Missing required input: {path}")
 
     lundquist_rows = load_csv_rows(lundquist_summary_csv)
+    topology_status_rows = load_status_map(topology_status_csv)
+    topology_gate_rows = load_topology_gate_rows(topology_gates_csv)
     ablation_rows_src = load_csv_rows(ablation_summary_csv)
 
     lundquist_gate_rows, lundquist_status = build_lundquist_gate_table(lundquist_rows)
+    topology_status = topology_status_rows.get("overall", "FAIL")
     ablation_rows, ablation_status = build_ablation_table(ablation_rows_src)
-    overall_status = "PASS" if (lundquist_status == "PASS" and ablation_status == "PASS") else "FAIL"
+    overall_status = (
+        "PASS"
+        if (lundquist_status == "PASS" and topology_status == "PASS" and ablation_status == "PASS")
+        else "FAIL"
+    )
 
     panel_png = output_dir / "modes4d_results_panel.png"
     summary_csv = output_dir / "modes4d_results_status.csv"
@@ -296,22 +374,27 @@ def main():
         panel_png,
         lundquist_primary_png,
         lundquist_subscale_png,
+        topology_png,
         ablation_png,
         lundquist_status,
+        topology_status,
         ablation_status,
         overall_status,
     )
-    write_summary_csv(summary_csv, lundquist_status, ablation_status, overall_status)
+    write_summary_csv(summary_csv, lundquist_status, ablation_status, topology_status, overall_status)
     write_markdown_report(
         report_md,
         lundquist_summary_csv,
         lundquist_report,
+        topology_report,
         ablation_summary_csv,
         ablation_report,
         panel_png,
         lundquist_gate_rows,
+        topology_gate_rows,
         ablation_rows,
         lundquist_status,
+        topology_status,
         ablation_status,
         overall_status,
     )
