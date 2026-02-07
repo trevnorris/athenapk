@@ -48,6 +48,10 @@ Implemented now:
 - split plasma mode-continuity coupling update:
   - source-step term applies leakage coupling
     `d_t rho^(n) = -(sqrt(2(n+1))/lambda) j_w^(n+1)`
+  - optional source-step `w`-flux coupling for species momentum/energy modes:
+    - applies projected `-<phi_n, d_w F_w(U)>_Z` leakage-style updates for
+      `momx/momy/momz/momw/energy`
+    - runtime gain: `modes4d/plasma_w_flux_source_gain`
   - brane transport `div(j^a,(n))` is handled in the conservative flux pipeline by
     registering `plasma4d_cons` with `WithFluxes` and filling stage fluxes for
     `rho/momx/momy/momz/momw/energy` each stage
@@ -235,6 +239,7 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_momw_source_gain`
 - `plasma_momw_pressure_source_gain`
 - `plasma_momw_damping`
+- `plasma_w_flux_source_gain`
 - `plasma_rho_divj_gain`
 - `plasma_rho_floor`
 - `plasma_energy_source_gain`
@@ -680,6 +685,19 @@ Current transverse two-fluid source status for tuned Harris decks:
     `ApplyID3Raising` (no nodal finite-difference in `w`).
 - tuned Harris decks currently set:
   - `plasma_momw_pressure_source_gain = 1.0`
+- `modes4d/plasma_w_flux_source_gain` controls optional projected `w`-flux
+  source coupling for species momentum/energy modes:
+  - applies leakage-style projected couplings
+    `-<phi_n, d_w F_w(U)>_Z` to
+    `momx/momy/momz/momw/energy`
+  - `F_w` is reconstructed in node space from modal state:
+    - `F_w(momx)=momx*v_w`
+    - `F_w(momy)=momy*v_w`
+    - `F_w(momz)=momz*v_w`
+    - `F_w(momw)=momw*v_w + p`
+    - `F_w(energy)=(energy + p)*v_w`
+  - default is `0.0` (baseline unchanged), with focused smoke verified at
+    `plasma_w_flux_source_gain=0.1`.
 - tuned Harris regression (`modes4d_harris_regression`): PASS
 
 Current `N_w`-convergence status for tuned Harris decks:

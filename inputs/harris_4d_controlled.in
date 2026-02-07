@@ -56,6 +56,7 @@ plasma_gamma = 1.666666666666667
 plasma_force_source_gain = 1.0
 plasma_momw_source_gain = 1.0
 plasma_momw_pressure_source_gain = 1.0
+plasma_w_flux_source_gain = 0.0
 plasma_momw_damping = 0.1
 plasma_rho_divj_gain = 1.0
 plasma_energy_source_gain = 1.0

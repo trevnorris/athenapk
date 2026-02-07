@@ -301,6 +301,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real momw_pressure_source_gain =
       modes_pkg->Param<double>("plasma4d/momw_pressure_source_gain");
   const Real momw_damping = modes_pkg->Param<double>("plasma4d/momw_damping");
+  const Real w_flux_source_gain = modes_pkg->Param<double>("plasma4d/w_flux_source_gain");
   const Real rho_floor = modes_pkg->Param<double>("plasma4d/rho_floor");
   const Real energy_source_gain = modes_pkg->Param<double>("plasma4d/energy_source_gain");
   const Real energy_floor = modes_pkg->Param<double>("plasma4d/energy_floor");
@@ -462,6 +463,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     std::vector<Real> momz_modes_new(n_modes, 0.0);
     std::vector<Real> energy_modes_new(n_modes, 0.0);
     std::vector<Real> energy_nodes_new(tables.NumQuadrature(), 0.0);
+    std::vector<Real> wflux_momx_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> wflux_momy_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> wflux_momz_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> wflux_momw_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> wflux_energy_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> wflux_momx_modes(n_modes, 0.0);
+    std::vector<Real> wflux_momy_modes(n_modes, 0.0);
+    std::vector<Real> wflux_momz_modes(n_modes, 0.0);
+    std::vector<Real> wflux_momw_modes(n_modes, 0.0);
+    std::vector<Real> wflux_energy_modes(n_modes, 0.0);
     std::vector<Real> charge_modes_old(n_modes, 0.0);
     const int pi0_mode0_idx = EMIndex(0, kCompA0);
     const int pix_mode0_idx = EMIndex(0, kCompAX);
@@ -706,21 +717,100 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             }
           }
 
-          const Real momx_mode0_new = plasma_new(ion_mode0 + kPlasmaMomX, k, j, i) +
-                                      plasma_new(ele_mode0 + kPlasmaMomX, k, j, i);
-          const Real momy_mode0_new = plasma_new(ion_mode0 + kPlasmaMomY, k, j, i) +
-                                      plasma_new(ele_mode0 + kPlasmaMomY, k, j, i);
-          const Real momz_mode0_new = plasma_new(ion_mode0 + kPlasmaMomZ, k, j, i) +
-                                      plasma_new(ele_mode0 + kPlasmaMomZ, k, j, i);
-          const Real momw_mode0_new = plasma_new(ion_mode0 + kPlasmaMomW, k, j, i) +
-                                      plasma_new(ele_mode0 + kPlasmaMomW, k, j, i);
-          const Real energy_mode0_new = plasma_new(ion_mode0 + kPlasmaEnergy, k, j, i) +
-                                        plasma_new(ele_mode0 + kPlasmaEnergy, k, j, i);
-          diag_srcmomx_mode0_step += cell_volume * (momx_mode0_new - momx_mode0_old);
-          diag_srcmomy_mode0_step += cell_volume * (momy_mode0_new - momy_mode0_old);
-          diag_srcmomz_mode0_step += cell_volume * (momz_mode0_new - momz_mode0_old);
-          diag_srcmomw_mode0_step += cell_volume * (momw_mode0_new - momw_mode0_old);
-          diag_srcenergy_mode0_step += cell_volume * (energy_mode0_new - energy_mode0_old);
+          if (w_flux_source_gain != 0.0) {
+            // Optional two-fluid closure extension: apply projected w-flux couplings
+            // to momentum/energy modes via the same leakage-style mode raising.
+            for (int s = 0; s < kSpeciesCount; ++s) {
+              for (int n = 0; n < n_modes; ++n) {
+                const int base = PlasmaIndex(s, n, 0, n_modes);
+                rho_modes[n] = plasma_new(base + kPlasmaRho, k, j, i);
+                momx_modes[n] = plasma_new(base + kPlasmaMomX, k, j, i);
+                momy_modes[n] = plasma_new(base + kPlasmaMomY, k, j, i);
+                momz_modes[n] = plasma_new(base + kPlasmaMomZ, k, j, i);
+                momw_modes[n] = plasma_new(base + kPlasmaMomW, k, j, i);
+                energy_modes[n] = plasma_new(base + kPlasmaEnergy, k, j, i);
+              }
+
+              for (int q = 0; q < tables.NumQuadrature(); ++q) {
+                Real rho_node = 0.0;
+                Real momx_node = 0.0;
+                Real momy_node = 0.0;
+                Real momz_node = 0.0;
+                Real momw_node = 0.0;
+                Real energy_node = 0.0;
+                for (int n = 0; n < n_modes; ++n) {
+                  const Real phi_nq = tables.Phi(n, q);
+                  rho_node += rho_modes[n] * phi_nq;
+                  momx_node += momx_modes[n] * phi_nq;
+                  momy_node += momy_modes[n] * phi_nq;
+                  momz_node += momz_modes[n] * phi_nq;
+                  momw_node += momw_modes[n] * phi_nq;
+                  energy_node += energy_modes[n] * phi_nq;
+                }
+
+                const Real rho_safe = std::max(rho_node, rho_floor);
+                const Real vw = momw_node / rho_safe;
+                const Real kinetic = 0.5 *
+                                     ((momx_node * momx_node) + (momy_node * momy_node) +
+                                      (momz_node * momz_node) + (momw_node * momw_node)) /
+                                     rho_safe;
+                const Real pressure_node =
+                    std::max(pressure_floor, gm1 * std::max(energy_node - kinetic, 0.0));
+
+                wflux_momx_nodes[q] = momx_node * vw;
+                wflux_momy_nodes[q] = momy_node * vw;
+                wflux_momz_nodes[q] = momz_node * vw;
+                wflux_momw_nodes[q] = (momw_node * vw) + pressure_node;
+                wflux_energy_nodes[q] = (energy_node + pressure_node) * vw;
+              }
+
+              for (int n = 0; n < n_modes; ++n) {
+                Real projected_wflux_momx = 0.0;
+                Real projected_wflux_momy = 0.0;
+                Real projected_wflux_momz = 0.0;
+                Real projected_wflux_momw = 0.0;
+                Real projected_wflux_energy = 0.0;
+                for (int q = 0; q < tables.NumQuadrature(); ++q) {
+                  const Real proj = weights[q] * tables.Phi(n, q);
+                  projected_wflux_momx += proj * wflux_momx_nodes[q];
+                  projected_wflux_momy += proj * wflux_momy_nodes[q];
+                  projected_wflux_momz += proj * wflux_momz_nodes[q];
+                  projected_wflux_momw += proj * wflux_momw_nodes[q];
+                  projected_wflux_energy += proj * wflux_energy_nodes[q];
+                }
+                wflux_momx_modes[n] = projected_wflux_momx;
+                wflux_momy_modes[n] = projected_wflux_momy;
+                wflux_momz_modes[n] = projected_wflux_momz;
+                wflux_momw_modes[n] = projected_wflux_momw;
+                wflux_energy_modes[n] = projected_wflux_energy;
+              }
+
+              for (int n = 0; n < n_modes; ++n) {
+                const int base = PlasmaIndex(s, n, 0, n_modes);
+                const Real coupling =
+                    (n + 1 < n_modes) ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda)
+                                      : 0.0;
+                const Real leak_momx =
+                    (n + 1 < n_modes) ? (-coupling * wflux_momx_modes[n + 1]) : 0.0;
+                const Real leak_momy =
+                    (n + 1 < n_modes) ? (-coupling * wflux_momy_modes[n + 1]) : 0.0;
+                const Real leak_momz =
+                    (n + 1 < n_modes) ? (-coupling * wflux_momz_modes[n + 1]) : 0.0;
+                const Real leak_momw =
+                    (n + 1 < n_modes) ? (-coupling * wflux_momw_modes[n + 1]) : 0.0;
+                const Real leak_energy =
+                    (n + 1 < n_modes) ? (-coupling * wflux_energy_modes[n + 1]) : 0.0;
+                plasma_new(base + kPlasmaMomX, k, j, i) += dt * w_flux_source_gain * leak_momx;
+                plasma_new(base + kPlasmaMomY, k, j, i) += dt * w_flux_source_gain * leak_momy;
+                plasma_new(base + kPlasmaMomZ, k, j, i) += dt * w_flux_source_gain * leak_momz;
+                plasma_new(base + kPlasmaMomW, k, j, i) += dt * w_flux_source_gain * leak_momw;
+                plasma_new(base + kPlasmaEnergy, k, j, i) = std::max(
+                    energy_floor,
+                    plasma_new(base + kPlasmaEnergy, k, j, i) +
+                        dt * w_flux_source_gain * leak_energy);
+              }
+            }
+          }
 
           // Source-step mode continuity coupling update for each species:
           // d_t rho^(n) = -(sqrt(2(n+1))/lambda) * j_w^(n+1)
@@ -741,6 +831,22 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                   std::max(rho_floor, rho_old + (dt * rhs_rho));
             }
           }
+
+          const Real momx_mode0_new = plasma_new(ion_mode0 + kPlasmaMomX, k, j, i) +
+                                      plasma_new(ele_mode0 + kPlasmaMomX, k, j, i);
+          const Real momy_mode0_new = plasma_new(ion_mode0 + kPlasmaMomY, k, j, i) +
+                                      plasma_new(ele_mode0 + kPlasmaMomY, k, j, i);
+          const Real momz_mode0_new = plasma_new(ion_mode0 + kPlasmaMomZ, k, j, i) +
+                                      plasma_new(ele_mode0 + kPlasmaMomZ, k, j, i);
+          const Real momw_mode0_new = plasma_new(ion_mode0 + kPlasmaMomW, k, j, i) +
+                                      plasma_new(ele_mode0 + kPlasmaMomW, k, j, i);
+          const Real energy_mode0_new = plasma_new(ion_mode0 + kPlasmaEnergy, k, j, i) +
+                                        plasma_new(ele_mode0 + kPlasmaEnergy, k, j, i);
+          diag_srcmomx_mode0_step += cell_volume * (momx_mode0_new - momx_mode0_old);
+          diag_srcmomy_mode0_step += cell_volume * (momy_mode0_new - momy_mode0_old);
+          diag_srcmomz_mode0_step += cell_volume * (momz_mode0_new - momz_mode0_old);
+          diag_srcmomw_mode0_step += cell_volume * (momw_mode0_new - momw_mode0_old);
+          diag_srcenergy_mode0_step += cell_volume * (energy_mode0_new - energy_mode0_old);
 
           for (int n = 0; n < n_modes; ++n) {
             const int ion_base = PlasmaIndex(0, n, 0, n_modes);

@@ -54,6 +54,7 @@ em_conservative_transport = false
 em_mu0 = 1.0
 plasma_qom_ion = 1.0
 plasma_qom_electron = -1.0
+plasma_w_flux_source_gain = 0.0
 
 <problem/em4d_pulse>
 rho0 = 1.0
