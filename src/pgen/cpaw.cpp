@@ -82,14 +82,19 @@ void InitUserMeshData(Mesh *mesh, ParameterInput *pin) {
   Real x1size = x1max - x1min;
   Real x2size = x2max - x2min;
   Real x3size = x3max - x3min;
+  const bool has_x2 = pin->GetInteger("parthenon/mesh", "nx2") > 1;
+  const bool has_x3 = pin->GetInteger("parthenon/mesh", "nx3") > 1;
 
   // User should never input -999.9 in angles
-  if (ang_3 == -999.9) ang_3 = std::atan(x1size / x2size);
+  if (ang_3 == -999.9) {
+    ang_3 = has_x2 ? std::atan(x1size / x2size) : 0.0;
+  }
   sin_a3 = std::sin(ang_3);
   cos_a3 = std::cos(ang_3);
 
-  if (ang_2 == -999.9)
-    ang_2 = std::atan(0.5 * (x1size * cos_a3 + x2size * sin_a3) / x3size);
+  if (ang_2 == -999.9) {
+    ang_2 = has_x3 ? std::atan(0.5 * (x1size * cos_a3 + x2size * sin_a3) / x3size) : 0.0;
+  }
   sin_a2 = std::sin(ang_2);
   cos_a2 = std::cos(ang_2);
 
@@ -99,8 +104,8 @@ void InitUserMeshData(Mesh *mesh, ParameterInput *pin) {
 
   // For lambda choose the smaller of the 3
   lambda = x1;
-  const int f2 = (pin->GetInteger("parthenon/mesh", "nx2") > 1) ? 1 : 0;
-  const int f3 = (pin->GetInteger("parthenon/mesh", "nx3") > 1) ? 1 : 0;
+  const int f2 = has_x2 ? 1 : 0;
+  const int f3 = has_x3 ? 1 : 0;
   if (f2 && ang_3 != 0.0) lambda = std::min(lambda, x2);
   if (f3 && ang_2 != 0.0) lambda = std::min(lambda, x3);
 
@@ -234,6 +239,8 @@ void ProblemGenerator(MeshBlock *pmb, ParameterInput *pin) {
   IndexRange ib = pmb->cellbounds.GetBoundsI(IndexDomain::interior);
   IndexRange jb = pmb->cellbounds.GetBoundsJ(IndexDomain::interior);
   IndexRange kb = pmb->cellbounds.GetBoundsK(IndexDomain::interior);
+  const bool has_x2 = (jb.e > jb.s);
+  const bool has_x3 = (kb.e > kb.s);
   // Initialize the magnetic fields.
 
   Kokkos::View<Real ***, parthenon::LayoutWrapper, parthenon::HostMemSpace> a1(
@@ -252,8 +259,12 @@ void ProblemGenerator(MeshBlock *pmb, ParameterInput *pin) {
   auto &coords = pmb->coords;
 
   // Initialize components of the vector potential
-  for (int k = kb.s - 1; k <= kb.e + 1; k++) {
-    for (int j = jb.s - 1; j <= jb.e + 1; j++) {
+  const int ks = has_x3 ? kb.s - 1 : kb.s;
+  const int ke = has_x3 ? kb.e + 1 : kb.e;
+  const int js = has_x2 ? jb.s - 1 : jb.s;
+  const int je = has_x2 ? jb.e + 1 : jb.e;
+  for (int k = ks; k <= ke; k++) {
+    for (int j = js; j <= je; j++) {
       for (int i = ib.s - 1; i <= ib.e + 1; i++) {
         a1(k, j, i) = A1(coords.Xc<1>(i), coords.Xc<2>(j), coords.Xc<3>(k));
         a2(k, j, i) = A2(coords.Xc<1>(i), coords.Xc<2>(j), coords.Xc<3>(k));
@@ -286,12 +297,32 @@ void ProblemGenerator(MeshBlock *pmb, ParameterInput *pin) {
         u(IM2, k, j, i) = mx * cos_a2 * sin_a3 + my * cos_a3 - mz * sin_a2 * sin_a3;
         u(IM3, k, j, i) = mx * sin_a2 + mz * cos_a2;
 
-        u(IB1, k, j, i) = (a3(k, j + 1, i) - a3(k, j - 1, i)) / coords.Dxc<2>(j) / 2.0 -
-                          (a2(k + 1, j, i) - a2(k - 1, j, i)) / coords.Dxc<3>(k) / 2.0;
-        u(IB2, k, j, i) = (a1(k + 1, j, i) - a1(k - 1, j, i)) / coords.Dxc<3>(k) / 2.0 -
-                          (a3(k, j, i + 1) - a3(k, j, i - 1)) / coords.Dxc<1>(i) / 2.0;
-        u(IB3, k, j, i) = (a2(k, j, i + 1) - a2(k, j, i - 1)) / coords.Dxc<1>(i) / 2.0 -
-                          (a1(k, j + 1, i) - a1(k, j - 1, i)) / coords.Dxc<2>(j) / 2.0;
+        if (!has_x2 && !has_x3) {
+          Real bx = b_par;
+          Real by = b_perp * sn;
+          Real bz = b_perp * cs;
+          u(IB1, k, j, i) = bx * cos_a2 * cos_a3 - by * sin_a3 - bz * sin_a2 * cos_a3;
+          u(IB2, k, j, i) = bx * cos_a2 * sin_a3 + by * cos_a3 - bz * sin_a2 * sin_a3;
+          u(IB3, k, j, i) = bx * sin_a2 + bz * cos_a2;
+        } else {
+          Real da3_dx2 = 0.0;
+          Real da2_dx3 = 0.0;
+          Real da1_dx3 = 0.0;
+          Real da1_dx2 = 0.0;
+          if (has_x2) {
+            da3_dx2 = (a3(k, j + 1, i) - a3(k, j - 1, i)) / coords.Dxc<2>(j) / 2.0;
+            da1_dx2 = (a1(k, j + 1, i) - a1(k, j - 1, i)) / coords.Dxc<2>(j) / 2.0;
+          }
+          if (has_x3) {
+            da2_dx3 = (a2(k + 1, j, i) - a2(k - 1, j, i)) / coords.Dxc<3>(k) / 2.0;
+            da1_dx3 = (a1(k + 1, j, i) - a1(k - 1, j, i)) / coords.Dxc<3>(k) / 2.0;
+          }
+          Real da3_dx1 = (a3(k, j, i + 1) - a3(k, j, i - 1)) / coords.Dxc<1>(i) / 2.0;
+          Real da2_dx1 = (a2(k, j, i + 1) - a2(k, j, i - 1)) / coords.Dxc<1>(i) / 2.0;
+          u(IB1, k, j, i) = da3_dx2 - da2_dx3;
+          u(IB2, k, j, i) = da1_dx3 - da3_dx1;
+          u(IB3, k, j, i) = da2_dx1 - da1_dx2;
+        }
 
         u(IEN, k, j, i) =
             pres / gm1 +
