@@ -128,8 +128,11 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
         const Real momz_ion = jz_sheet / qom_denom;
         const Real momz_electron = -momz_ion;
         const Real energy_density = pressure / gm1;
-        const Real energy_ion = (-qom_electron / qom_denom) * energy_density;
-        const Real energy_electron = (qom_ion / qom_denom) * energy_density;
+        const Real energy_ion_internal = (-qom_electron / qom_denom) * energy_density;
+        const Real energy_electron_internal = (qom_ion / qom_denom) * energy_density;
+        const Real energy_ion = energy_ion_internal + (0.5 * momz_ion * momz_ion / rho_ion);
+        const Real energy_electron =
+            energy_electron_internal + (0.5 * momz_electron * momz_electron / rho_electron);
         const Real charge_density = (qom_ion * rho_ion) + (qom_electron * rho_electron);
         const Real cell_volume = coords.CellVolume(k, j, i);
         total_charge += charge_density * cell_volume;

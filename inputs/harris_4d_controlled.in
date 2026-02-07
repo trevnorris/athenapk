@@ -51,12 +51,15 @@ lambda = 1.0
 em_mu0 = 1.0
 plasma_qom_ion = 1.0
 plasma_qom_electron = -1.0
+plasma_gamma = 1.666666666666667
 plasma_force_source_gain = 1.0
 plasma_momw_source_gain = 1.0
 plasma_momw_damping = 0.1
 plasma_rho_divj_gain = 1.0
 plasma_energy_source_gain = 1.0
 plasma_energy_floor = 0.0
+plasma_pressure_transport_gain = 0.0
+plasma_pressure_floor = 0.0
 
 <problem/harris_4d>
 perturbation_amp = 1.0e-3

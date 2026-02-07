@@ -106,6 +106,9 @@ Implemented now:
 
 Not implemented yet:
 - full two-fluid mode dynamics beyond the current source + advective-transport bring-up
+- robust nonzero pressure-coupled plasma transport in the Harris regressions
+  (`plasma_pressure_transport_gain > 0` is currently experimental and fails the
+  tuned Harris checks)
 - full conservative EM closure beyond the current brane-Laplacian transport path
   (`em4d_pi` transport is now optional; remaining EM terms are still source-step)
 - full reconnection workflow/analysis
@@ -206,6 +209,9 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_rho_floor`
 - `plasma_energy_source_gain`
 - `plasma_energy_floor`
+- `plasma_gamma`
+- `plasma_pressure_transport_gain`
+- `plasma_pressure_floor`
 
 `<problem/em4d_pulse>` also supports:
 - `component` (`ay_mode0`, `aw_mode0`, `aw_mode1`)
@@ -447,6 +453,11 @@ The scan script can also be used directly with custom gates:
 - `--scan-min-corr metric=threshold`
 - `--scan-max-corr metric=threshold`
 - `--fail-on-scan-check`
+
+Current pressure-transport status for tuned Harris decks:
+- default `plasma_pressure_transport_gain = 0.0` is regression-stable
+- tested nonzero values (`1e-6`, `1e-3`) produce unstable/nonphysical scan
+  outputs, so keep this at `0.0` for baseline and CI runs
 
 ## Input requirements for `harris_4d`
 

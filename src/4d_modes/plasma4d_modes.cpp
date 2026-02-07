@@ -25,6 +25,17 @@ KOKKOS_INLINE_FUNCTION int PlasmaIndex(const int species, const int mode, const 
   return (species * kVarsPerModePerSpecies * n_modes) + (mode * kVarsPerModePerSpecies) + var;
 }
 
+KOKKOS_INLINE_FUNCTION Real SpeciesPressure(const Real rho, const Real momx, const Real momy,
+                                            const Real momz, const Real momw, const Real energy,
+                                            const Real rho_floor, const Real gm1,
+                                            const Real pressure_floor) {
+  const Real rho_safe = fmax(rho, rho_floor);
+  const Real kinetic =
+      0.5 * ((momx * momx) + (momy * momy) + (momz * momz) + (momw * momw)) / rho_safe;
+  const Real internal = fmax(energy - kinetic, 0.0);
+  return fmax(pressure_floor, gm1 * internal);
+}
+
 } // namespace
 
 void RegisterPlasmaVariables(parthenon::StateDescriptor *pkg, const int n_modes) {
@@ -60,6 +71,11 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
   const int n_modes = modes_pkg->Param<int>("n_modes");
   const Real transport_gain = modes_pkg->Param<double>("plasma4d/rho_divj_gain");
   const Real rho_floor = modes_pkg->Param<double>("plasma4d/rho_floor");
+  const Real gamma = modes_pkg->Param<double>("plasma4d/gamma");
+  const Real gm1 = gamma - 1.0;
+  const Real pressure_transport_gain =
+      modes_pkg->Param<double>("plasma4d/pressure_transport_gain");
+  const Real pressure_floor = modes_pkg->Param<double>("plasma4d/pressure_floor");
   if (n_modes < 1 || transport_gain == 0.0) {
     return TaskStatus::complete;
   }
@@ -99,18 +115,27 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
             const Real v_face = 0.5 * (vx_l + vx_r);
             const bool take_left = (v_face >= 0.0);
             const int il = take_left ? (i - 1) : i;
+            const Real rho_u = plasma(rho_idx, k, j, il);
+            const Real momx_u = plasma(momx_idx, k, j, il);
+            const Real momy_u = plasma(momy_idx, k, j, il);
+            const Real momz_u = plasma(momz_idx, k, j, il);
+            const Real momw_u = plasma(momw_idx, k, j, il);
+            const Real energy_u = plasma(energy_idx, k, j, il);
+            const Real pressure_u = SpeciesPressure(rho_u, momx_u, momy_u, momz_u, momw_u,
+                                                    energy_u, rho_floor, gm1, pressure_floor);
 
-            plasma.flux(X1DIR, rho_idx, k, j, i) = transport_gain * v_face * plasma(rho_idx, k, j, il);
+            plasma.flux(X1DIR, rho_idx, k, j, i) = transport_gain * v_face * rho_u;
             plasma.flux(X1DIR, momx_idx, k, j, i) =
-                transport_gain * v_face * plasma(momx_idx, k, j, il);
+                transport_gain * (v_face * momx_u + pressure_transport_gain * pressure_u);
             plasma.flux(X1DIR, momy_idx, k, j, i) =
-                transport_gain * v_face * plasma(momy_idx, k, j, il);
+                transport_gain * v_face * momy_u;
             plasma.flux(X1DIR, momz_idx, k, j, i) =
-                transport_gain * v_face * plasma(momz_idx, k, j, il);
+                transport_gain * v_face * momz_u;
             plasma.flux(X1DIR, momw_idx, k, j, i) =
-                transport_gain * v_face * plasma(momw_idx, k, j, il);
+                transport_gain * v_face * momw_u;
             plasma.flux(X1DIR, energy_idx, k, j, i) =
-                transport_gain * v_face * plasma(energy_idx, k, j, il);
+                transport_gain *
+                (v_face * energy_u + pressure_transport_gain * pressure_u * v_face);
           }
         }
       });
@@ -139,18 +164,27 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
               const Real v_face = 0.5 * (vy_l + vy_r);
               const bool take_left = (v_face >= 0.0);
               const int jl = take_left ? (j - 1) : j;
+              const Real rho_u = plasma(rho_idx, k, jl, i);
+              const Real momx_u = plasma(momx_idx, k, jl, i);
+              const Real momy_u = plasma(momy_idx, k, jl, i);
+              const Real momz_u = plasma(momz_idx, k, jl, i);
+              const Real momw_u = plasma(momw_idx, k, jl, i);
+              const Real energy_u = plasma(energy_idx, k, jl, i);
+              const Real pressure_u = SpeciesPressure(rho_u, momx_u, momy_u, momz_u, momw_u,
+                                                      energy_u, rho_floor, gm1, pressure_floor);
 
-              plasma.flux(X2DIR, rho_idx, k, j, i) = transport_gain * v_face * plasma(rho_idx, k, jl, i);
+              plasma.flux(X2DIR, rho_idx, k, j, i) = transport_gain * v_face * rho_u;
               plasma.flux(X2DIR, momx_idx, k, j, i) =
-                  transport_gain * v_face * plasma(momx_idx, k, jl, i);
+                  transport_gain * v_face * momx_u;
               plasma.flux(X2DIR, momy_idx, k, j, i) =
-                  transport_gain * v_face * plasma(momy_idx, k, jl, i);
+                  transport_gain * (v_face * momy_u + pressure_transport_gain * pressure_u);
               plasma.flux(X2DIR, momz_idx, k, j, i) =
-                  transport_gain * v_face * plasma(momz_idx, k, jl, i);
+                  transport_gain * v_face * momz_u;
               plasma.flux(X2DIR, momw_idx, k, j, i) =
-                  transport_gain * v_face * plasma(momw_idx, k, jl, i);
+                  transport_gain * v_face * momw_u;
               plasma.flux(X2DIR, energy_idx, k, j, i) =
-                  transport_gain * v_face * plasma(energy_idx, k, jl, i);
+                  transport_gain *
+                  (v_face * energy_u + pressure_transport_gain * pressure_u * v_face);
             }
           }
         });
@@ -180,18 +214,27 @@ TaskStatus AddPlasmaTransportFluxes(MeshData<Real> *md) {
               const Real v_face = 0.5 * (vz_l + vz_r);
               const bool take_left = (v_face >= 0.0);
               const int kl = take_left ? (k - 1) : k;
+              const Real rho_u = plasma(rho_idx, kl, j, i);
+              const Real momx_u = plasma(momx_idx, kl, j, i);
+              const Real momy_u = plasma(momy_idx, kl, j, i);
+              const Real momz_u = plasma(momz_idx, kl, j, i);
+              const Real momw_u = plasma(momw_idx, kl, j, i);
+              const Real energy_u = plasma(energy_idx, kl, j, i);
+              const Real pressure_u = SpeciesPressure(rho_u, momx_u, momy_u, momz_u, momw_u,
+                                                      energy_u, rho_floor, gm1, pressure_floor);
 
-              plasma.flux(X3DIR, rho_idx, k, j, i) = transport_gain * v_face * plasma(rho_idx, kl, j, i);
+              plasma.flux(X3DIR, rho_idx, k, j, i) = transport_gain * v_face * rho_u;
               plasma.flux(X3DIR, momx_idx, k, j, i) =
-                  transport_gain * v_face * plasma(momx_idx, kl, j, i);
+                  transport_gain * v_face * momx_u;
               plasma.flux(X3DIR, momy_idx, k, j, i) =
-                  transport_gain * v_face * plasma(momy_idx, kl, j, i);
+                  transport_gain * v_face * momy_u;
               plasma.flux(X3DIR, momz_idx, k, j, i) =
-                  transport_gain * v_face * plasma(momz_idx, kl, j, i);
+                  transport_gain * (v_face * momz_u + pressure_transport_gain * pressure_u);
               plasma.flux(X3DIR, momw_idx, k, j, i) =
-                  transport_gain * v_face * plasma(momw_idx, kl, j, i);
+                  transport_gain * v_face * momw_u;
               plasma.flux(X3DIR, energy_idx, k, j, i) =
-                  transport_gain * v_face * plasma(energy_idx, kl, j, i);
+                  transport_gain *
+                  (v_face * energy_u + pressure_transport_gain * pressure_u * v_face);
             }
           }
         });
