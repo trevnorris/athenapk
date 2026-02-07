@@ -70,6 +70,21 @@ please either
 * Python3 (for regressions tests with numpy, scipy, matplotlib, unyt, and h5py modules)
 * Ascent (for in situ visualization and analysis)
 
+##### Dependency Bootstrap Helper
+
+For the local 4D-modes workflows in this repository, a dependency bootstrap
+script and tracked Python package list are provided:
+
+    ./scripts/install_deps.sh --yes
+
+Python-only install is also available:
+
+    ./scripts/install_deps.sh --python-only
+
+The Python package list is stored in:
+
+    requirements.txt
+
 #### Building AthenaPK
 
 Obtain all (AthenaPK, Parthenon, and Kokkos) sources
@@ -98,6 +113,11 @@ A full list of architecture keywords is available on the [Kokkos wiki](https://k
 If `cmake` has troubling finding the HDF5 library (which is required for writing analysis outputs or
 restartings simulation) an additional hint to the location of the library can be provided via
 `-DHDF5_ROOT=/path/to/local/hdf5` on the first `cmake` command for configuration.
+
+If MPI detection fails while OpenMPI is installed, configure with explicit MPI
+wrapper compilers:
+
+    cmake -S. -Bbuild-mpi -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx
 
 An Intel Skylake system (AVX512 instructions) with NVidia Volta V100 GPUs and with MPI enabled (the latter is the default option, so they don't need to be specified)
 

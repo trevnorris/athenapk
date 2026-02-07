@@ -604,6 +604,30 @@ The scan script can also be used directly with custom gates:
 - `--scan-min-abs-corr metric=threshold`
 - `--scan-min-corr metric=threshold`
 - `--scan-max-corr metric=threshold`
+
+### 18) Run MPI + HDF5 Harris full-case helper
+
+```bash
+./scripts/run_harris_full_mpi_hdf5.sh --ranks 2 --tlim 0.02 --nlim 200
+```
+
+This helper runs `inputs/harris_4d_full.in` with MPI and forces an HDF5 output
+cadence via `parthenon/output0/dt`, writing outputs under:
+- `build-mpi-hdf5/runs/harris_full_mpi/`
+
+### 19) Generate a `phdf` quicklook slice
+
+```bash
+python3 scripts/plot_phdf_slice.py \
+  --phdf build-mpi-hdf5/runs/harris_full_mpi/parthenon.out0.final.phdf \
+  --dataset em4d_a \
+  --component 0 \
+  --axis z \
+  --output build-mpi-hdf5/runs/harris_full_mpi/quicklook_em4d_a0_z.png
+```
+
+This produces a 2D PNG slice from a cell-centered Parthenon dataset in `phdf`
+output (single-level runs).
 - `--fail-on-scan-check`
 
 Current pressure-transport status for tuned Harris decks:
@@ -664,6 +688,28 @@ Current `N_w`-convergence status for tuned Harris decks:
 - closure and transport checks pass for `N_w = 2,3,4`, and highest-mode
   activity floors plus `N_w=3 -> 4` relative-delta stabilization gates pass.
 - Phase-10 bundle now includes this `N_w` convergence gate run.
+
+## Dependency setup
+
+From the AthenaPK repository root, install system + Python dependencies with:
+
+```bash
+./scripts/install_deps.sh --yes
+```
+
+Python-only dependencies are tracked in `requirements.txt` and can be installed
+with:
+
+```bash
+./scripts/install_deps.sh --python-only
+```
+
+If MPI detection fails even with OpenMPI installed, configure AthenaPK with
+wrapper compilers explicitly:
+
+```bash
+cmake -S . -B build-mpi -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx
+```
 
 ## Input requirements for `harris_4d`
 
