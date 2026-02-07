@@ -39,6 +39,18 @@ def main():
         help="Minimum final_mixed_ew2 for full-case activity PASS",
     )
     parser.add_argument(
+        "--min-em-a2-mode-1",
+        type=float,
+        default=1.0e-6,
+        help="Minimum final_em_a2_mode_1 for full-case activity PASS",
+    )
+    parser.add_argument(
+        "--min-em-pi2-mode-1",
+        type=float,
+        default=1.0e-3,
+        help="Minimum final_em_pi2_mode_1 for full-case activity PASS",
+    )
+    parser.add_argument(
         "--min-jw-mode-l2-1",
         type=float,
         default=1.0e-30,
@@ -200,6 +212,10 @@ def main():
         str(args.min_s_leak_abs),
         "--full-min-mixed-ew2",
         str(args.min_mixed_ew2),
+        "--full-min-em-a2-mode-1",
+        str(args.min_em_a2_mode_1),
+        "--full-min-em-pi2-mode-1",
+        str(args.min_em_pi2_mode_1),
         "--full-min-jw-mode-l2-1",
         str(args.min_jw_mode_l2_1),
         "--full-min-abs-em-leak-w",

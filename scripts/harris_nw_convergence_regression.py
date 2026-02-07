@@ -22,6 +22,8 @@ CONVERGENCE_METRICS = [
     "final_jw_ew",
     "final_mixed_ew2",
     "final_mixed_c2",
+    "final_em_a2_mode_1",
+    "final_em_pi2_mode_1",
     "final_em_leak_w",
     "final_helicity_sub",
     "final_edotb_sub",
@@ -197,6 +199,18 @@ def main():
         help="Minimum final_mixed_ew2 required at highest N_w",
     )
     parser.add_argument(
+        "--highest-min-em-a2-mode-1",
+        type=float,
+        default=1.0e-6,
+        help="Minimum final_em_a2_mode_1 required at highest N_w",
+    )
+    parser.add_argument(
+        "--highest-min-em-pi2-mode-1",
+        type=float,
+        default=1.0e-3,
+        help="Minimum final_em_pi2_mode_1 required at highest N_w",
+    )
+    parser.add_argument(
         "--highest-min-abs-em-leak-w",
         type=float,
         default=1.0e-4,
@@ -351,6 +365,8 @@ def main():
         ("final_jw_ew", args.highest_min_jw_ew_abs),
         ("final_s_leak_abs", args.highest_min_s_leak_abs),
         ("final_mixed_ew2", args.highest_min_mixed_ew2),
+        ("final_em_a2_mode_1", args.highest_min_em_a2_mode_1),
+        ("final_em_pi2_mode_1", args.highest_min_em_pi2_mode_1),
         ("final_em_leak_w", args.highest_min_abs_em_leak_w),
         ("final_helicity_sub", args.highest_min_abs_helicity_sub),
         ("final_edotb_sub", args.highest_min_abs_edotb_sub),

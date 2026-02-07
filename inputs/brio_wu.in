@@ -5,6 +5,7 @@
 <comment>
 problem = Brio-Wu MHD shock tube
 reference = Brio and Wu, JCP 75, 400 (1988)
+note = thin-2D deck (nx2=4) used because strict 1D GLMMHD (nx2=1) currently segfaults in this baseline build
 
 <job>
 problem_id = brio_wu

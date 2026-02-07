@@ -480,6 +480,8 @@ gating (`--check-em-bulk-ledger`) plus full-case correlation gates tying
 - `|corr_psi0_edotb_sub|`
 
 It also enforces full-case activity floors on:
+- `final_em_a2_mode_1`
+- `final_em_pi2_mode_1`
 - `|final_em_leak_w|`
 - `|final_helicity_sub|`
 - `|final_edotb_sub|`
@@ -522,6 +524,8 @@ This target runs `scripts/harris_nw_convergence_regression.py` and enforces:
   - `|final_jw_ew| >= 1e-15`
   - `final_s_leak_abs >= 1e-14`
   - `final_mixed_ew2 >= 1e-3`
+  - `final_em_a2_mode_1 >= 1e-6`
+  - `final_em_pi2_mode_1 >= 1e-3`
   - `|final_em_leak_w| >= 1e-4`
   - `|final_helicity_sub| >= 1e-12`
   - `|final_edotb_sub| >= 1e-11`
@@ -532,6 +536,8 @@ This target runs `scripts/harris_nw_convergence_regression.py` and enforces:
   - `final_jw_ew`
   - `final_mixed_ew2`
   - `final_mixed_c2`
+  - `final_em_a2_mode_1`
+  - `final_em_pi2_mode_1`
   - `final_em_leak_w`
   - `final_helicity_sub`
   - `final_edotb_sub`

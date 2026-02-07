@@ -219,6 +219,7 @@ def analyze_case(
     helicity_sub = maybe_col(cols, "m4d_helicity_sub")
     edotb_sub = maybe_col(cols, "m4d_edotb_sub")
     em_a2_mode1 = maybe_col(cols, "m4d_em_a2_mode_1")
+    em_pi2_mode1 = maybe_col(cols, "m4d_em_pi2_mode_1")
     jw_mode1_l2 = maybe_col(cols, "m4d_jw_mode_l2_1")
     jw_mode1 = maybe_col(cols, "m4d_jw_mode_1")
     charge_mode0 = maybe_col(cols, "m4d_charge_mode_0")
@@ -496,6 +497,7 @@ def analyze_case(
         if edotb_sub is not None
         else math.nan,
         "final_em_a2_mode_1": em_a2_mode1[-1] if em_a2_mode1 is not None else math.nan,
+        "final_em_pi2_mode_1": em_pi2_mode1[-1] if em_pi2_mode1 is not None else math.nan,
         "final_jw_mode_l2_1": jw_mode1_l2[-1] if jw_mode1_l2 is not None else math.nan,
         "final_jw_mode_1": jw_mode1[-1] if jw_mode1 is not None else math.nan,
         "final_charge_mode_0": charge_mode0[-1] if charge_mode0 is not None else math.nan,
@@ -702,6 +704,7 @@ def print_table(results):
         "final_helicity_sub",
         "final_edotb_sub",
         "final_em_a2_mode_1",
+        "final_em_pi2_mode_1",
         "final_jw_mode_l2_1",
         "final_jw_mode_1",
         "final_charge_mode_0",
@@ -830,6 +833,8 @@ def evaluate_full_activity(
     min_jw_ew_abs,
     min_s_leak_abs,
     min_mixed_ew2,
+    min_em_a2_mode_1,
+    min_em_pi2_mode_1,
     min_jw_mode_l2_1,
     min_em_leak_w_abs,
     min_helicity_sub_abs,
@@ -847,6 +852,10 @@ def evaluate_full_activity(
         failures.append("s_leak_abs")
     if min_mixed_ew2 > 0.0 and row["final_mixed_ew2"] < min_mixed_ew2:
         failures.append("mixed_ew2")
+    if min_em_a2_mode_1 > 0.0 and row["final_em_a2_mode_1"] < min_em_a2_mode_1:
+        failures.append("em_a2_mode_1")
+    if min_em_pi2_mode_1 > 0.0 and row["final_em_pi2_mode_1"] < min_em_pi2_mode_1:
+        failures.append("em_pi2_mode_1")
     if min_jw_mode_l2_1 > 0.0 and row["final_jw_mode_l2_1"] < min_jw_mode_l2_1:
         failures.append("jw_mode_l2_1")
     if min_em_leak_w_abs > 0.0 and abs(row["final_em_leak_w"]) < min_em_leak_w_abs:
@@ -1012,6 +1021,18 @@ def main():
         type=float,
         default=0.0,
         help="Minimum final_mixed_ew2 required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-em-a2-mode-1",
+        type=float,
+        default=0.0,
+        help="Minimum final_em_a2_mode_1 required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-em-pi2-mode-1",
+        type=float,
+        default=0.0,
+        help="Minimum final_em_pi2_mode_1 required for full-case activity PASS (disabled when 0)",
     )
     parser.add_argument(
         "--full-min-jw-mode-l2-1",
@@ -1195,6 +1216,8 @@ def main():
                 args.full_min_jw_ew_abs,
                 args.full_min_s_leak_abs,
                 args.full_min_mixed_ew2,
+                args.full_min_em_a2_mode_1,
+                args.full_min_em_pi2_mode_1,
                 args.full_min_jw_mode_l2_1,
                 args.full_min_abs_em_leak_w,
                 args.full_min_abs_helicity_sub,
