@@ -211,6 +211,12 @@ def analyze_case(
     int_srcpiy_mode0 = maybe_col(cols, "m4d_int_srcpiy_mode0")
     int_srcpiz_mode0 = maybe_col(cols, "m4d_int_srcpiz_mode0")
     int_srcpiw_mode0 = maybe_col(cols, "m4d_int_srcpiw_mode0")
+    int_src_em_laplacian_abs = maybe_col(cols, "m4d_int_src_em_laplacian_abs")
+    int_src_em_mass_abs = maybe_col(cols, "m4d_int_src_em_mass_abs")
+    int_src_em_current_abs = maybe_col(cols, "m4d_int_src_em_current_abs")
+    int_src_em_damping_abs = maybe_col(cols, "m4d_int_src_em_damping_abs")
+    int_src_em_spatial_mixed_abs = maybe_col(cols, "m4d_int_src_em_spatial_mixed_abs")
+    int_src_em_timelike_abs = maybe_col(cols, "m4d_int_src_em_timelike_abs")
     cont_local_mode0_max_abs = maybe_col(cols, "m4d_cont_mode0_max_abs")
     cont_local_mode0_l1 = maybe_col(cols, "m4d_cont_mode0_l1")
     cont_local_mode0_l2 = maybe_col(cols, "m4d_cont_mode0_l2")
@@ -503,6 +509,24 @@ def analyze_case(
         "final_int_srcpiw_mode0": int_srcpiw_mode0[-1]
         if int_srcpiw_mode0 is not None
         else math.nan,
+        "final_int_src_em_laplacian_abs": int_src_em_laplacian_abs[-1]
+        if int_src_em_laplacian_abs is not None
+        else math.nan,
+        "final_int_src_em_mass_abs": int_src_em_mass_abs[-1]
+        if int_src_em_mass_abs is not None
+        else math.nan,
+        "final_int_src_em_current_abs": int_src_em_current_abs[-1]
+        if int_src_em_current_abs is not None
+        else math.nan,
+        "final_int_src_em_damping_abs": int_src_em_damping_abs[-1]
+        if int_src_em_damping_abs is not None
+        else math.nan,
+        "final_int_src_em_spatial_mixed_abs": int_src_em_spatial_mixed_abs[-1]
+        if int_src_em_spatial_mixed_abs is not None
+        else math.nan,
+        "final_int_src_em_timelike_abs": int_src_em_timelike_abs[-1]
+        if int_src_em_timelike_abs is not None
+        else math.nan,
         "corr_psi0_jw_mode_l2_1": pearson(psi, jw_mode1_l2)
         if jw_mode1_l2 is not None
         else math.nan,
@@ -647,6 +671,12 @@ def print_table(results):
         "final_int_srcpiy_mode0",
         "final_int_srcpiz_mode0",
         "final_int_srcpiw_mode0",
+        "final_int_src_em_laplacian_abs",
+        "final_int_src_em_mass_abs",
+        "final_int_src_em_current_abs",
+        "final_int_src_em_damping_abs",
+        "final_int_src_em_spatial_mixed_abs",
+        "final_int_src_em_timelike_abs",
         "corr_psi0_s_leak",
         "corr_psi0_s_leak_abs",
         "corr_psi0_jw_ew",
@@ -740,6 +770,11 @@ def evaluate_full_activity(
     min_em_leak_w_abs,
     min_helicity_sub_abs,
     min_edotb_sub_abs,
+    min_src_em_laplacian_abs,
+    min_src_em_mass_abs,
+    min_src_em_current_abs,
+    min_src_em_spatial_mixed_abs,
+    min_src_em_timelike_abs,
 ):
     failures = []
     if min_jw_ew_abs > 0.0 and abs(row["final_jw_ew"]) < min_jw_ew_abs:
@@ -756,6 +791,28 @@ def evaluate_full_activity(
         failures.append("helicity_sub")
     if min_edotb_sub_abs > 0.0 and abs(row["final_edotb_sub"]) < min_edotb_sub_abs:
         failures.append("edotb_sub")
+    if (
+        min_src_em_laplacian_abs > 0.0
+        and abs(row["final_int_src_em_laplacian_abs"]) < min_src_em_laplacian_abs
+    ):
+        failures.append("src_em_laplacian_abs")
+    if min_src_em_mass_abs > 0.0 and abs(row["final_int_src_em_mass_abs"]) < min_src_em_mass_abs:
+        failures.append("src_em_mass_abs")
+    if (
+        min_src_em_current_abs > 0.0
+        and abs(row["final_int_src_em_current_abs"]) < min_src_em_current_abs
+    ):
+        failures.append("src_em_current_abs")
+    if (
+        min_src_em_spatial_mixed_abs > 0.0
+        and abs(row["final_int_src_em_spatial_mixed_abs"]) < min_src_em_spatial_mixed_abs
+    ):
+        failures.append("src_em_spatial_mixed_abs")
+    if (
+        min_src_em_timelike_abs > 0.0
+        and abs(row["final_int_src_em_timelike_abs"]) < min_src_em_timelike_abs
+    ):
+        failures.append("src_em_timelike_abs")
 
     if failures:
         return ("FAIL", "|".join(failures))
@@ -912,6 +969,36 @@ def main():
         help="Minimum |final_edotb_sub| required for full-case activity PASS (disabled when 0)",
     )
     parser.add_argument(
+        "--full-min-src-em-laplacian-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_int_src_em_laplacian_abs| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-src-em-mass-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_int_src_em_mass_abs| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-src-em-current-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_int_src_em_current_abs| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-src-em-spatial-mixed-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_int_src_em_spatial_mixed_abs| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-src-em-timelike-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_int_src_em_timelike_abs| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
         "--full-min-abs-corr-psi0-s-leak-abs",
         type=float,
         default=0.0,
@@ -1035,6 +1122,11 @@ def main():
                 args.full_min_abs_em_leak_w,
                 args.full_min_abs_helicity_sub,
                 args.full_min_abs_edotb_sub,
+                args.full_min_src_em_laplacian_abs,
+                args.full_min_src_em_mass_abs,
+                args.full_min_src_em_current_abs,
+                args.full_min_src_em_spatial_mixed_abs,
+                args.full_min_src_em_timelike_abs,
             )
             row["activity_status"] = status
             row["activity_failures"] = failures

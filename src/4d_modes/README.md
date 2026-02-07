@@ -291,6 +291,14 @@ Full-case activity gates can be enabled with:
 - `--full-min-s-leak-abs`
 - `--full-min-mixed-ew2`
 - `--full-min-jw-mode-l2-1`
+- `--full-min-abs-em-leak-w`
+- `--full-min-abs-helicity-sub`
+- `--full-min-abs-edotb-sub`
+- `--full-min-src-em-laplacian-abs`
+- `--full-min-src-em-mass-abs`
+- `--full-min-src-em-current-abs`
+- `--full-min-src-em-spatial-mixed-abs`
+- `--full-min-src-em-timelike-abs`
 When set, these enforce nontrivial leakage/work/mixed-channel signal levels in the
 full case and report `activity_status` / `activity_failures` in the CSV output.
 The scan CSV also reports mode-0 transport-balance rates for momentum/energy:
@@ -460,6 +468,11 @@ It also enforces full-case activity floors on:
 - `|final_em_leak_w|`
 - `|final_helicity_sub|`
 - `|final_edotb_sub|`
+- `|final_int_src_em_laplacian_abs|`
+- `|final_int_src_em_mass_abs|`
+- `|final_int_src_em_current_abs|`
+- `|final_int_src_em_spatial_mixed_abs|`
+- `|final_int_src_em_timelike_abs|`
 
 ### 12) Run the tuned Harris pseudospectral-transport regression target
 

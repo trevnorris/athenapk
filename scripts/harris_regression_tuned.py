@@ -63,6 +63,36 @@ def main():
         help="Minimum |final_edotb_sub| for full-case activity PASS",
     )
     parser.add_argument(
+        "--min-src-em-laplacian-abs",
+        type=float,
+        default=1.0e-2,
+        help="Minimum |final_int_src_em_laplacian_abs| for full-case activity PASS",
+    )
+    parser.add_argument(
+        "--min-src-em-mass-abs",
+        type=float,
+        default=1.0e-4,
+        help="Minimum |final_int_src_em_mass_abs| for full-case activity PASS",
+    )
+    parser.add_argument(
+        "--min-src-em-current-abs",
+        type=float,
+        default=1.0e-13,
+        help="Minimum |final_int_src_em_current_abs| for full-case activity PASS",
+    )
+    parser.add_argument(
+        "--min-src-em-spatial-mixed-abs",
+        type=float,
+        default=1.0e-2,
+        help="Minimum |final_int_src_em_spatial_mixed_abs| for full-case activity PASS",
+    )
+    parser.add_argument(
+        "--min-src-em-timelike-abs",
+        type=float,
+        default=1.0e-3,
+        help="Minimum |final_int_src_em_timelike_abs| for full-case activity PASS",
+    )
+    parser.add_argument(
         "--min-abs-corr-psi0-s-leak-abs",
         type=float,
         default=9.0e-1,
@@ -169,6 +199,16 @@ def main():
         str(args.min_abs_helicity_sub),
         "--full-min-abs-edotb-sub",
         str(args.min_abs_edotb_sub),
+        "--full-min-src-em-laplacian-abs",
+        str(args.min_src_em_laplacian_abs),
+        "--full-min-src-em-mass-abs",
+        str(args.min_src_em_mass_abs),
+        "--full-min-src-em-current-abs",
+        str(args.min_src_em_current_abs),
+        "--full-min-src-em-spatial-mixed-abs",
+        str(args.min_src_em_spatial_mixed_abs),
+        "--full-min-src-em-timelike-abs",
+        str(args.min_src_em_timelike_abs),
         "--full-min-abs-corr-psi0-s-leak-abs",
         str(args.min_abs_corr_psi0_s_leak_abs),
         "--full-min-abs-corr-psi0-jw-ew",
