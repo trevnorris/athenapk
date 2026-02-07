@@ -743,10 +743,19 @@ This target runs `scripts/cpaw_strict1d_regression.py`, which:
   (`nx2=nx3=1`, with matching meshblock overrides)
 - disables HDF5 output in non-HDF5 builds (`parthenon/output0/dt=-1`)
 - applies short crash-gating runtime limits (`tlim=0.01`, `nlim=50`)
-- verifies:
+- verifies run completion:
   - zero exit status
   - `"Driver completed."` in run logs
   - at least one completed cycle (`final_cycle >= 1`)
+- verifies quantitative CPAW parity diagnostics from `cpaw-errors.dat`:
+  - file exists and reflects strict-1D mesh overrides (`Nx2=1`, `Nx3=1`)
+  - final `RMS-Error` is finite and below a configured ceiling
+    (`--max-rms-error`, default `1e-2`)
+  - final transverse component errors are active
+    (`|B2c|`, `|B3c| >= --min-transverse-error`, default `1e-6`)
+  - final transverse component errors remain symmetric
+    (`|B2c-B3c| / max(|B2c|,|B3c|) <= --max-transverse-rel-diff`,
+    default `1e-2`)
 
 The same gate is included in `modes4d_phase10_regression`.
 
