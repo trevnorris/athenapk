@@ -110,6 +110,24 @@ def main():
         default=7.0e-1,
         help="Minimum |corr(psi0_span, edotb_sub)| for full-case PASS",
     )
+    parser.add_argument(
+        "--scan-athena-arg",
+        action="append",
+        default=[],
+        help="Additional athena override forwarded to both controlled/full scan runs",
+    )
+    parser.add_argument(
+        "--scan-controlled-arg",
+        action="append",
+        default=[],
+        help="Additional athena override forwarded only to controlled scan run",
+    )
+    parser.add_argument(
+        "--scan-full-arg",
+        action="append",
+        default=[],
+        help="Additional athena override forwarded only to full scan run",
+    )
     args = parser.parse_args()
 
     script_path = Path(__file__).resolve()
@@ -168,6 +186,12 @@ def main():
         "--full-min-abs-corr-psi0-edotb-sub",
         str(args.min_abs_corr_psi0_edotb_sub),
     ]
+    for arg in args.scan_athena_arg:
+        cmd.extend(["--athena-arg", str(arg)])
+    for arg in args.scan_controlled_arg:
+        cmd.extend(["--controlled-arg", str(arg)])
+    for arg in args.scan_full_arg:
+        cmd.extend(["--full-arg", str(arg)])
     subprocess.run(cmd, check=True)
 
 

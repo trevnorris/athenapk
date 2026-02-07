@@ -386,7 +386,21 @@ It also enforces full-case activity floors on:
 - `|final_helicity_sub|`
 - `|final_edotb_sub|`
 
-### 12) Run the Phase-10 validation bundle target
+### 12) Run the experimental pressure-transport Harris regression target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_harris_pressure_experimental_regression
+```
+
+This target runs the same tuned Harris gate set as `modes4d_harris_regression`,
+but adds a full-case override:
+- `modes4d/plasma_pressure_transport_gain=1.0e-9`
+
+It is an experimental check for the stabilized nonzero pressure-transport path
+and is not part of `modes4d_phase10_regression`.
+
+### 13) Run the Phase-10 validation bundle target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -403,7 +417,7 @@ with fail-fast behavior on the first failing check:
 - `modes4d_harris_regression`
 - `modes4d_harris_lundquist_scan`
 
-### 13) Run the Harris Lundquist scan target
+### 14) Run the Harris Lundquist scan target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
