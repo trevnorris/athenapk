@@ -396,7 +396,24 @@ It also enforces full-case activity floors on:
 - `|final_helicity_sub|`
 - `|final_edotb_sub|`
 
-### 12) Run the experimental pressure-transport Harris regression target
+### 12) Run the tuned Harris pseudospectral-transport regression target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_harris_pseudospectral_regression
+```
+
+This target runs the tuned Harris gate set with explicit transport-mode
+overrides so the coupling mode is always validated regardless of deck defaults:
+- controlled override:
+  - `modes4d/plasma_pseudospectral_transport=false`
+- full override:
+  - `modes4d/plasma_pseudospectral_transport=true`
+
+It enforces the same closure/transport/activity/correlation gates as
+`modes4d_harris_regression`.
+
+### 13) Run the experimental pressure-transport Harris regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -410,7 +427,7 @@ but adds a full-case override:
 It is an experimental check for the stabilized nonzero pressure-transport path
 and is not part of `modes4d_phase10_regression`.
 
-### 13) Run the pressure-window Harris regression target
+### 14) Run the pressure-window Harris regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -431,7 +448,7 @@ It enforces:
 It is a dedicated pressure-path regression and is intentionally not part of
 `modes4d_phase10_regression`.
 
-### 14) Run the Phase-10 validation bundle target
+### 15) Run the Phase-10 validation bundle target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -446,9 +463,10 @@ with fail-fast behavior on the first failing check:
 - `modes4d_scalar_pulse_regression`
 - `modes4d_em_conservative_regression`
 - `modes4d_harris_regression`
+- `modes4d_harris_pseudospectral_regression`
 - `modes4d_harris_lundquist_scan`
 
-### 15) Run the Harris Lundquist scan target
+### 16) Run the Harris Lundquist scan target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -537,6 +555,9 @@ Current nonlinear plasma-transport status for tuned Harris decks:
 - tuned full-case gate check with pseudospectral transport enabled:
   - `python3 scripts/harris_scan_matrix.py ... --fail-on-check --check-transport-closure --full-arg modes4d/plasma_pseudospectral_transport=true`: PASS
   - closure/transport/correlation/activity statuses remained `PASS`.
+- dedicated CMake gate:
+  - `cmake --build build-baseline --target modes4d_harris_pseudospectral_regression`: PASS
+- Phase-10 bundle now includes that explicit pseudospectral gate run.
 
 ## Input requirements for `harris_4d`
 
