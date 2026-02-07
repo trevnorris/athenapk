@@ -210,12 +210,14 @@ modes4d_unit_tests: PASS
 /projects/fluid-engine/athenapk/scripts/run_modes4d_validation.sh
 ```
 
-This runs baseline `modes4d_unit_tests` + `modes4d_phase10_regression` and, by
-default, MPI/HDF5 `modes4d_mpi_hdf5_regression`, while writing full logs under
+This runs baseline `modes4d_unit_tests` + `modes4d_phase10_regression`, then
+the final `modes4d_results_pack` bundle and, by default, MPI/HDF5
+`modes4d_mpi_hdf5_regression`, while writing full logs under
 `build-validation-logs/` and printing only stage-level `RUN/PASS/FAIL` lines.
 
 Useful flags:
 - `--skip-mpi` to run only baseline checks
+- `--skip-results-pack` to skip final production+ablation packaging
 - `--skip-configure` to reuse already-configured build directories
 - `--verbose` to stream full command output
 

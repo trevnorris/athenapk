@@ -10,6 +10,7 @@ LOG_ROOT_DIR="${REPO_ROOT}/build-validation-logs"
 
 SKIP_MPI=0
 SKIP_CONFIGURE=0
+SKIP_RESULTS_PACK=0
 VERBOSE=0
 JOBS="${JOBS:-$(nproc)}"
 
@@ -27,6 +28,7 @@ Options:
   --jobs N                Build jobs for cmake --build (default: nproc)
   --skip-configure        Skip cmake configure steps
   --skip-mpi              Run only baseline + phase10 checks
+  --skip-results-pack     Skip final combined results-pack target
   --verbose               Stream full command output in addition to logs
   -h, --help              Show this help
 EOF
@@ -97,6 +99,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_MPI=1
       shift
       ;;
+    --skip-results-pack)
+      SKIP_RESULTS_PACK=1
+      shift
+      ;;
     --verbose)
       VERBOSE=1
       shift
@@ -137,6 +143,11 @@ run_step "Modes4D unit tests" \
 
 run_step "Phase-10 baseline regression bundle" \
   cmake --build "${BASELINE_BUILD_DIR}" --target modes4d_phase10_regression
+
+if [[ "${SKIP_RESULTS_PACK}" -eq 0 ]]; then
+  run_step "Final results-pack bundle" \
+    cmake --build "${BASELINE_BUILD_DIR}" --target modes4d_results_pack
+fi
 
 if [[ "${SKIP_MPI}" -eq 0 ]]; then
   if [[ "${SKIP_CONFIGURE}" -eq 0 ]]; then
