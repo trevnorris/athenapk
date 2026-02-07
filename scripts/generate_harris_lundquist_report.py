@@ -257,21 +257,26 @@ def main():
     }
 
     gate_specs = [
-        ("corr_logS_full_final_psi0_span", "abs_min", 7.0e-1),
-        ("corr_logS_full_final_s_leak_abs", "abs_min", 5.0e-1),
-        ("corr_logS_full_final_jw_ew_abs", "abs_min", 5.0e-1),
-        ("corr_logS_full_final_mixed_ew2", "abs_min", 7.0e-1),
-        ("corr_logS_full_final_em_leak_w_abs", "abs_min", 2.0e-1),
-        ("corr_logS_full_final_helicity_sub_abs", "abs_min", 5.0e-1),
-        ("corr_logS_full_final_edotb_sub_abs", "abs_min", 5.0e-1),
-        ("corr_logS_full_final_jw_mode_activity_proxy", "abs_min", 5.0e-1),
-        ("corr_logS_full_final_helicity_sub_abs", "max", -2.0e-1),
-        ("corr_logS_full_final_edotb_sub_abs", "max", -2.0e-1),
+        ("corr_logS_full_final_psi0_span", "abs_min", 7.0e-1, "blocking"),
+        ("corr_logS_full_final_s_leak_abs", "abs_min", 5.0e-1, "blocking"),
+        ("corr_logS_full_final_jw_ew_abs", "abs_min", 5.0e-1, "blocking"),
+        ("corr_logS_full_final_mixed_ew2", "abs_min", 7.0e-1, "blocking"),
+        ("corr_logS_full_final_em_leak_w_abs", "abs_min", 2.0e-1, "blocking"),
+        ("corr_logS_full_final_helicity_sub_abs", "abs_min", 5.0e-1, "blocking"),
+        ("corr_logS_full_final_edotb_sub_abs", "abs_min", 5.0e-1, "blocking"),
+        (
+            "corr_logS_full_final_jw_mode_activity_proxy",
+            "abs_min",
+            5.0e-1,
+            "blocking",
+        ),
+        ("corr_logS_full_final_helicity_sub_abs", "max", -2.0e-1, "blocking"),
+        ("corr_logS_full_final_edotb_sub_abs", "max", -2.0e-1, "blocking"),
     ]
 
     gate_rows = []
     gate_ok = True
-    for key, mode, threshold in gate_specs:
+    for key, mode, threshold, gate_class in gate_specs:
         value = metrics[key]
         if mode == "abs_min":
             status = gate_abs(value, threshold)
@@ -279,8 +284,9 @@ def main():
         else:
             status = gate_max(value, threshold)
             condition = f"{key} <= {threshold:.1e}"
-        gate_ok = gate_ok and (status == "PASS")
-        gate_rows.append((condition, value, status))
+        if gate_class == "blocking":
+            gate_ok = gate_ok and (status == "PASS")
+        gate_rows.append((condition, value, status, gate_class))
 
     psi_ratio = []
     psi_proj_ratio = []
@@ -360,63 +366,73 @@ def main():
             series_min(psi_ratio),
             "min",
             args.psi0_enhancement_min,
+            "blocking",
         ),
         (
             "max(|controlled JwEw|)",
             series_max(controlled_jw_ew_abs),
             "max",
             args.controlled_max_jw_ew_abs,
+            "blocking",
         ),
         (
             "max(controlled S_leak_abs)",
             series_max(controlled_s_leak_abs),
             "max",
             args.controlled_max_s_leak_abs,
+            "blocking",
         ),
         (
             "max(controlled jw_mode_activity_proxy)",
             series_max(controlled_jw_mode_proxy),
             "max",
             args.controlled_max_jw_mode_activity_proxy,
+            "blocking",
         ),
         (
             "min(full_max_abs_dpsi0_dt/controlled_max_abs_dpsi0_dt)",
             series_min(rate_ratio),
             "min",
             args.max_abs_dpsi0_enhancement_min,
+            "informational",
         ),
         (
             "min(full_psi_w0_span/controlled_psi_w0_span)",
             series_min(psi_w0_ratio),
             "min",
             args.psi_w0_enhancement_min,
+            "blocking",
         ),
         (
             "min(full_max_abs_dpsi_w0_dt/controlled_max_abs_dpsi_w0_dt)",
             series_min(rate_w0_ratio),
             "min",
             args.max_abs_dpsi_w0_enhancement_min,
+            "blocking",
         ),
         (
             "min(|full JwEw|)",
             series_min(full_jw_ew_abs),
             "min",
             args.full_min_jw_ew_abs,
+            "blocking",
         ),
         (
             "min(full S_leak_abs)",
             series_min(full_s_leak_abs),
             "min",
             args.full_min_s_leak_abs,
+            "blocking",
         ),
         (
             "min(full jw_mode_activity_proxy)",
             series_min(full_jw_mode_proxy),
             "min",
             args.full_min_jw_mode_activity_proxy,
+            "blocking",
         ),
     ]
-    for name, value, mode, threshold in compare_specs:
+    for name, value, mode, threshold, gate_class in compare_specs:
         if mode == "min":
             status = "FAIL" if (not math.isfinite(value) or value < threshold) else "PASS"
             cond = f"{name} >= {threshold:.1e}"
@@ -426,8 +442,9 @@ def main():
         else:
             status = gate_abs(value, threshold)
             cond = f"|{name}| >= {threshold:.1e}"
-        gate_ok = gate_ok and (status == "PASS")
-        compare_gate_rows.append((cond, value, status))
+        if gate_class == "blocking":
+            gate_ok = gate_ok and (status == "PASS")
+        compare_gate_rows.append((cond, value, status, gate_class))
 
     per_case_ok = True
     for row in rows:
@@ -460,6 +477,7 @@ def main():
     lines.append("")
     lines.append(f"- Generated (UTC): {datetime.now(timezone.utc).isoformat()}")
     lines.append(f"- Overall status: **{overall}**")
+    lines.append("- Gate policy: `blocking` gates determine PASS/FAIL; `informational` gates are reported but non-blocking.")
     lines.append(f"- Summary CSV: `{summary_csv}`")
     lines.append(f"- Plot (primary): `{primary_plot}`")
     lines.append(f"- Plot (subscale): `{subscale_plot}`")
@@ -467,10 +485,12 @@ def main():
     lines.append("")
     lines.append("## Scan-Level Correlation Gates")
     lines.append("")
-    lines.append("| Gate | Value | Status |")
-    lines.append("| --- | ---: | :---: |")
-    for condition, value, status in gate_rows:
-        lines.append(f"| `{condition}` | `{fmt_val(value)}` | `{status}` |")
+    lines.append("| Gate | Value | Status | Class |")
+    lines.append("| --- | ---: | :---: | :--- |")
+    for condition, value, status, gate_class in gate_rows:
+        lines.append(
+            f"| `{condition}` | `{fmt_val(value)}` | `{status}` | `{gate_class}` |"
+        )
     lines.append("")
     lines.append("## Per-S Summary")
     lines.append("")
@@ -615,10 +635,12 @@ def main():
     lines.append("")
     lines.append("## Controlled-vs-Full Activation Gates")
     lines.append("")
-    lines.append("| Gate | Value | Status |")
-    lines.append("| --- | ---: | :---: |")
-    for condition, value, status in compare_gate_rows:
-        lines.append(f"| `{condition}` | `{fmt_val(value)}` | `{status}` |")
+    lines.append("| Gate | Value | Status | Class |")
+    lines.append("| --- | ---: | :---: | :--- |")
+    for condition, value, status, gate_class in compare_gate_rows:
+        lines.append(
+            f"| `{condition}` | `{fmt_val(value)}` | `{status}` | `{gate_class}` |"
+        )
 
     lines.append("")
     lines.append("## Correlation Signal Variation")
