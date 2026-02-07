@@ -29,6 +29,12 @@ Implemented now:
   - source-step spatial mixed couplings are disabled in this mode to avoid
     flux/source double counting; non-conservative mode still applies them as
     source terms
+  - time-like mixed couplings from `docs/mode_equations_verified.md` are now
+    explicitly included in source form for all transport modes:
+    - `nu=0` brane component includes the
+      `+sqrt(2n)/lambda * d^0 a_w^(n-1)` coupling term
+    - scalar component includes the time-like piece of
+      `-sqrt(2(n+1))/lambda * d_mu a^{mu,(n+1)}`
 - split plasma transverse-momentum (`momw`) source update:
   - reconstruct `E_w` and `C_a` at quadrature nodes from EM modes
   - apply species force `q/m * rho * (E_w - v^a C_a)` in node space
@@ -128,7 +134,8 @@ Not implemented yet:
   outside baseline CI)
 - full conservative EM closure beyond the current spatial mixed-coupling transport path
   (`em4d_pi` transport now covers brane Laplacian + nearest-neighbor spatial
-  mixed couplings; remaining EM terms stay source-step)
+  mixed couplings, with time-like mixed terms wired in source form; mass/current/
+  damping/gauge-control terms remain source-step)
 - full reconnection workflow/analysis
 
 Additional bring-up path now available:

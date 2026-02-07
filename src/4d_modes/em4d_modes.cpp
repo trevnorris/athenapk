@@ -796,17 +796,25 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             Real mixed_grad_aw_x = 0.0;
             Real mixed_grad_aw_y = 0.0;
             Real mixed_grad_aw_z = 0.0;
+            Real mixed_dt_aw_prev = 0.0;
             if ((n > 0) && !use_conservative_transport) {
               const int idx_aw_prev = EMIndex(n - 1, kCompAW);
               mixed_grad_aw_x = gradient_x(a_old, idx_aw_prev, k, j, i);
               mixed_grad_aw_y = gradient_y(a_old, idx_aw_prev, k, j, i);
               mixed_grad_aw_z = gradient_z(a_old, idx_aw_prev, k, j, i);
             }
+            if (n > 0) {
+              const int idx_aw_prev = EMIndex(n - 1, kCompAW);
+              // Time-like mixed coupling from +sqrt(2n)/lambda * d^0 a_w^(n-1).
+              mixed_dt_aw_prev = pi_old(idx_aw_prev, k, j, i);
+            }
 
             Real mixed_div_a_next = 0.0;
+            const Real coupling_raise =
+                (n + 1 < n_modes)
+                    ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda)
+                    : 0.0;
             if ((n + 1 < n_modes) && !use_conservative_transport) {
-              const Real coupling_raise =
-                  std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda;
               const int idx_ax_next = EMIndex(n + 1, kCompAX);
               const int idx_ay_next = EMIndex(n + 1, kCompAY);
               const int idx_az_next = EMIndex(n + 1, kCompAZ);
@@ -814,6 +822,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                                  (gradient_x(a_old, idx_ax_next, k, j, i) +
                                   gradient_y(a_old, idx_ay_next, k, j, i) +
                                   gradient_z(a_old, idx_az_next, k, j, i));
+            }
+            Real mixed_dt_a0_next = 0.0;
+            if (n + 1 < n_modes) {
+              const int idx_a0_next = EMIndex(n + 1, kCompA0);
+              // Time-like piece of -sqrt(2(n+1))/lambda * d_mu a^{mu,(n+1)}.
+              mixed_dt_a0_next = pi_old(idx_a0_next, k, j, i);
             }
 
             const Real lap_a0 = use_conservative_transport
@@ -834,6 +848,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
 
             const Real rhs_a0 = lap_a0 -
                                 (c2 * mass_squared[n] * a_old(idx_a0, k, j, i)) -
+                                (c2 * coupling_coeff * mixed_dt_aw_prev) -
                                 (mu0 * j0_modes[n]) - (damping * pi_old(idx_a0, k, j, i));
             const Real rhs_ax = lap_ax -
                                 (c2 * mass_squared[n] * a_old(idx_ax, k, j, i)) +
@@ -852,6 +867,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                                 (damping * pi_old(idx_az, k, j, i));
             const Real rhs_aw = lap_aw -
                                 (c2 * mixed_div_a_next) -
+                                (c2 * coupling_raise * mixed_dt_a0_next) -
                                 (mu0 * jw_modes[n]) - (damping * pi_old(idx_aw, k, j, i));
 
             pi_new(idx_a0, k, j, i) = pi_old(idx_a0, k, j, i) + (dt * rhs_a0);
