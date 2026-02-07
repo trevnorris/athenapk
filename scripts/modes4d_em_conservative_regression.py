@@ -166,15 +166,59 @@ def transport_balance_metrics(
     return (max_norm, rms_norm, max_abs, final_rate)
 
 
+def em_bulk_ledger_abs_rate_metrics(
+    times, em_u_bulk, int_ja_ea, int_jw_ew, skip_initial_interval=True
+):
+    if (
+        len(times) < 2
+        or em_u_bulk is None
+        or int_ja_ea is None
+        or int_jw_ew is None
+        or len(em_u_bulk) != len(times)
+        or len(int_ja_ea) != len(times)
+        or len(int_jw_ew) != len(times)
+    ):
+        return (math.nan, math.nan, math.nan)
+
+    abs_rates = []
+    final_rate = math.nan
+    for i in range(1, len(times)):
+        if skip_initial_interval and i == 1:
+            continue
+        dt = times[i] - times[i - 1]
+        if dt <= 0.0:
+            continue
+        du_dt = (em_u_bulk[i] - em_u_bulk[i - 1]) / dt
+        dja_dt = (int_ja_ea[i] - int_ja_ea[i - 1]) / dt
+        djw_dt = (int_jw_ew[i] - int_jw_ew[i - 1]) / dt
+        rate = du_dt + dja_dt + djw_dt
+        abs_rates.append(abs(rate))
+        final_rate = rate
+
+    if not abs_rates:
+        return (math.nan, math.nan, final_rate)
+
+    max_abs = max(abs_rates)
+    rms_abs = math.sqrt(sum(x * x for x in abs_rates) / len(abs_rates))
+    return (max_abs, rms_abs, final_rate)
+
+
 def analyze_harris(
-    cols, min_mixed_ew2, min_mixed_c2, transport_norm_tol, transport_abs_rate_tol
+    cols,
+    min_mixed_ew2,
+    min_mixed_c2,
+    transport_norm_tol,
+    transport_abs_rate_tol,
+    em_bulk_ledger_abs_rate_tol,
 ):
     times = require_col(cols, "time")
     mixed_ew2 = require_col(cols, "m4d_mixed_ew2")
     mixed_c2 = require_col(cols, "m4d_mixed_c2")
     cont_mode0_max_abs = require_col(cols, "m4d_cont_mode0_max_abs")
     int_jw_ew = require_col(cols, "m4d_int_jw_ew")
+    int_ja_ea = require_col(cols, "m4d_int_ja_ea")
     int_s_leak_abs = require_col(cols, "m4d_int_s_leak_abs")
+    em_u_bulk = require_col(cols, "m4d_em_u_bulk")
     pi0_mode0 = require_col(cols, "m4d_pi0_mode_0")
     pix_mode0 = require_col(cols, "m4d_pix_mode_0")
     piy_mode0 = require_col(cols, "m4d_piy_mode_0")
@@ -196,7 +240,9 @@ def analyze_harris(
     ensure_finite(mixed_c2, "harris:m4d_mixed_c2")
     ensure_finite(cont_mode0_max_abs, "harris:m4d_cont_mode0_max_abs")
     ensure_finite(int_jw_ew, "harris:m4d_int_jw_ew")
+    ensure_finite(int_ja_ea, "harris:m4d_int_ja_ea")
     ensure_finite(int_s_leak_abs, "harris:m4d_int_s_leak_abs")
+    ensure_finite(em_u_bulk, "harris:m4d_em_u_bulk")
     ensure_finite(pi0_mode0, "harris:m4d_pi0_mode_0")
     ensure_finite(pix_mode0, "harris:m4d_pix_mode_0")
     ensure_finite(piy_mode0, "harris:m4d_piy_mode_0")
@@ -259,6 +305,11 @@ def analyze_harris(
     ) = transport_balance_metrics(
         times, piw_mode0, int_divpiw_mode0, int_srcpiw_mode0, transport_abs_rate_tol
     )
+    (
+        em_bulk_ledger_max_abs_rate,
+        em_bulk_ledger_rms_abs_rate,
+        em_bulk_ledger_final_rate,
+    ) = em_bulk_ledger_abs_rate_metrics(times, em_u_bulk, int_ja_ea, int_jw_ew)
 
     def rate_status(max_norm, max_abs):
         if math.isnan(max_norm):
@@ -298,6 +349,14 @@ def analyze_harris(
         )
         else "FAIL"
     )
+    em_bulk_ledger_status = (
+        "PASS"
+        if (
+            not math.isnan(em_bulk_ledger_max_abs_rate)
+            and em_bulk_ledger_max_abs_rate <= em_bulk_ledger_abs_rate_tol
+        )
+        else ("N/A" if math.isnan(em_bulk_ledger_max_abs_rate) else "FAIL")
+    )
 
     failures = []
     if max_mixed_ew2 < min_mixed_ew2:
@@ -314,6 +373,8 @@ def analyze_harris(
         failures.append("piz_transport")
     if piw_transport_status != "PASS":
         failures.append("piw_transport")
+    if em_bulk_ledger_status != "PASS":
+        failures.append("em_bulk_ledger")
 
     return {
         "case": "harris_short_conservative",
@@ -338,6 +399,10 @@ def analyze_harris(
         "piw_transport_max_abs_rate": piw_transport_max_abs_rate,
         "piw_transport_status": piw_transport_status,
         "em_transport_status": em_transport_status,
+        "em_bulk_ledger_max_abs_rate": em_bulk_ledger_max_abs_rate,
+        "em_bulk_ledger_rms_abs_rate": em_bulk_ledger_rms_abs_rate,
+        "em_bulk_ledger_final_rate": em_bulk_ledger_final_rate,
+        "em_bulk_ledger_status": em_bulk_ledger_status,
         "status": "FAIL" if failures else "PASS",
         "failures": "|".join(failures) if failures else "none",
     }
@@ -382,6 +447,12 @@ def main():
     parser.add_argument("--min-harris-mixed-c2", type=float, default=1.0e-7)
     parser.add_argument("--transport-norm-tol", type=float, default=5.0e-2)
     parser.add_argument("--transport-abs-rate-tol", type=float, default=1.0e-8)
+    parser.add_argument(
+        "--em-bulk-ledger-abs-rate-tol",
+        type=float,
+        default=5.0e-2,
+        help="Maximum absolute EM bulk-ledger residual rate for PASS",
+    )
     args = parser.parse_args()
 
     script_path = Path(__file__).resolve()
@@ -435,10 +506,11 @@ def main():
         args.min_harris_mixed_c2,
         args.transport_norm_tol,
         args.transport_abs_rate_tol,
+        args.em_bulk_ledger_abs_rate_tol,
     )
 
     print(
-        "case,max_mixed_ew2,max_mixed_c2,max_em_a2_mode_1,pulse_xc_shift,max_cont_mode0_abs,final_int_jw_ew,final_int_s_leak_abs,pi0_transport_max_norm,pi0_transport_max_abs_rate,pi0_transport_status,pix_transport_max_norm,pix_transport_max_abs_rate,pix_transport_status,piy_transport_max_norm,piy_transport_max_abs_rate,piy_transport_status,piz_transport_max_norm,piz_transport_max_abs_rate,piz_transport_status,piw_transport_max_norm,piw_transport_max_abs_rate,piw_transport_status,em_transport_status,status,failures"
+        "case,max_mixed_ew2,max_mixed_c2,max_em_a2_mode_1,pulse_xc_shift,max_cont_mode0_abs,final_int_jw_ew,final_int_s_leak_abs,pi0_transport_max_norm,pi0_transport_max_abs_rate,pi0_transport_status,pix_transport_max_norm,pix_transport_max_abs_rate,pix_transport_status,piy_transport_max_norm,piy_transport_max_abs_rate,piy_transport_status,piz_transport_max_norm,piz_transport_max_abs_rate,piz_transport_status,piw_transport_max_norm,piw_transport_max_abs_rate,piw_transport_status,em_transport_status,em_bulk_ledger_max_abs_rate,em_bulk_ledger_rms_abs_rate,em_bulk_ledger_final_rate,em_bulk_ledger_status,status,failures"
     )
     print(
         ",".join(
@@ -466,6 +538,10 @@ def main():
                 "nan",
                 "nan",
                 "N/A",
+                "N/A",
+                "nan",
+                "nan",
+                "nan",
                 "N/A",
                 scalar_result["status"],
                 scalar_result["failures"],
@@ -499,6 +575,10 @@ def main():
                 fmt(harris_result["piw_transport_max_abs_rate"]),
                 harris_result["piw_transport_status"],
                 harris_result["em_transport_status"],
+                fmt(harris_result["em_bulk_ledger_max_abs_rate"]),
+                fmt(harris_result["em_bulk_ledger_rms_abs_rate"]),
+                fmt(harris_result["em_bulk_ledger_final_rate"]),
+                harris_result["em_bulk_ledger_status"],
                 harris_result["status"],
                 harris_result["failures"],
             ]

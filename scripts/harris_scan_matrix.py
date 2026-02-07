@@ -158,8 +158,50 @@ def transport_balance_metrics(
     return (max_norm, rms_norm, max_abs, final_rate)
 
 
+def em_bulk_ledger_abs_rate_metrics(
+    times, em_u_bulk, int_ja_ea, int_jw_ew, skip_initial_interval=True
+):
+    if (
+        len(times) < 2
+        or em_u_bulk is None
+        or int_ja_ea is None
+        or int_jw_ew is None
+        or len(em_u_bulk) != len(times)
+        or len(int_ja_ea) != len(times)
+        or len(int_jw_ew) != len(times)
+    ):
+        return (math.nan, math.nan, math.nan)
+
+    abs_rates = []
+    final_rate = math.nan
+    for i in range(1, len(times)):
+        if skip_initial_interval and i == 1:
+            continue
+        dt = times[i] - times[i - 1]
+        if dt <= 0.0:
+            continue
+        du_dt = (em_u_bulk[i] - em_u_bulk[i - 1]) / dt
+        dja_dt = (int_ja_ea[i] - int_ja_ea[i - 1]) / dt
+        djw_dt = (int_jw_ew[i] - int_jw_ew[i - 1]) / dt
+        rate = du_dt + dja_dt + djw_dt
+        abs_rates.append(abs(rate))
+        final_rate = rate
+
+    if not abs_rates:
+        return (math.nan, math.nan, final_rate)
+
+    max_abs = max(abs_rates)
+    rms_abs = math.sqrt(sum(x * x for x in abs_rates) / len(abs_rates))
+    return (max_abs, rms_abs, final_rate)
+
+
 def analyze_case(
-    case_name, cols, closure_norm_tol, closure_abs_rate_tol, local_mode0_abs_rate_tol
+    case_name,
+    cols,
+    closure_norm_tol,
+    closure_abs_rate_tol,
+    local_mode0_abs_rate_tol,
+    em_bulk_ledger_abs_rate_tol,
 ):
     times = cols["time"]
     psi = cols["m4d_psi0_span"]
@@ -258,6 +300,20 @@ def analyze_case(
             if max(cont_local_mode0_max_abs) <= local_mode0_abs_rate_tol
             else "FAIL"
         )
+
+    (
+        em_bulk_ledger_max_abs_rate,
+        em_bulk_ledger_rms_abs_rate,
+        em_bulk_ledger_final_rate,
+    ) = em_bulk_ledger_abs_rate_metrics(times, em_u_bulk, ja_ea, jw_ew)
+    em_bulk_ledger_status = (
+        "PASS"
+        if (
+            not math.isnan(em_bulk_ledger_max_abs_rate)
+            and em_bulk_ledger_max_abs_rate <= em_bulk_ledger_abs_rate_tol
+        )
+        else ("N/A" if math.isnan(em_bulk_ledger_max_abs_rate) else "FAIL")
+    )
 
     (
         momx_transport_max_norm,
@@ -548,6 +604,10 @@ def analyze_case(
         if cont_local_mode0_l2 is not None
         else math.nan,
         "closure_local_mode0_status": closure_local_mode0_status,
+        "em_bulk_ledger_max_abs_rate": em_bulk_ledger_max_abs_rate,
+        "em_bulk_ledger_rms_abs_rate": em_bulk_ledger_rms_abs_rate,
+        "em_bulk_ledger_final_rate": em_bulk_ledger_final_rate,
+        "em_bulk_ledger_status": em_bulk_ledger_status,
         "momx_transport_max_norm": momx_transport_max_norm,
         "momx_transport_rms_norm": momx_transport_rms_norm,
         "momx_transport_max_abs_rate": momx_transport_max_abs_rate,
@@ -699,6 +759,10 @@ def print_table(results):
         "closure_local_mode0_final_l1",
         "closure_local_mode0_final_l2",
         "closure_local_mode0_status",
+        "em_bulk_ledger_max_abs_rate",
+        "em_bulk_ledger_rms_abs_rate",
+        "em_bulk_ledger_final_rate",
+        "em_bulk_ledger_status",
         "momx_transport_max_norm",
         "momx_transport_rms_norm",
         "momx_transport_max_abs_rate",
@@ -927,6 +991,11 @@ def main():
         help="Include plasma+EM transport closure status in fail-on-check logic",
     )
     parser.add_argument(
+        "--check-em-bulk-ledger",
+        action="store_true",
+        help="Include EM bulk-ledger closure status in fail-on-check logic",
+    )
+    parser.add_argument(
         "--full-min-jw-ew-abs",
         type=float,
         default=0.0,
@@ -1046,6 +1115,12 @@ def main():
         default=0.0,
         help="Minimum |corr(psi0_span, edotb_sub)| for full-case correlation PASS (disabled when 0)",
     )
+    parser.add_argument(
+        "--em-bulk-ledger-abs-rate-tol",
+        type=float,
+        default=1.0,
+        help="Maximum absolute EM bulk-ledger residual rate for PASS",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
@@ -1085,6 +1160,7 @@ def main():
             args.closure_norm_tol,
             args.closure_abs_rate_tol,
             args.closure_local_mode0_abs_rate_tol,
+            args.em_bulk_ledger_abs_rate_tol,
         ),
         analyze_case(
             "full",
@@ -1092,6 +1168,7 @@ def main():
             args.closure_norm_tol,
             args.closure_abs_rate_tol,
             args.closure_local_mode0_abs_rate_tol,
+            args.em_bulk_ledger_abs_rate_tol,
         ),
     ]
     for row in results:
@@ -1144,6 +1221,10 @@ def main():
             or (
                 args.check_transport_closure
                 and r["transport_closure_status"] == "FAIL"
+            )
+            or (
+                args.check_em_bulk_ledger
+                and r["em_bulk_ledger_status"] == "FAIL"
             )
         ]
         if failing:

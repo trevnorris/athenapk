@@ -93,6 +93,12 @@ def main():
         help="Minimum |final_int_src_em_timelike_abs| for full-case activity PASS",
     )
     parser.add_argument(
+        "--em-bulk-ledger-abs-rate-tol",
+        type=float,
+        default=8.0e-1,
+        help="Maximum absolute EM bulk-ledger residual rate for PASS",
+    )
+    parser.add_argument(
         "--min-abs-corr-psi0-s-leak-abs",
         type=float,
         default=9.0e-1,
@@ -185,6 +191,9 @@ def main():
         str(output_dir),
         "--fail-on-check",
         "--check-transport-closure",
+        "--check-em-bulk-ledger",
+        "--em-bulk-ledger-abs-rate-tol",
+        str(args.em_bulk_ledger_abs_rate_tol),
         "--full-min-jw-ew-abs",
         str(args.min_jw_ew_abs),
         "--full-min-s-leak-abs",

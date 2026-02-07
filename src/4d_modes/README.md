@@ -312,6 +312,16 @@ where each rate is computed as:
 The source-ledger channels (`m4d_int_srcmomx_mode0`, `m4d_int_srcmomy_mode0`,
 `m4d_int_srcmomz_mode0`, `m4d_int_srcmomw_mode0`, `m4d_int_srcenergy_mode0`)
 track source-step contributions, so the transport rate isolates unresolved residual.
+The scan CSV also reports an EM bulk-ledger residual-rate metric:
+`d/dt(m4d_em_u_bulk) + d/dt(m4d_int_ja_ea) + d/dt(m4d_int_jw_ew)`,
+with channels:
+- `em_bulk_ledger_max_abs_rate`
+- `em_bulk_ledger_rms_abs_rate`
+- `em_bulk_ledger_final_rate`
+- `em_bulk_ledger_status`
+and optional gating:
+- `--check-em-bulk-ledger`
+- `--em-bulk-ledger-abs-rate-tol`
 EM mode-0 transport-balance rates are also reported:
 - `pi0_transport_*`
 - `pix_transport_*`
@@ -411,6 +421,9 @@ the optional conservative EM transport path
   `pi0/pix/piy/piz/piw`, using
   `d/dt(m4d_pi*_mode_0) + d/dt(m4d_int_divpi*_mode0) - d/dt(m4d_int_srcpi*_mode0)`
   with normalized and absolute-rate tolerances
+- short-window EM bulk-ledger absolute-rate gate:
+  `d/dt(m4d_em_u_bulk) + d/dt(m4d_int_ja_ea) + d/dt(m4d_int_jw_ew)`
+  with `--em-bulk-ledger-abs-rate-tol` (default `5e-2`)
 
 Companion targeted time-like coupling check:
 
@@ -453,7 +466,8 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 This target runs `scripts/harris_regression_tuned.py`, which executes the
 controlled/full scan with fixed closure + activity thresholds for the tuned
 `inputs/harris_4d_full.in` baseline, and includes transport-closure gating
-(`--check-transport-closure`, plasma + EM mode-0 channels) plus full-case correlation gates tying
+(`--check-transport-closure`, plasma + EM mode-0 channels), EM bulk-ledger
+gating (`--check-em-bulk-ledger`) plus full-case correlation gates tying
 `m4d_psi0_span` to leakage/mixed-channel activity:
 - `|corr_psi0_s_leak_abs|`
 - `|corr_psi0_jw_ew|`
