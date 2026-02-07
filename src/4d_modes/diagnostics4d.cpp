@@ -40,6 +40,11 @@ enum class BraneMixedQuantity {
   MixedC2
 };
 
+enum class HelicitySubscaleQuantity {
+  HSub,
+  EdotBSub
+};
+
 Real FieldL2Integral(MeshData<Real> *md, const std::string &field_name) {
   auto *pmb = md->GetBlockData(0)->GetBlockPointer();
   const auto &field_pack = md->PackVariables(std::vector<std::string>{field_name});
@@ -758,6 +763,203 @@ Real ResolvedEMEnergyIntegral(MeshData<Real> *md) {
 
 Real ResolvedEMEnergyHst(MeshData<Real> *md) { return ResolvedEMEnergyIntegral(md); }
 
+Real HelicitySubscaleIntegral(MeshData<Real> *md, HelicitySubscaleQuantity quantity) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
+  const int n_quad = tables.NumQuadrature();
+  const auto &weights = tables.Weights();
+  const Real z_int = tables.Lambda() * std::sqrt(std::acos(-1.0));
+  const Real inv_z_int = 1.0 / z_int;
+
+  Real integral = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto *pmb = bd->GetBlockPointer();
+    auto &coords = pmb->coords;
+
+    auto a = bd->Get("em4d_a").data.GetHostMirrorAndCopy();
+    auto pi = bd->Get("em4d_pi").data.GetHostMirrorAndCopy();
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+    const bool has_x = (ib.e > ib.s);
+    const bool has_y = (jb.e > jb.s);
+    const bool has_z = (kb.e > kb.s);
+
+    std::vector<Real> ax_modes(n_modes, 0.0);
+    std::vector<Real> ay_modes(n_modes, 0.0);
+    std::vector<Real> az_modes(n_modes, 0.0);
+    std::vector<Real> pix_modes(n_modes, 0.0);
+    std::vector<Real> piy_modes(n_modes, 0.0);
+    std::vector<Real> piz_modes(n_modes, 0.0);
+    std::vector<Real> da0_dx_modes(n_modes, 0.0);
+    std::vector<Real> da0_dy_modes(n_modes, 0.0);
+    std::vector<Real> da0_dz_modes(n_modes, 0.0);
+    std::vector<Real> dax_dy_modes(n_modes, 0.0);
+    std::vector<Real> dax_dz_modes(n_modes, 0.0);
+    std::vector<Real> day_dx_modes(n_modes, 0.0);
+    std::vector<Real> day_dz_modes(n_modes, 0.0);
+    std::vector<Real> daz_dx_modes(n_modes, 0.0);
+    std::vector<Real> daz_dy_modes(n_modes, 0.0);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          const Real dx = has_x ? coords.Dxc<1>(i) : 1.0;
+          const Real dy = has_y ? coords.Dxc<2>(j) : 1.0;
+          const Real dz = has_z ? coords.Dxc<3>(k) : 1.0;
+
+          for (int n = 0; n < n_modes; ++n) {
+            const int off = 5 * n;
+            ax_modes[n] = a(off + kCompAX, k, j, i);
+            ay_modes[n] = a(off + kCompAY, k, j, i);
+            az_modes[n] = a(off + kCompAZ, k, j, i);
+            pix_modes[n] = pi(off + kCompAX, k, j, i);
+            piy_modes[n] = pi(off + kCompAY, k, j, i);
+            piz_modes[n] = pi(off + kCompAZ, k, j, i);
+
+            if (has_x) {
+              da0_dx_modes[n] =
+                  (a(off + kCompA0, k, j, i + 1) - a(off + kCompA0, k, j, i - 1)) /
+                  (2.0 * dx);
+              day_dx_modes[n] =
+                  (a(off + kCompAY, k, j, i + 1) - a(off + kCompAY, k, j, i - 1)) /
+                  (2.0 * dx);
+              daz_dx_modes[n] =
+                  (a(off + kCompAZ, k, j, i + 1) - a(off + kCompAZ, k, j, i - 1)) /
+                  (2.0 * dx);
+            }
+            if (has_y) {
+              da0_dy_modes[n] =
+                  (a(off + kCompA0, k, j + 1, i) - a(off + kCompA0, k, j - 1, i)) /
+                  (2.0 * dy);
+              dax_dy_modes[n] =
+                  (a(off + kCompAX, k, j + 1, i) - a(off + kCompAX, k, j - 1, i)) /
+                  (2.0 * dy);
+              daz_dy_modes[n] =
+                  (a(off + kCompAZ, k, j + 1, i) - a(off + kCompAZ, k, j - 1, i)) /
+                  (2.0 * dy);
+            }
+            if (has_z) {
+              da0_dz_modes[n] =
+                  (a(off + kCompA0, k + 1, j, i) - a(off + kCompA0, k - 1, j, i)) /
+                  (2.0 * dz);
+              dax_dz_modes[n] =
+                  (a(off + kCompAX, k + 1, j, i) - a(off + kCompAX, k - 1, j, i)) /
+                  (2.0 * dz);
+              day_dz_modes[n] =
+                  (a(off + kCompAY, k + 1, j, i) - a(off + kCompAY, k - 1, j, i)) /
+                  (2.0 * dz);
+            }
+          }
+
+          Real ax_bar = 0.0;
+          Real ay_bar = 0.0;
+          Real az_bar = 0.0;
+          Real ex_bar = 0.0;
+          Real ey_bar = 0.0;
+          Real ez_bar = 0.0;
+          Real bx_bar = 0.0;
+          Real by_bar = 0.0;
+          Real bz_bar = 0.0;
+          Real ab_proj = 0.0;
+          Real edotb_proj = 0.0;
+
+          for (int q = 0; q < n_quad; ++q) {
+            Real ax_node = 0.0;
+            Real ay_node = 0.0;
+            Real az_node = 0.0;
+            Real pix_node = 0.0;
+            Real piy_node = 0.0;
+            Real piz_node = 0.0;
+            Real da0_dx_node = 0.0;
+            Real da0_dy_node = 0.0;
+            Real da0_dz_node = 0.0;
+            Real dax_dy_node = 0.0;
+            Real dax_dz_node = 0.0;
+            Real day_dx_node = 0.0;
+            Real day_dz_node = 0.0;
+            Real daz_dx_node = 0.0;
+            Real daz_dy_node = 0.0;
+
+            for (int n = 0; n < n_modes; ++n) {
+              const Real phi_nq = tables.Phi(n, q);
+              ax_node += ax_modes[n] * phi_nq;
+              ay_node += ay_modes[n] * phi_nq;
+              az_node += az_modes[n] * phi_nq;
+              pix_node += pix_modes[n] * phi_nq;
+              piy_node += piy_modes[n] * phi_nq;
+              piz_node += piz_modes[n] * phi_nq;
+              da0_dx_node += da0_dx_modes[n] * phi_nq;
+              da0_dy_node += da0_dy_modes[n] * phi_nq;
+              da0_dz_node += da0_dz_modes[n] * phi_nq;
+              dax_dy_node += dax_dy_modes[n] * phi_nq;
+              dax_dz_node += dax_dz_modes[n] * phi_nq;
+              day_dx_node += day_dx_modes[n] * phi_nq;
+              day_dz_node += day_dz_modes[n] * phi_nq;
+              daz_dx_node += daz_dx_modes[n] * phi_nq;
+              daz_dy_node += daz_dy_modes[n] * phi_nq;
+            }
+
+            const Real ex = -pix_node - da0_dx_node;
+            const Real ey = -piy_node - da0_dy_node;
+            const Real ez = -piz_node - da0_dz_node;
+            const Real bx = daz_dy_node - day_dz_node;
+            const Real by = dax_dz_node - daz_dx_node;
+            const Real bz = day_dx_node - dax_dy_node;
+            const Real ab = (ax_node * bx) + (ay_node * by) + (az_node * bz);
+            const Real edotb = (ex * bx) + (ey * by) + (ez * bz);
+
+            ax_bar += weights[q] * ax_node;
+            ay_bar += weights[q] * ay_node;
+            az_bar += weights[q] * az_node;
+            ex_bar += weights[q] * ex;
+            ey_bar += weights[q] * ey;
+            ez_bar += weights[q] * ez;
+            bx_bar += weights[q] * bx;
+            by_bar += weights[q] * by;
+            bz_bar += weights[q] * bz;
+            ab_proj += weights[q] * ab;
+            edotb_proj += weights[q] * edotb;
+          }
+
+          ax_bar *= inv_z_int;
+          ay_bar *= inv_z_int;
+          az_bar *= inv_z_int;
+          ex_bar *= inv_z_int;
+          ey_bar *= inv_z_int;
+          ez_bar *= inv_z_int;
+          bx_bar *= inv_z_int;
+          by_bar *= inv_z_int;
+          bz_bar *= inv_z_int;
+          ab_proj *= inv_z_int;
+          edotb_proj *= inv_z_int;
+
+          const Real ab_res = (ax_bar * bx_bar) + (ay_bar * by_bar) + (az_bar * bz_bar);
+          const Real edotb_res = (ex_bar * bx_bar) + (ey_bar * by_bar) + (ez_bar * bz_bar);
+
+          if (quantity == HelicitySubscaleQuantity::HSub) {
+            integral += (ab_proj - ab_res) * coords.CellVolume(k, j, i);
+          } else {
+            integral += (edotb_proj - edotb_res) * coords.CellVolume(k, j, i);
+          }
+        }
+      }
+    }
+  }
+  return integral;
+}
+
+Real HelicitySubHst(MeshData<Real> *md) {
+  return HelicitySubscaleIntegral(md, HelicitySubscaleQuantity::HSub);
+}
+
+Real EdotBSubHst(MeshData<Real> *md) {
+  return HelicitySubscaleIntegral(md, HelicitySubscaleQuantity::EdotBSub);
+}
+
 Real BraneE2Hst(MeshData<Real> *md) {
   return BraneMixedIntegral(md, BraneMixedQuantity::BraneE2);
 }
@@ -1147,6 +1349,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     ResolvedEMEnergyHst,
                                                     "m4d_em_u_resolved"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    HelicitySubHst,
+                                                    "m4d_helicity_sub"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EdotBSubHst,
+                                                    "m4d_edotb_sub"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     Ay0SpanHst, "m4d_psi0_span"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,

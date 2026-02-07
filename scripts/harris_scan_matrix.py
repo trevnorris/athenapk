@@ -161,6 +161,8 @@ def analyze_case(
     mixed_c2 = cols["m4d_mixed_c2"]
     em_u_bulk = maybe_col(cols, "m4d_em_u_bulk")
     em_u_resolved = maybe_col(cols, "m4d_em_u_resolved")
+    helicity_sub = maybe_col(cols, "m4d_helicity_sub")
+    edotb_sub = maybe_col(cols, "m4d_edotb_sub")
     em_a2_mode1 = maybe_col(cols, "m4d_em_a2_mode_1")
     jw_mode1_l2 = maybe_col(cols, "m4d_jw_mode_l2_1")
     jw_mode1 = maybe_col(cols, "m4d_jw_mode_1")
@@ -397,6 +399,8 @@ def analyze_case(
         if em_u_resolved is not None
         else math.nan,
         "final_em_u_sub": em_u_sub[-1] if em_u_sub is not None else math.nan,
+        "final_helicity_sub": helicity_sub[-1] if helicity_sub is not None else math.nan,
+        "final_edotb_sub": edotb_sub[-1] if edotb_sub is not None else math.nan,
         "corr_psi0_s_leak": pearson(psi, leak),
         "corr_psi0_s_leak_abs": pearson(psi, leak_abs),
         "corr_psi0_jw_ew": pearson(psi, jw_ew),
@@ -404,6 +408,12 @@ def analyze_case(
         "corr_psi0_mixed_ew2": pearson(psi, mixed_ew2),
         "corr_psi0_mixed_c2": pearson(psi, mixed_c2),
         "corr_psi0_em_u_sub": pearson(psi, em_u_sub) if em_u_sub is not None else math.nan,
+        "corr_psi0_helicity_sub": pearson(psi, helicity_sub)
+        if helicity_sub is not None
+        else math.nan,
+        "corr_psi0_edotb_sub": pearson(psi, edotb_sub)
+        if edotb_sub is not None
+        else math.nan,
         "final_em_a2_mode_1": em_a2_mode1[-1] if em_a2_mode1 is not None else math.nan,
         "final_jw_mode_l2_1": jw_mode1_l2[-1] if jw_mode1_l2 is not None else math.nan,
         "final_jw_mode_1": jw_mode1[-1] if jw_mode1 is not None else math.nan,
@@ -582,6 +592,8 @@ def print_table(results):
         "final_em_u_bulk",
         "final_em_u_resolved",
         "final_em_u_sub",
+        "final_helicity_sub",
+        "final_edotb_sub",
         "final_em_a2_mode_1",
         "final_jw_mode_l2_1",
         "final_jw_mode_1",
@@ -619,6 +631,8 @@ def print_table(results):
         "corr_psi0_mixed_ew2",
         "corr_psi0_mixed_c2",
         "corr_psi0_em_u_sub",
+        "corr_psi0_helicity_sub",
+        "corr_psi0_edotb_sub",
         "corr_psi0_jw_mode_l2_1",
         "closure_max_norm",
         "closure_rms_norm",
