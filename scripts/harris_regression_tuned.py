@@ -45,6 +45,24 @@ def main():
         help="Minimum final_jw_mode_l2_1 for full-case activity PASS",
     )
     parser.add_argument(
+        "--min-abs-em-leak-w",
+        type=float,
+        default=1.0e-4,
+        help="Minimum |final_em_leak_w| for full-case activity PASS",
+    )
+    parser.add_argument(
+        "--min-abs-helicity-sub",
+        type=float,
+        default=1.0e-12,
+        help="Minimum |final_helicity_sub| for full-case activity PASS",
+    )
+    parser.add_argument(
+        "--min-abs-edotb-sub",
+        type=float,
+        default=1.0e-11,
+        help="Minimum |final_edotb_sub| for full-case activity PASS",
+    )
+    parser.add_argument(
         "--min-abs-corr-psi0-s-leak-abs",
         type=float,
         default=9.0e-1,
@@ -73,6 +91,24 @@ def main():
         type=float,
         default=9.0e-1,
         help="Minimum |corr(psi0_span, jw_mode_l2_1)| for full-case PASS",
+    )
+    parser.add_argument(
+        "--min-abs-corr-psi0-em-leak-w",
+        type=float,
+        default=3.0e-1,
+        help="Minimum |corr(psi0_span, em_leak_w)| for full-case PASS",
+    )
+    parser.add_argument(
+        "--min-abs-corr-psi0-helicity-sub",
+        type=float,
+        default=7.0e-1,
+        help="Minimum |corr(psi0_span, helicity_sub)| for full-case PASS",
+    )
+    parser.add_argument(
+        "--min-abs-corr-psi0-edotb-sub",
+        type=float,
+        default=7.0e-1,
+        help="Minimum |corr(psi0_span, edotb_sub)| for full-case PASS",
     )
     args = parser.parse_args()
 
@@ -109,6 +145,12 @@ def main():
         str(args.min_mixed_ew2),
         "--full-min-jw-mode-l2-1",
         str(args.min_jw_mode_l2_1),
+        "--full-min-abs-em-leak-w",
+        str(args.min_abs_em_leak_w),
+        "--full-min-abs-helicity-sub",
+        str(args.min_abs_helicity_sub),
+        "--full-min-abs-edotb-sub",
+        str(args.min_abs_edotb_sub),
         "--full-min-abs-corr-psi0-s-leak-abs",
         str(args.min_abs_corr_psi0_s_leak_abs),
         "--full-min-abs-corr-psi0-jw-ew",
@@ -119,6 +161,12 @@ def main():
         str(args.min_abs_corr_psi0_mixed_c2),
         "--full-min-abs-corr-psi0-jw-mode-l2-1",
         str(args.min_abs_corr_psi0_jw_mode_l2_1),
+        "--full-min-abs-corr-psi0-em-leak-w",
+        str(args.min_abs_corr_psi0_em_leak_w),
+        "--full-min-abs-corr-psi0-helicity-sub",
+        str(args.min_abs_corr_psi0_helicity_sub),
+        "--full-min-abs-corr-psi0-edotb-sub",
+        str(args.min_abs_corr_psi0_edotb_sub),
     ]
     subprocess.run(cmd, check=True)
 

@@ -724,6 +724,9 @@ def evaluate_full_activity(
     min_s_leak_abs,
     min_mixed_ew2,
     min_jw_mode_l2_1,
+    min_em_leak_w_abs,
+    min_helicity_sub_abs,
+    min_edotb_sub_abs,
 ):
     failures = []
     if min_jw_ew_abs > 0.0 and abs(row["final_jw_ew"]) < min_jw_ew_abs:
@@ -734,6 +737,12 @@ def evaluate_full_activity(
         failures.append("mixed_ew2")
     if min_jw_mode_l2_1 > 0.0 and row["final_jw_mode_l2_1"] < min_jw_mode_l2_1:
         failures.append("jw_mode_l2_1")
+    if min_em_leak_w_abs > 0.0 and abs(row["final_em_leak_w"]) < min_em_leak_w_abs:
+        failures.append("em_leak_w")
+    if min_helicity_sub_abs > 0.0 and abs(row["final_helicity_sub"]) < min_helicity_sub_abs:
+        failures.append("helicity_sub")
+    if min_edotb_sub_abs > 0.0 and abs(row["final_edotb_sub"]) < min_edotb_sub_abs:
+        failures.append("edotb_sub")
 
     if failures:
         return ("FAIL", "|".join(failures))
@@ -747,6 +756,9 @@ def evaluate_full_correlation(
     min_abs_corr_psi0_mixed_ew2,
     min_abs_corr_psi0_mixed_c2,
     min_abs_corr_psi0_jw_mode_l2_1,
+    min_abs_corr_psi0_em_leak_w,
+    min_abs_corr_psi0_helicity_sub,
+    min_abs_corr_psi0_edotb_sub,
 ):
     failures = []
 
@@ -766,6 +778,13 @@ def evaluate_full_correlation(
         min_abs_corr_psi0_jw_mode_l2_1,
         "corr_psi0_jw_mode_l2_1",
     )
+    check("corr_psi0_em_leak_w", min_abs_corr_psi0_em_leak_w, "corr_psi0_em_leak_w")
+    check(
+        "corr_psi0_helicity_sub",
+        min_abs_corr_psi0_helicity_sub,
+        "corr_psi0_helicity_sub",
+    )
+    check("corr_psi0_edotb_sub", min_abs_corr_psi0_edotb_sub, "corr_psi0_edotb_sub")
 
     if failures:
         return ("FAIL", "|".join(failures))
@@ -844,6 +863,24 @@ def main():
         help="Minimum final_jw_mode_l2_1 required for full-case activity PASS (disabled when 0)",
     )
     parser.add_argument(
+        "--full-min-abs-em-leak-w",
+        type=float,
+        default=0.0,
+        help="Minimum |final_em_leak_w| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-helicity-sub",
+        type=float,
+        default=0.0,
+        help="Minimum |final_helicity_sub| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-edotb-sub",
+        type=float,
+        default=0.0,
+        help="Minimum |final_edotb_sub| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
         "--full-min-abs-corr-psi0-s-leak-abs",
         type=float,
         default=0.0,
@@ -872,6 +909,24 @@ def main():
         type=float,
         default=0.0,
         help="Minimum |corr(psi0_span, jw_mode_l2_1)| for full-case correlation PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psi0-em-leak-w",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, em_leak_w)| for full-case correlation PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psi0-helicity-sub",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, helicity_sub)| for full-case correlation PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psi0-edotb-sub",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, edotb_sub)| for full-case correlation PASS (disabled when 0)",
     )
     args = parser.parse_args()
 
@@ -916,6 +971,9 @@ def main():
                 args.full_min_abs_corr_psi0_mixed_ew2,
                 args.full_min_abs_corr_psi0_mixed_c2,
                 args.full_min_abs_corr_psi0_jw_mode_l2_1,
+                args.full_min_abs_corr_psi0_em_leak_w,
+                args.full_min_abs_corr_psi0_helicity_sub,
+                args.full_min_abs_corr_psi0_edotb_sub,
             )
             row["correlation_status"] = corr_status
             row["correlation_failures"] = corr_failures
@@ -925,6 +983,9 @@ def main():
                 args.full_min_s_leak_abs,
                 args.full_min_mixed_ew2,
                 args.full_min_jw_mode_l2_1,
+                args.full_min_abs_em_leak_w,
+                args.full_min_abs_helicity_sub,
+                args.full_min_abs_edotb_sub,
             )
             row["activity_status"] = status
             row["activity_failures"] = failures

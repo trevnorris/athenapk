@@ -371,6 +371,14 @@ controlled/full scan with fixed closure + activity thresholds for the tuned
 - `|corr_psi0_mixed_ew2|`
 - `|corr_psi0_mixed_c2|`
 - `|corr_psi0_jw_mode_l2_1|`
+- `|corr_psi0_em_leak_w|`
+- `|corr_psi0_helicity_sub|`
+- `|corr_psi0_edotb_sub|`
+
+It also enforces full-case activity floors on:
+- `|final_em_leak_w|`
+- `|final_helicity_sub|`
+- `|final_edotb_sub|`
 
 ### 12) Run the Phase-10 validation bundle target
 
