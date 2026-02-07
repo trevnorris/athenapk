@@ -238,6 +238,12 @@ correlation gates and concise CSV summary output. Defaults:
   - `plots/lundquist_primary_channels.png`
   - `plots/lundquist_subscale_channels.png`
   - `plots/lundquist_status.csv`
+- non-degenerate mode-current proxy:
+  - summary CSV includes `full_final_jw_mode_activity_proxy =
+    max(full_final_jw_mode_l2_1, |full_final_jw_ew|)`
+  - scan summary includes `corr_logS_full_final_jw_mode_activity_proxy`
+  - production runner enforces
+    `|corr_logS_full_final_jw_mode_activity_proxy| >= 0.5`
 - plotting controls:
   - `--plot-output-dir <dir>`
   - `--skip-plots`

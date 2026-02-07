@@ -37,6 +37,9 @@ def read_rows(summary_csv):
                 "em_a2_mode_1": parse_float(row, "full_final_em_a2_mode_1"),
                 "em_pi2_mode_1": parse_float(row, "full_final_em_pi2_mode_1"),
                 "jw_mode_l2_1": parse_float(row, "full_final_jw_mode_l2_1"),
+                "jw_mode_activity_proxy": parse_float(
+                    row, "full_final_jw_mode_activity_proxy"
+                ),
                 "closure_status": row.get("full_closure_status", "N/A"),
                 "transport_status": row.get("full_transport_closure_status", "N/A"),
                 "correlation_status": row.get("full_correlation_status", "N/A"),
@@ -99,6 +102,7 @@ def main():
     em_a2_mode_1 = [r["em_a2_mode_1"] for r in rows]
     em_pi2_mode_1 = [r["em_pi2_mode_1"] for r in rows]
     jw_mode_l2_1 = [r["jw_mode_l2_1"] for r in rows]
+    jw_mode_activity_proxy = [r["jw_mode_activity_proxy"] for r in rows]
 
     fig1, axs = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
 
@@ -137,12 +141,15 @@ def main():
     x1, y1 = finite_pair(s_vals, em_a2_mode_1)
     x2, y2 = finite_pair(s_vals, em_pi2_mode_1)
     x3, y3 = finite_pair(s_vals, jw_mode_l2_1)
+    x4, y4 = finite_pair(s_vals, jw_mode_activity_proxy)
     axs[1, 1].plot(x1, y1, marker="o", label="em_a2_mode_1")
     axs[1, 1].plot(x2, y2, marker="s", label="em_pi2_mode_1")
     if y3:
         axs[1, 1].plot(x3, y3, marker="^", label="jw_mode_l2_1")
+    if y4:
+        axs[1, 1].plot(x4, y4, marker="d", label="jw_mode_activity_proxy")
     axs[1, 1].set_xscale("log")
-    apply_log_y_if_positive(axs[1, 1], y1 + y2 + y3)
+    apply_log_y_if_positive(axs[1, 1], y1 + y2 + y3 + y4)
     axs[1, 1].set_title("Mode-1 Transfer Channels")
     axs[1, 1].set_xlabel("Lundquist S")
     axs[1, 1].set_ylabel("magnitude")

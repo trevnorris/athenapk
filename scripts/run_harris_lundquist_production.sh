@@ -134,6 +134,7 @@ python3 "${REPO_ROOT}/scripts/harris_lundquist_scan.py" \
   --scan-min-abs-corr corr_logS_full_final_em_leak_w_abs=2.0e-1 \
   --scan-min-abs-corr corr_logS_full_final_helicity_sub_abs=5.0e-1 \
   --scan-min-abs-corr corr_logS_full_final_edotb_sub_abs=5.0e-1 \
+  --scan-min-abs-corr corr_logS_full_final_jw_mode_activity_proxy=5.0e-1 \
   --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1 \
   --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1
 
@@ -152,7 +153,10 @@ summary_csv = pathlib.Path(sys.argv[1])
 rows = list(csv.DictReader(summary_csv.open("r", encoding="utf-8")))
 
 print("production_summary_csv," + str(summary_csv))
-print("S,psi0_span,jw_ew,s_leak_abs,mixed_ew2,mixed_c2,closure,transport,correlation,activity")
+print(
+    "S,psi0_span,jw_ew,s_leak_abs,mixed_ew2,mixed_c2,jw_mode_l2_1,jw_mode_activity_proxy,"
+    "closure,transport,correlation,activity"
+)
 for row in rows:
     print(
         ",".join(
@@ -163,6 +167,8 @@ for row in rows:
                 row.get("full_final_s_leak_abs", ""),
                 row.get("full_final_mixed_ew2", ""),
                 row.get("full_final_mixed_c2", ""),
+                row.get("full_final_jw_mode_l2_1", ""),
+                row.get("full_final_jw_mode_activity_proxy", ""),
                 row.get("full_closure_status", ""),
                 row.get("full_transport_closure_status", ""),
                 row.get("full_correlation_status", ""),

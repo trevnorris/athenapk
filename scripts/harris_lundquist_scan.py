@@ -343,6 +343,10 @@ def main():
                 "full_final_em_a2_mode_1": parse_float(full_row, "final_em_a2_mode_1"),
                 "full_final_em_pi2_mode_1": parse_float(full_row, "final_em_pi2_mode_1"),
                 "full_final_jw_mode_l2_1": parse_float(full_row, "final_jw_mode_l2_1"),
+                "full_final_jw_mode_activity_proxy": max(
+                    parse_float(full_row, "final_jw_mode_l2_1"),
+                    abs(parse_float(full_row, "final_jw_ew")),
+                ),
                 "full_corr_psi0_s_leak_abs": parse_float(full_row, "corr_psi0_s_leak_abs"),
                 "full_corr_psi0_jw_ew": parse_float(full_row, "corr_psi0_jw_ew"),
                 "full_corr_psi0_mixed_ew2": parse_float(full_row, "corr_psi0_mixed_ew2"),
@@ -390,6 +394,9 @@ def main():
         ),
         "corr_logS_full_final_jw_mode_l2_1": pearson(
             log_s, [r["full_final_jw_mode_l2_1"] for r in rows]
+        ),
+        "corr_logS_full_final_jw_mode_activity_proxy": pearson(
+            log_s, [r["full_final_jw_mode_activity_proxy"] for r in rows]
         ),
     }
     scan_check_status, scan_check_failures = evaluate_scan_summary(
