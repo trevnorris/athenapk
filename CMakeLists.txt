@@ -301,11 +301,24 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --scan-min-abs-corr corr_logS_full_final_em_leak_w_abs=2.0e-1
         --scan-min-abs-corr corr_logS_full_final_helicity_sub_abs=5.0e-1
         --scan-min-abs-corr corr_logS_full_final_edotb_sub_abs=5.0e-1
+        --scan-min-abs-corr corr_logS_full_final_jw_mode_activity_proxy=5.0e-1
         --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1
         --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1
       DEPENDS athenaPK
       USES_TERMINAL
       COMMENT "Running 4D Harris Lundquist scan (controlled vs full)")
+    add_custom_target(
+      modes4d_harris_lundquist_production
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_production
+      COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_harris_lundquist_production.sh
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_production
+        --controlled-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_controlled.in
+        --full-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_full.in
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_production/outputs
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running longer-horizon 4D Harris production Lundquist scan + plots")
     add_custom_target(
       modes4d_phase10_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression
@@ -389,6 +402,7 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --scan-min-abs-corr corr_logS_full_final_em_leak_w_abs=2.0e-1
         --scan-min-abs-corr corr_logS_full_final_helicity_sub_abs=5.0e-1
         --scan-min-abs-corr corr_logS_full_final_edotb_sub_abs=5.0e-1
+        --scan-min-abs-corr corr_logS_full_final_jw_mode_activity_proxy=5.0e-1
         --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1
         --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1
       DEPENDS athenaPK

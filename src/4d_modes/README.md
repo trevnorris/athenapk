@@ -686,6 +686,7 @@ failure:
   - `|corr_logS_full_final_em_leak_w_abs| >= 0.2`
   - `|corr_logS_full_final_helicity_sub_abs| >= 0.5`
   - `|corr_logS_full_final_edotb_sub_abs| >= 0.5`
+  - `|corr_logS_full_final_jw_mode_activity_proxy| >= 0.5`
 - signed trend checks:
   - `corr_logS_full_final_helicity_sub_abs <= -0.2`
   - `corr_logS_full_final_edotb_sub_abs <= -0.2`
@@ -694,6 +695,19 @@ The scan script can also be used directly with custom gates:
 - `--scan-min-abs-corr metric=threshold`
 - `--scan-min-corr metric=threshold`
 - `--scan-max-corr metric=threshold`
+
+Production one-command target (longer horizon + plots):
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_harris_lundquist_production
+```
+
+This target wraps `scripts/run_harris_lundquist_production.sh` and runs:
+- longer-horizon scan defaults (`tlim=0.20`, `nlim=2000`)
+- strict closure/transport/correlation/activity gating
+- automatic plot generation under:
+  - `build-baseline/modes4d_harris_lundquist_production/outputs/plots/`
 
 ### 18) Run MPI + HDF5 Harris full-case helper
 
