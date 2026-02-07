@@ -149,6 +149,18 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       USES_TERMINAL
       COMMENT "Running tuned 4D Harris regression with explicit pseudospectral transport gating")
     add_custom_target(
+      modes4d_harris_nw_convergence_regression
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_nw_convergence_regression
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_nw_convergence_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_harris_nw_convergence_regression
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_harris_nw_convergence_regression/outputs
+        --check-transport-closure
+        --fail-on-check
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running tuned 4D Harris N_w-convergence regression")
+    add_custom_target(
       modes4d_harris_pressure_experimental_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_pressure_experimental_regression
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_regression_tuned.py
@@ -224,6 +236,13 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --output-dir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/harris_pseudospectral/outputs
         --scan-controlled-arg modes4d/plasma_pseudospectral_transport=false
         --scan-full-arg modes4d/plasma_pseudospectral_transport=true
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/harris_nw_convergence
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_nw_convergence_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/harris_nw_convergence
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/harris_nw_convergence/outputs
+        --check-transport-closure
+        --fail-on-check
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/lundquist
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_lundquist_scan.py
         --binary $<TARGET_FILE:athenaPK>

@@ -23,6 +23,8 @@ Implemented now:
 - split plasma transverse-momentum (`momw`) source update:
   - reconstruct `E_w` and `C_a` at quadrature nodes from EM modes
   - apply species force `q/m * rho * (E_w - v^a C_a)` in node space
+  - apply transverse pressure-gradient source `-<phi_n, d_w p>_Z` via ID-3 mode coupling
+    (runtime gain: `modes4d/plasma_momw_pressure_source_gain`)
   - project updated `momw` back to mode coefficients
 - split plasma brane-momentum + energy source update:
   - apply brane Lorentz terms `q/m * rho * (E + v x B + v_w C)` for `momx/momy/momz`
@@ -110,7 +112,8 @@ Implemented now:
     - `m4d_cont_mode0_max_abs`
 
 Not implemented yet:
-- full two-fluid mode dynamics beyond the current source + conservative-transport bring-up
+- full two-fluid closure beyond the current Lorentz + transverse pressure-gradient
+  source path plus conservative transport bring-up
 - pressure-coupled transport physics calibration beyond the current stabilized
   experimental path (the numerics are now bounded, but this path remains
   outside baseline CI)
@@ -209,6 +212,7 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_qom_electron`
 - `plasma_force_source_gain`
 - `plasma_momw_source_gain`
+- `plasma_momw_pressure_source_gain`
 - `plasma_momw_damping`
 - `plasma_rho_divj_gain`
 - `plasma_rho_floor`
@@ -413,7 +417,37 @@ overrides so the coupling mode is always validated regardless of deck defaults:
 It enforces the same closure/transport/activity/correlation gates as
 `modes4d_harris_regression`.
 
-### 13) Run the experimental pressure-transport Harris regression target
+### 13) Run the tuned Harris `N_w`-convergence regression target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_harris_nw_convergence_regression
+```
+
+This target runs `scripts/harris_nw_convergence_regression.py` and enforces:
+- per-run closure gates across `N_w = 2,3,4`:
+  - `closure_status = PASS`
+  - `closure_local_mode0_status = PASS`
+  - `transport_closure_status = PASS`
+- highest-mode activity floors at `N_w=4`:
+  - `|final_jw_ew| >= 1e-15`
+  - `final_s_leak_abs >= 1e-14`
+  - `final_mixed_ew2 >= 1e-3`
+  - `|final_em_leak_w| >= 1e-4`
+  - `|final_helicity_sub| >= 1e-12`
+  - `|final_edotb_sub| >= 1e-11`
+- high-mode stabilization checks between the two highest `N_w` runs (`3 -> 4`)
+  using relative-delta gating (`<= 0.7`) for:
+  - `final_psi0_span`
+  - `final_s_leak_abs`
+  - `final_jw_ew`
+  - `final_mixed_ew2`
+  - `final_mixed_c2`
+  - `final_em_leak_w`
+  - `final_helicity_sub`
+  - `final_edotb_sub`
+
+### 14) Run the experimental pressure-transport Harris regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -427,7 +461,7 @@ but adds a full-case override:
 It is an experimental check for the stabilized nonzero pressure-transport path
 and is not part of `modes4d_phase10_regression`.
 
-### 14) Run the pressure-window Harris regression target
+### 15) Run the pressure-window Harris regression target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -448,7 +482,7 @@ It enforces:
 It is a dedicated pressure-path regression and is intentionally not part of
 `modes4d_phase10_regression`.
 
-### 15) Run the Phase-10 validation bundle target
+### 16) Run the Phase-10 validation bundle target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -464,9 +498,10 @@ with fail-fast behavior on the first failing check:
 - `modes4d_em_conservative_regression`
 - `modes4d_harris_regression`
 - `modes4d_harris_pseudospectral_regression`
+- `modes4d_harris_nw_convergence_regression`
 - `modes4d_harris_lundquist_scan`
 
-### 16) Run the Harris Lundquist scan target
+### 17) Run the Harris Lundquist scan target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -558,6 +593,23 @@ Current nonlinear plasma-transport status for tuned Harris decks:
 - dedicated CMake gate:
   - `cmake --build build-baseline --target modes4d_harris_pseudospectral_regression`: PASS
 - Phase-10 bundle now includes that explicit pseudospectral gate run.
+
+Current transverse two-fluid source status for tuned Harris decks:
+- `modes4d/plasma_momw_pressure_source_gain` controls the ID-3-projected
+  transverse pressure-gradient source in species `momw` updates:
+  - source term: `-<phi_n, d_w p_s>_Z`
+  - evaluated from node-space pressure reconstruction and projected through
+    `ApplyID3Raising` (no nodal finite-difference in `w`).
+- tuned Harris decks currently set:
+  - `plasma_momw_pressure_source_gain = 1.0`
+- tuned Harris regression (`modes4d_harris_regression`): PASS
+
+Current `N_w`-convergence status for tuned Harris decks:
+- dedicated CMake gate:
+  - `cmake --build build-baseline --target modes4d_harris_nw_convergence_regression`: PASS
+- closure and transport checks pass for `N_w = 2,3,4`, and highest-mode
+  activity floors plus `N_w=3 -> 4` relative-delta stabilization gates pass.
+- Phase-10 bundle now includes this `N_w` convergence gate run.
 
 ## Input requirements for `harris_4d`
 

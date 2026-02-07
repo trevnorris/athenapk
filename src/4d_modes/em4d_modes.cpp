@@ -244,10 +244,15 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
   const Real force_source_gain = modes_pkg->Param<double>("plasma4d/force_source_gain");
   const Real momw_source_gain = modes_pkg->Param<double>("plasma4d/momw_source_gain");
+  const Real momw_pressure_source_gain =
+      modes_pkg->Param<double>("plasma4d/momw_pressure_source_gain");
   const Real momw_damping = modes_pkg->Param<double>("plasma4d/momw_damping");
   const Real rho_floor = modes_pkg->Param<double>("plasma4d/rho_floor");
   const Real energy_source_gain = modes_pkg->Param<double>("plasma4d/energy_source_gain");
   const Real energy_floor = modes_pkg->Param<double>("plasma4d/energy_floor");
+  const Real gamma = modes_pkg->Param<double>("plasma4d/gamma");
+  const Real gm1 = gamma - 1.0;
+  const Real pressure_floor = modes_pkg->Param<double>("plasma4d/pressure_floor");
   const Real c2 = c_wave * c_wave;
   const Real inv_lambda_root2 = std::sqrt(2.0) / lambda;
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
@@ -386,10 +391,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     std::vector<Real> momw_modes(n_modes, 0.0);
     std::vector<Real> energy_modes(n_modes, 0.0);
     std::vector<Real> momw_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> pressure_nodes(tables.NumQuadrature(), 0.0);
     std::vector<Real> energy_nodes(tables.NumQuadrature(), 0.0);
     std::vector<Real> momx_nodes_new(tables.NumQuadrature(), 0.0);
     std::vector<Real> momy_nodes_new(tables.NumQuadrature(), 0.0);
     std::vector<Real> momz_nodes_new(tables.NumQuadrature(), 0.0);
+    std::vector<Real> pressure_modes(n_modes, 0.0);
+    std::vector<Real> momw_pressure_rhs_modes(n_modes, 0.0);
     std::vector<Real> momw_modes_new(n_modes, 0.0);
     std::vector<Real> momx_modes_new(n_modes, 0.0);
     std::vector<Real> momy_modes_new(n_modes, 0.0);
@@ -552,6 +560,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               const Real vy = momy_node / rho_safe;
               const Real vz = momz_node / rho_safe;
               const Real vw = momw_node / rho_safe;
+              const Real kinetic = 0.5 *
+                                   ((momx_node * momx_node) + (momy_node * momy_node) +
+                                    (momz_node * momz_node) + (momw_node * momw_node)) /
+                                   rho_safe;
+              const Real pressure_node =
+                  std::max(pressure_floor, gm1 * std::max(energy_node - kinetic, 0.0));
               const Real ex = ex_nodes[q];
               const Real ey = ey_nodes[q];
               const Real ez = ez_nodes[q];
@@ -577,11 +591,32 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                                       ((vx * ex) + (vy * ey) + (vz * ez) + (vw * ew));
 
               momw_nodes[q] = momw_node + (dt * rhs_momw);
+              pressure_nodes[q] = pressure_node;
               energy_nodes[q] = energy_node;
               momx_nodes_new[q] = momx_node + (dt * rhs_momx);
               momy_nodes_new[q] = momy_node + (dt * rhs_momy);
               momz_nodes_new[q] = momz_node + (dt * rhs_momz);
               energy_nodes_new[q] = std::max(energy_floor, energy_node + (dt * rhs_energy));
+            }
+
+            if (momw_pressure_source_gain != 0.0) {
+              for (int n = 0; n < n_modes; ++n) {
+                Real projected_pressure = 0.0;
+                for (int q = 0; q < tables.NumQuadrature(); ++q) {
+                  projected_pressure += weights[q] * tables.Phi(n, q) * pressure_nodes[q];
+                }
+                pressure_modes[n] = projected_pressure;
+              }
+              for (int n = 0; n < n_modes; ++n) {
+                // Two-fluid transverse momentum closure:
+                // d_t (rho v_w) includes -<phi_n, d_w p>_Z; evaluate by ID-3.
+                momw_pressure_rhs_modes[n] =
+                    -momw_pressure_source_gain * tables.ApplyID3Raising(pressure_modes, n);
+              }
+            } else {
+              for (int n = 0; n < n_modes; ++n) {
+                momw_pressure_rhs_modes[n] = 0.0;
+              }
             }
 
             for (int n = 0; n < n_modes; ++n) {
@@ -600,7 +635,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               momx_modes_new[n] = projected_momx;
               momy_modes_new[n] = projected_momy;
               momz_modes_new[n] = projected_momz;
-              momw_modes_new[n] = projected_momw;
+              momw_modes_new[n] = projected_momw + (dt * momw_pressure_rhs_modes[n]);
               energy_modes_new[n] = projected_energy;
             }
             for (int n = 0; n < n_modes; ++n) {
