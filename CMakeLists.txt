@@ -148,6 +148,20 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       USES_TERMINAL
       COMMENT "Running conservative-path time-like EM diagnostics regression checks")
     add_custom_target(
+      modes4d_em_conservative_transport_ledger_regression
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_em_conservative_transport_ledger_regression
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_em_conservative_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_em_conservative_transport_ledger_regression
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_em_conservative_transport_ledger_regression/outputs
+        --harris-tlim 0.05
+        --harris-nlim 500
+        --transport-norm-tol 1.0e-2
+        --transport-abs-rate-tol 1.0e-10
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running strict conservative EM transport/source ledger regression checks")
+    add_custom_target(
       modes4d_harris_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_regression
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_regression_tuned.py
@@ -266,6 +280,15 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_em_conservative_regression.py
         --binary $<TARGET_FILE:athenaPK>
         --workdir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_conservative
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_conservative_transport_ledger
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_em_conservative_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_conservative_transport_ledger
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_conservative_transport_ledger/outputs
+        --harris-tlim 0.05
+        --harris-nlim 500
+        --transport-norm-tol 1.0e-2
+        --transport-abs-rate-tol 1.0e-10
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/harris
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_regression_tuned.py
         --binary $<TARGET_FILE:athenaPK>

@@ -555,6 +555,7 @@ with fail-fast behavior on the first failing check:
 - `modes4d_em_timelike_regression`
 - `modes4d_em_conservative_timelike_diag_regression`
 - `modes4d_em_conservative_regression`
+- `modes4d_em_conservative_transport_ledger_regression`
 - `modes4d_harris_regression`
 - `modes4d_harris_pseudospectral_regression`
 - `modes4d_harris_nw_convergence_regression`
@@ -648,7 +649,22 @@ Harris scan runs:
 
 and enforces quantitative nonzero-effect gates on `final_jw_mode_1` while
 requiring closure/correlation/activity/transport statuses to remain `PASS`.
-- `--fail-on-scan-check`
+
+### 21) Run strict conservative-EM transport/source ledger gate
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_em_conservative_transport_ledger_regression
+```
+
+This target runs `scripts/modes4d_em_conservative_regression.py` with stricter
+EM transport closure settings:
+- longer short-Harris window (`tlim=0.05`, `nlim=500`)
+- tighter transport thresholds
+  (`transport_norm_tol=1e-2`, `transport_abs_rate_tol=1e-10`)
+
+It keeps scalar/mixed-channel conservative checks and enforces mode-0
+`em4d_pi` transport/source ledger closure in conservative mode.
 
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable
@@ -715,6 +731,8 @@ Current transverse two-fluid source status for tuned Harris decks:
     `plasma_w_flux_source_gain=0.1`.
 - dedicated CMake gate:
   - `cmake --build build-baseline --target modes4d_harris_wflux_regression`: PASS
+- dedicated CMake gate:
+  - `cmake --build build-baseline --target modes4d_em_conservative_transport_ledger_regression`: PASS
 - tuned Harris regression (`modes4d_harris_regression`): PASS
 
 Current `N_w`-convergence status for tuned Harris decks:
