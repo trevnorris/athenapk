@@ -254,6 +254,27 @@ correlation gates and concise CSV summary output. Defaults:
   - `--report-path <path>`
   - `--skip-report`
 
+### Harris ablation campaign shortcut (causality evidence)
+
+```bash
+/projects/fluid-engine/athenapk/scripts/run_harris_ablation_campaign.sh
+```
+
+This runs baseline + targeted full-case ablations to test whether 4D channels
+drive observed leakage/work/mixed-field signals. Outputs:
+- `ablation_summary.csv`
+- `plots/ablation_channels.png`
+- `ablation_report.md`
+
+Default strict causal gates check two expected effects:
+- disabling mixed-sector seed (`aw_mode1_amp`, `piw_mode1_amp`) suppresses
+  mixed-sector channels
+- disabling transverse plasma forcing (`plasma_momw_source_gain`,
+  `plasma_momw_pressure_source_gain`) suppresses `|J^wE_w|` and `S_leak_abs`
+
+Exploratory ablations (`em_source_timelike_gain=0`, `em_source_current_gain=0`)
+are reported as informational and do not gate pass/fail by default.
+
 ### 3) Run Harris scaffold input
 
 ```bash
@@ -716,6 +737,18 @@ This target wraps `scripts/run_harris_lundquist_production.sh` and runs:
   - `build-baseline/modes4d_harris_lundquist_production/outputs/plots/`
 - automatic markdown report:
   - `build-baseline/modes4d_harris_lundquist_production/outputs/production_report.md`
+
+Ablation one-command target:
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_harris_ablation_campaign
+```
+
+This target wraps `scripts/run_harris_ablation_campaign.sh` and writes:
+- `build-baseline/modes4d_harris_ablation_campaign/outputs/ablation_summary.csv`
+- `build-baseline/modes4d_harris_ablation_campaign/outputs/plots/ablation_channels.png`
+- `build-baseline/modes4d_harris_ablation_campaign/outputs/ablation_report.md`
 
 ### 18) Run MPI + HDF5 Harris full-case helper
 

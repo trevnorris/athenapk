@@ -320,6 +320,21 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       USES_TERMINAL
       COMMENT "Running longer-horizon 4D Harris production Lundquist scan + plots + report")
     add_custom_target(
+      modes4d_harris_ablation_campaign
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_ablation_campaign
+      COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_harris_ablation_campaign.sh
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_harris_ablation_campaign
+        --controlled-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_controlled.in
+        --full-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_full.in
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_harris_ablation_campaign/outputs
+        --tlim 0.10
+        --nlim 1000
+        --output-dt 0.01
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running 4D Harris ablation campaign (causal channel checks + report)")
+    add_custom_target(
       modes4d_phase10_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/controlled_smoke
