@@ -335,6 +335,24 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       USES_TERMINAL
       COMMENT "Running 4D Harris ablation campaign (causal channel checks + report)")
     add_custom_target(
+      modes4d_results_pack
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_results_pack
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_modes4d_results_pack.py
+        --lundquist-summary-csv ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_production/outputs/lundquist_scan_summary.csv
+        --lundquist-report ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_production/outputs/production_report.md
+        --lundquist-primary-plot ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_production/outputs/plots/lundquist_primary_channels.png
+        --lundquist-subscale-plot ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_production/outputs/plots/lundquist_subscale_channels.png
+        --ablation-summary-csv ${CMAKE_BINARY_DIR}/modes4d_harris_ablation_campaign/outputs/ablation_summary.csv
+        --ablation-report ${CMAKE_BINARY_DIR}/modes4d_harris_ablation_campaign/outputs/ablation_report.md
+        --ablation-plot ${CMAKE_BINARY_DIR}/modes4d_harris_ablation_campaign/outputs/plots/ablation_channels.png
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_results_pack
+      DEPENDS
+        athenaPK
+        modes4d_harris_lundquist_production
+        modes4d_harris_ablation_campaign
+      USES_TERMINAL
+      COMMENT "Generating combined modes4d results panel/report bundle")
+    add_custom_target(
       modes4d_phase10_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/controlled_smoke

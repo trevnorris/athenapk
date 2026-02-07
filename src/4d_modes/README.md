@@ -750,6 +750,27 @@ This target wraps `scripts/run_harris_ablation_campaign.sh` and writes:
 - `build-baseline/modes4d_harris_ablation_campaign/outputs/plots/ablation_channels.png`
 - `build-baseline/modes4d_harris_ablation_campaign/outputs/ablation_report.md`
 
+Final combined results-pack target:
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_results_pack
+```
+
+This target depends on both production and ablation targets and then generates:
+- `build-baseline/modes4d_results_pack/modes4d_results_panel.png`
+- `build-baseline/modes4d_results_pack/modes4d_results_status.csv`
+- `build-baseline/modes4d_results_pack/modes4d_results_pack.md`
+
+Script wrapper alternative:
+
+```bash
+/projects/fluid-engine/athenapk/scripts/run_modes4d_results_pack.sh
+```
+
+Use `--skip-prereqs` when production/ablation artifacts already exist and you
+only want to rebuild the final panel/report package.
+
 ### 18) Run MPI + HDF5 Harris full-case helper
 
 ```bash
