@@ -106,9 +106,8 @@ Implemented now:
 
 Not implemented yet:
 - full two-fluid mode dynamics beyond the current source + advective-transport bring-up
-- robust nonzero pressure-coupled plasma transport in the Harris regressions
-  (`plasma_pressure_transport_gain > 0` is currently experimental and fails the
-  tuned Harris checks)
+- robust finite-strength pressure-coupled plasma transport in the Harris regressions
+  (`plasma_pressure_transport_gain` currently has only a narrow stable window)
 - full conservative EM closure beyond the current brane-Laplacian transport path
   (`em4d_pi` transport is now optional; remaining EM terms are still source-step)
 - full reconnection workflow/analysis
@@ -211,6 +210,7 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_energy_floor`
 - `plasma_gamma`
 - `plasma_pressure_transport_gain`
+- `plasma_pressure_rusanov_gain`
 - `plasma_pressure_floor`
 
 `<problem/em4d_pulse>` also supports:
@@ -456,8 +456,16 @@ The scan script can also be used directly with custom gates:
 
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable
-- tested nonzero values (`1e-6`, `1e-3`) produce unstable/nonphysical scan
-  outputs, so keep this at `0.0` for baseline and CI runs
+- nonzero pressure transport now uses a blended Rusanov path for stability:
+  - `plasma_pressure_transport_gain` is a blend factor in `[0,1]`
+    between the baseline upwind transport (`0`) and pressure-coupled Rusanov
+    transport (`1`)
+  - `plasma_pressure_rusanov_gain` scales the Rusanov signal speed
+- tested full-case behavior:
+  - stable at very small gain (`1e-9`)
+  - unstable/nonphysical by `1e-8` and larger
+- keep `plasma_pressure_transport_gain = 0.0` for baseline/CI unless explicitly
+  testing the pressure-transport path
 
 ## Input requirements for `harris_4d`
 
