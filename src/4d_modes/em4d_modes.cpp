@@ -88,6 +88,9 @@ TaskStatus AddEMTransportFluxes(MeshData<Real> *md) {
 
   const Real c_wave = modes_pkg->Param<double>("em4d/c_wave");
   const Real c2 = c_wave * c_wave;
+  const Real lambda = modes_pkg->Param<double>("lambda");
+  const Real inv_lambda = 1.0 / lambda;
+  const int n_modes = modes_pkg->Param<int>("n_modes");
   const auto &pi_pack =
       md->PackVariablesAndFluxes(std::vector<std::string>{"em4d_pi"},
                                  std::vector<std::string>{"em4d_pi"});
@@ -110,7 +113,24 @@ TaskStatus AddEMTransportFluxes(MeshData<Real> *md) {
         const auto &a = a_pack(b);
         const auto &coords = pi_pack.GetCoords(b);
         const Real dx = 0.5 * (coords.Dxc<1>(i - 1) + coords.Dxc<1>(i));
-        pi.flux(X1DIR, v, k, j, i) = -c2 * (a(v, k, j, i) - a(v, k, j, i - 1)) / dx;
+        const int mode = v / kNumEMComponents;
+        const int comp = v - (mode * kNumEMComponents);
+        Real flux = -c2 * (a(v, k, j, i) - a(v, k, j, i - 1)) / dx;
+
+        if (comp == kCompAX && mode > 0) {
+          const Real coupling = std::sqrt(2.0 * static_cast<Real>(mode)) * inv_lambda;
+          const int idx_aw_prev = EMIndex(mode - 1, kCompAW);
+          const Real aw_face = 0.5 * (a(idx_aw_prev, k, j, i) + a(idx_aw_prev, k, j, i - 1));
+          flux -= c2 * coupling * aw_face;
+        } else if (comp == kCompAW && (mode + 1) < n_modes) {
+          const Real coupling =
+              std::sqrt(2.0 * static_cast<Real>(mode + 1)) * inv_lambda;
+          const int idx_ax_next = EMIndex(mode + 1, kCompAX);
+          const Real ax_face = 0.5 * (a(idx_ax_next, k, j, i) + a(idx_ax_next, k, j, i - 1));
+          flux += c2 * coupling * ax_face;
+        }
+
+        pi.flux(X1DIR, v, k, j, i) = flux;
       });
 
   if (ndim >= 2) {
@@ -123,7 +143,24 @@ TaskStatus AddEMTransportFluxes(MeshData<Real> *md) {
           const auto &a = a_pack(b);
           const auto &coords = pi_pack.GetCoords(b);
           const Real dy = 0.5 * (coords.Dxc<2>(j - 1) + coords.Dxc<2>(j));
-          pi.flux(X2DIR, v, k, j, i) = -c2 * (a(v, k, j, i) - a(v, k, j - 1, i)) / dy;
+          const int mode = v / kNumEMComponents;
+          const int comp = v - (mode * kNumEMComponents);
+          Real flux = -c2 * (a(v, k, j, i) - a(v, k, j - 1, i)) / dy;
+
+          if (comp == kCompAY && mode > 0) {
+            const Real coupling = std::sqrt(2.0 * static_cast<Real>(mode)) * inv_lambda;
+            const int idx_aw_prev = EMIndex(mode - 1, kCompAW);
+            const Real aw_face = 0.5 * (a(idx_aw_prev, k, j, i) + a(idx_aw_prev, k, j - 1, i));
+            flux -= c2 * coupling * aw_face;
+          } else if (comp == kCompAW && (mode + 1) < n_modes) {
+            const Real coupling =
+                std::sqrt(2.0 * static_cast<Real>(mode + 1)) * inv_lambda;
+            const int idx_ay_next = EMIndex(mode + 1, kCompAY);
+            const Real ay_face = 0.5 * (a(idx_ay_next, k, j, i) + a(idx_ay_next, k, j - 1, i));
+            flux += c2 * coupling * ay_face;
+          }
+
+          pi.flux(X2DIR, v, k, j, i) = flux;
         });
   }
 
@@ -137,7 +174,24 @@ TaskStatus AddEMTransportFluxes(MeshData<Real> *md) {
           const auto &a = a_pack(b);
           const auto &coords = pi_pack.GetCoords(b);
           const Real dz = 0.5 * (coords.Dxc<3>(k - 1) + coords.Dxc<3>(k));
-          pi.flux(X3DIR, v, k, j, i) = -c2 * (a(v, k, j, i) - a(v, k - 1, j, i)) / dz;
+          const int mode = v / kNumEMComponents;
+          const int comp = v - (mode * kNumEMComponents);
+          Real flux = -c2 * (a(v, k, j, i) - a(v, k - 1, j, i)) / dz;
+
+          if (comp == kCompAZ && mode > 0) {
+            const Real coupling = std::sqrt(2.0 * static_cast<Real>(mode)) * inv_lambda;
+            const int idx_aw_prev = EMIndex(mode - 1, kCompAW);
+            const Real aw_face = 0.5 * (a(idx_aw_prev, k, j, i) + a(idx_aw_prev, k - 1, j, i));
+            flux -= c2 * coupling * aw_face;
+          } else if (comp == kCompAW && (mode + 1) < n_modes) {
+            const Real coupling =
+                std::sqrt(2.0 * static_cast<Real>(mode + 1)) * inv_lambda;
+            const int idx_az_next = EMIndex(mode + 1, kCompAZ);
+            const Real az_face = 0.5 * (a(idx_az_next, k, j, i) + a(idx_az_next, k - 1, j, i));
+            flux += c2 * coupling * az_face;
+          }
+
+          pi.flux(X3DIR, v, k, j, i) = flux;
         });
   }
 
@@ -739,14 +793,27 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
 
             const Real coupling_coeff =
                 (n > 0) ? (std::sqrt(2.0 * static_cast<Real>(n)) / lambda) : 0.0;
-            Real grad_aw_x = 0.0;
-            Real grad_aw_y = 0.0;
-            Real grad_aw_z = 0.0;
-            if (n > 0) {
+            Real mixed_grad_aw_x = 0.0;
+            Real mixed_grad_aw_y = 0.0;
+            Real mixed_grad_aw_z = 0.0;
+            if ((n > 0) && !use_conservative_transport) {
               const int idx_aw_prev = EMIndex(n - 1, kCompAW);
-              grad_aw_x = gradient_x(a_old, idx_aw_prev, k, j, i);
-              grad_aw_y = gradient_y(a_old, idx_aw_prev, k, j, i);
-              grad_aw_z = gradient_z(a_old, idx_aw_prev, k, j, i);
+              mixed_grad_aw_x = gradient_x(a_old, idx_aw_prev, k, j, i);
+              mixed_grad_aw_y = gradient_y(a_old, idx_aw_prev, k, j, i);
+              mixed_grad_aw_z = gradient_z(a_old, idx_aw_prev, k, j, i);
+            }
+
+            Real mixed_div_a_next = 0.0;
+            if ((n + 1 < n_modes) && !use_conservative_transport) {
+              const Real coupling_raise =
+                  std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda;
+              const int idx_ax_next = EMIndex(n + 1, kCompAX);
+              const int idx_ay_next = EMIndex(n + 1, kCompAY);
+              const int idx_az_next = EMIndex(n + 1, kCompAZ);
+              mixed_div_a_next = coupling_raise *
+                                 (gradient_x(a_old, idx_ax_next, k, j, i) +
+                                  gradient_y(a_old, idx_ay_next, k, j, i) +
+                                  gradient_z(a_old, idx_az_next, k, j, i));
             }
 
             const Real lap_a0 = use_conservative_transport
@@ -770,17 +837,21 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                                 (mu0 * j0_modes[n]) - (damping * pi_old(idx_a0, k, j, i));
             const Real rhs_ax = lap_ax -
                                 (c2 * mass_squared[n] * a_old(idx_ax, k, j, i)) +
-                                (c2 * coupling_coeff * grad_aw_x) - (mu0 * jx_modes[n]) -
+                                (c2 * coupling_coeff * mixed_grad_aw_x) -
+                                (mu0 * jx_modes[n]) -
                                 (damping * pi_old(idx_ax, k, j, i));
             const Real rhs_ay = lap_ay -
                                 (c2 * mass_squared[n] * a_old(idx_ay, k, j, i)) +
-                                (c2 * coupling_coeff * grad_aw_y) - (mu0 * jy_modes[n]) -
+                                (c2 * coupling_coeff * mixed_grad_aw_y) -
+                                (mu0 * jy_modes[n]) -
                                 (damping * pi_old(idx_ay, k, j, i));
             const Real rhs_az = lap_az -
                                 (c2 * mass_squared[n] * a_old(idx_az, k, j, i)) +
-                                (c2 * coupling_coeff * grad_aw_z) - (mu0 * jz_modes[n]) -
+                                (c2 * coupling_coeff * mixed_grad_aw_z) -
+                                (mu0 * jz_modes[n]) -
                                 (damping * pi_old(idx_az, k, j, i));
             const Real rhs_aw = lap_aw -
+                                (c2 * mixed_div_a_next) -
                                 (mu0 * jw_modes[n]) - (damping * pi_old(idx_aw, k, j, i));
 
             pi_new(idx_a0, k, j, i) = pi_old(idx_a0, k, j, i) + (dt * rhs_a0);

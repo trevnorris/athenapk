@@ -18,8 +18,17 @@ Implemented now:
 - optional conservative EM transport path in the hydro flux pipeline:
   - `modes4d/em_conservative_transport = true` registers `em4d_pi` with `WithFluxes`
   - stage fluxes add `-c_wave^2 * grad(em4d_a)` transport for `em4d_pi`
+  - conservative spatial mixed-sector couplings are now included in flux form
+    following `docs/mode_equations_verified.md`:
+    - `pi_ax/pi_ay/pi_az` fluxes include
+      `-(c_wave^2 * sqrt(2n)/lambda) * a_w^(n-1)`
+    - `pi_aw` fluxes include
+      `+(c_wave^2 * sqrt(2(n+1))/lambda) * a_{x,y,z}^(n+1)` contributions
   - source-step Laplacian terms are disabled when this path is enabled to avoid
     double counting
+  - source-step spatial mixed couplings are disabled in this mode to avoid
+    flux/source double counting; non-conservative mode still applies them as
+    source terms
 - split plasma transverse-momentum (`momw`) source update:
   - reconstruct `E_w` and `C_a` at quadrature nodes from EM modes
   - apply species force `q/m * rho * (E_w - v^a C_a)` in node space
@@ -117,8 +126,9 @@ Not implemented yet:
 - pressure-coupled transport physics calibration beyond the current stabilized
   experimental path (the numerics are now bounded, but this path remains
   outside baseline CI)
-- full conservative EM closure beyond the current brane-Laplacian transport path
-  (`em4d_pi` transport is now optional; remaining EM terms are still source-step)
+- full conservative EM closure beyond the current spatial mixed-coupling transport path
+  (`em4d_pi` transport now covers brane Laplacian + nearest-neighbor spatial
+  mixed couplings; remaining EM terms stay source-step)
 - full reconnection workflow/analysis
 
 Additional bring-up path now available:
