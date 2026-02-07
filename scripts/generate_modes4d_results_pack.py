@@ -79,6 +79,7 @@ def load_topology_gate_rows(path):
                 parse_scalar_float(row.get("value", "")),
                 parse_scalar_float(row.get("threshold", "")),
                 (row.get("status", "") or "FAIL").strip(),
+                (row.get("gate_class", "") or "blocking").strip(),
             )
         )
     return gate_rows
@@ -245,10 +246,12 @@ def write_markdown_report(
     lines.append("")
     lines.append("## Topology Gates")
     lines.append("")
-    lines.append("| Gate | Value | Threshold | Status |")
-    lines.append("| :--- | ---: | ---: | :---: |")
-    for gate, value, threshold, status in topology_gate_rows:
-        lines.append(f"| `{gate}` | `{fmt(value)}` | `{fmt(threshold)}` | `{status}` |")
+    lines.append("| Gate | Value | Threshold | Status | Class |")
+    lines.append("| :--- | ---: | ---: | :---: | :--- |")
+    for gate, value, threshold, status, gate_class in topology_gate_rows:
+        lines.append(
+            f"| `{gate}` | `{fmt(value)}` | `{fmt(threshold)}` | `{status}` | `{gate_class}` |"
+        )
     lines.append("")
     lines.append("## Ablation Causality Checks")
     lines.append("")

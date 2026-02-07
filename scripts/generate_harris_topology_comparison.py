@@ -124,9 +124,9 @@ def write_status_csv(path, rows):
 def write_gate_details_csv(path, rows):
     with path.open("w", encoding="utf-8", newline="") as fp:
         writer = csv.writer(fp)
-        writer.writerow(["gate", "value", "threshold", "status"])
-        for gate, value, threshold, status in rows:
-            writer.writerow([gate, fmt(value), f"{threshold:.6e}", status])
+        writer.writerow(["gate", "value", "threshold", "status", "gate_class"])
+        for gate, value, threshold, status, gate_class in rows:
+            writer.writerow([gate, fmt(value), f"{threshold:.6e}", status, gate_class])
 
 
 def render_plot(path, ctrl, full):
@@ -292,6 +292,7 @@ def main():
             ctrl_max_abs_jw_ew,
             args.controlled_max_jw_ew_abs,
             gate_max(ctrl_max_abs_jw_ew, args.controlled_max_jw_ew_abs),
+            "blocking",
         )
     )
     gate_rows.append(
@@ -300,6 +301,7 @@ def main():
             ctrl_max_s_leak_abs,
             args.controlled_max_s_leak_abs,
             gate_max(ctrl_max_s_leak_abs, args.controlled_max_s_leak_abs),
+            "blocking",
         )
     )
     gate_rows.append(
@@ -308,6 +310,7 @@ def main():
             full_max_abs_jw_ew,
             args.full_min_jw_ew_abs,
             gate_min(full_max_abs_jw_ew, args.full_min_jw_ew_abs),
+            "blocking",
         )
     )
     gate_rows.append(
@@ -316,6 +319,7 @@ def main():
             full_max_s_leak_abs,
             args.full_min_s_leak_abs,
             gate_min(full_max_s_leak_abs, args.full_min_s_leak_abs),
+            "blocking",
         )
     )
     gate_rows.append(
@@ -324,6 +328,7 @@ def main():
             full_max_mixed_ew2,
             args.full_min_mixed_ew2,
             gate_min(full_max_mixed_ew2, args.full_min_mixed_ew2),
+            "blocking",
         )
     )
     gate_rows.append(
@@ -332,6 +337,7 @@ def main():
             ratio_max_abs_dpsi,
             args.max_abs_dpsi0_enhancement_min,
             gate_min(ratio_max_abs_dpsi, args.max_abs_dpsi0_enhancement_min),
+            "informational",
         )
     )
     gate_rows.append(
@@ -340,6 +346,7 @@ def main():
             ratio_psi_w0_span,
             args.psi_w0_enhancement_min,
             gate_min(ratio_psi_w0_span, args.psi_w0_enhancement_min),
+            "blocking",
         )
     )
     gate_rows.append(
@@ -348,6 +355,7 @@ def main():
             ratio_max_abs_dpsi_w0,
             args.max_abs_dpsi_w0_enhancement_min,
             gate_min(ratio_max_abs_dpsi_w0, args.max_abs_dpsi_w0_enhancement_min),
+            "blocking",
         )
     )
 
@@ -355,7 +363,7 @@ def main():
         "PASS"
         if all(
             status == "PASS"
-            for _, _, _, status in gate_rows[:2]
+            for _, _, _, status, _ in gate_rows[:2]
         )
         else "FAIL"
     )
@@ -363,7 +371,7 @@ def main():
         "PASS"
         if all(
             status == "PASS"
-            for _, _, _, status in gate_rows[2:5]
+            for _, _, _, status, _ in gate_rows[2:5]
         )
         else "FAIL"
     )
@@ -438,11 +446,13 @@ def main():
         "",
         "## Gates",
         "",
-        "| Gate | Value | Threshold | Status |",
-        "| :--- | ---: | ---: | :---: |",
+        "| Gate | Value | Threshold | Status | Class |",
+        "| :--- | ---: | ---: | :---: | :--- |",
     ]
-    for gate, value, threshold, status in gate_rows:
-        lines.append(f"| `{gate}` | `{fmt(value)}` | `{threshold:.6e}` | `{status}` |")
+    for gate, value, threshold, status, gate_class in gate_rows:
+        lines.append(
+            f"| `{gate}` | `{fmt(value)}` | `{threshold:.6e}` | `{status}` | `{gate_class}` |"
+        )
     lines.append("")
     lines.append("## Ledger Row Statuses")
     lines.append("")
