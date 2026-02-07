@@ -302,6 +302,7 @@ def main():
 
     cases = [
         ("linear_wave3d", repo_root / "inputs" / "linear_wave3d.in"),
+        ("brio_wu", repo_root / "inputs" / "brio_wu.in"),
         ("sod", repo_root / "inputs" / "sod.in"),
         ("orszag_tang", repo_root / "inputs" / "orszag_tang.in"),
     ]

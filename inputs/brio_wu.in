@@ -1,0 +1,81 @@
+# AthenaPK - a performance portable block structured AMR MHD code
+# Copyright (c) 2020-2026, Athena Parthenon Collaboration. All rights reserved.
+# Licensed under the BSD 3-Clause License (the "LICENSE")
+
+<comment>
+problem = Brio-Wu MHD shock tube
+reference = Brio and Wu, JCP 75, 400 (1988)
+
+<job>
+problem_id = brio_wu
+
+<problem/brio_wu>
+rho_l = 1.0
+pres_l = 1.0
+vx_l = 0.0
+vy_l = 0.0
+vz_l = 0.0
+bx_l = 0.75
+by_l = 1.0
+bz_l = 0.0
+
+rho_r = 0.125
+pres_r = 0.1
+vx_r = 0.0
+vy_r = 0.0
+vz_r = 0.0
+bx_r = 0.75
+by_r = -1.0
+bz_r = 0.0
+
+x_discont = 0.0
+
+<parthenon/mesh>
+refinement = none
+nghost = 2
+
+nx1 = 512
+x1min = -0.5
+x1max = 0.5
+ix1_bc = outflow
+ox1_bc = outflow
+
+nx2 = 4
+x2min = -0.5
+x2max = 0.5
+ix2_bc = periodic
+ox2_bc = periodic
+
+nx3 = 1
+x3min = -0.5
+x3max = 0.5
+ix3_bc = periodic
+ox3_bc = periodic
+
+<parthenon/meshblock>
+nx1 = 128
+nx2 = 4
+nx3 = 1
+
+<parthenon/output0>
+file_type = hdf5
+dt = 0.01
+variables = prim
+id = prim
+
+<parthenon/output1>
+file_type = hst
+dt = 0.01
+
+<parthenon/time>
+integrator = vl2
+cfl = 0.4
+tlim = 0.1
+nlim = -1
+
+<hydro>
+fluid = glmmhd
+eos = adiabatic
+riemann = hlld
+reconstruction = plm
+gamma = 2.0

@@ -4,6 +4,7 @@
 target_sources(athenaPK PRIVATE
     advection.cpp
     blast.cpp
+    brio_wu.cpp
     cloud.cpp
     cluster.cpp
     cluster/agn_feedback.cpp

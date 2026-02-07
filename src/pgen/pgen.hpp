@@ -122,6 +122,12 @@ using namespace parthenon::driver::prelude;
 void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin);
 } // namespace sod
 
+namespace brio_wu {
+using namespace parthenon::driver::prelude;
+
+void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin);
+} // namespace brio_wu
+
 namespace turbulence {
 using namespace parthenon::driver::prelude;
 

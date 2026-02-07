@@ -113,6 +113,8 @@ int main(int argc, char *argv[]) {
     Hydro::ProblemEstimateTimestep = cluster::ClusterEstimateTimestep;
   } else if (problem == "sod") {
     pman.app_input->ProblemGenerator = sod::ProblemGenerator;
+  } else if (problem == "brio_wu") {
+    pman.app_input->ProblemGenerator = brio_wu::ProblemGenerator;
   } else if (problem == "turbulence") {
     pman.app_input->MeshProblemGenerator = turbulence::ProblemGenerator;
     Hydro::ProblemInitPackageData = turbulence::ProblemInitPackageData;

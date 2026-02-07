@@ -342,7 +342,8 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 ```
 
 This target runs `scripts/modes4d_controlled_regression.py`, which:
-- runs baseline AthenaPK smoke cases (`linear_wave3d`, `sod`, `orszag_tang`)
+- runs baseline AthenaPK smoke cases
+  (`linear_wave3d`, `brio_wu`, `sod`, `orszag_tang`)
 - applies short smoke-runtime overrides (`tlim=0.05`, `nlim=200`)
 - auto-disables HDF5/phdf output blocks in copied inputs (`dt=-1`) for
   non-HDF5 builds
@@ -361,7 +362,7 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 ```
 
 This target runs `scripts/modes4d_controlled_parity_regression.py`, which:
-- runs `linear_wave3d`, `sod`, and `orszag_tang` in three variants:
+- runs `linear_wave3d`, `brio_wu`, `sod`, and `orszag_tang` in three variants:
   - baseline
   - forced `<modes4d> enabled=true, n_modes=1`
   - forced `<modes4d> enabled=true, n_modes=4`
