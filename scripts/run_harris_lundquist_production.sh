@@ -323,9 +323,10 @@ rows = list(csv.DictReader(summary_csv.open("r", encoding="utf-8")))
 
 print("production_summary_csv," + str(summary_csv))
 print(
-    "S,psi0_ctrl,psi0_full,psi0_ratio,psi_proj_ctrl,psi_proj_full,psi_proj_ratio,"
+    "S,psi0_ctrl,psi0_full,psi0_ratio,psi_proj_ctrl,psi_proj_full,psi_proj_ratio,psi_w0_ctrl,psi_w0_full,psi_w0_ratio,"
     "max_abs_dpsi0_dt_ctrl,max_abs_dpsi0_dt_full,max_abs_dpsi0_dt_ratio,"
     "max_abs_dpsi_proj_dt_ctrl,max_abs_dpsi_proj_dt_full,max_abs_dpsi_proj_dt_ratio,"
+    "max_abs_dpsi_w0_dt_ctrl,max_abs_dpsi_w0_dt_full,max_abs_dpsi_w0_dt_ratio,"
     "jw_ew_ctrl,jw_ew_full,s_leak_ctrl,s_leak_full,mixed_ew2_ctrl,mixed_ew2_full,mixed_c2_ctrl,mixed_c2_full,"
     "jw_mode_l2_1,jw_mode_activity_proxy,"
     "closure,transport,correlation,activity"
@@ -341,12 +342,18 @@ for row in rows:
                 row.get("controlled_final_psi_proj_span", ""),
                 row.get("full_final_psi_proj_span", ""),
                 row.get("ratio_full_over_controlled_psi_proj_span", ""),
+                row.get("controlled_final_psi_w0_span", ""),
+                row.get("full_final_psi_w0_span", ""),
+                row.get("ratio_full_over_controlled_psi_w0_span", ""),
                 row.get("controlled_max_abs_dpsi0_dt", ""),
                 row.get("full_max_abs_dpsi0_dt", ""),
                 row.get("ratio_full_over_controlled_max_abs_dpsi0_dt", ""),
                 row.get("controlled_max_abs_dpsi_proj_dt", ""),
                 row.get("full_max_abs_dpsi_proj_dt", ""),
                 row.get("ratio_full_over_controlled_max_abs_dpsi_proj_dt", ""),
+                row.get("controlled_max_abs_dpsi_w0_dt", ""),
+                row.get("full_max_abs_dpsi_w0_dt", ""),
+                row.get("ratio_full_over_controlled_max_abs_dpsi_w0_dt", ""),
                 row.get("controlled_final_jw_ew", ""),
                 row.get("full_final_jw_ew", ""),
                 row.get("controlled_final_s_leak_abs", ""),

@@ -23,6 +23,10 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
       pin->GetOrAddReal("problem/harris_4d", "drift_current_scale", 0.0);
   const Real aw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "aw_mode1_amp", 0.0);
   const Real piw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "piw_mode1_amp", 0.0);
+  const Real ay_mode2_amp = pin->GetOrAddReal("problem/harris_4d", "ay_mode2_amp", 0.0);
+  const Real a0_mode2_amp = pin->GetOrAddReal("problem/harris_4d", "a0_mode2_amp", 0.0);
+  const Real aw_mode2_amp = pin->GetOrAddReal("problem/harris_4d", "aw_mode2_amp", 0.0);
+  const Real piw_mode2_amp = pin->GetOrAddReal("problem/harris_4d", "piw_mode2_amp", 0.0);
   const Real init_charge_rel_tol =
       pin->GetOrAddReal("problem/harris_4d", "init_charge_rel_tol", 1.0e-12);
   const Real init_charge_abs_tol =
@@ -114,11 +118,18 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
         const Real ay_perturb = perturbation_amp * std::cos(phase_x) * std::cos(phase_z);
         em_a(2, k, j, i) = ay_perturb; // mode 0, A_y component
 
+        const Real phase = std::cos(phase_x) * std::cos(phase_z);
         if (n_modes > 1) {
           const int aw_mode1_idx = 5 + 4;
-          const Real phase = std::cos(phase_x) * std::cos(phase_z);
           em_a(aw_mode1_idx, k, j, i) = aw_mode1_amp * phase;
           em_pi(aw_mode1_idx, k, j, i) = piw_mode1_amp * phase;
+        }
+        if (n_modes > 2) {
+          const int mode2_off = 10;
+          em_a(mode2_off + 0, k, j, i) = a0_mode2_amp * phase;
+          em_a(mode2_off + 2, k, j, i) = ay_mode2_amp * phase;
+          em_a(mode2_off + 4, k, j, i) = aw_mode2_amp * phase;
+          em_pi(mode2_off + 4, k, j, i) = piw_mode2_amp * phase;
         }
 
         // Two-species (ions/electrons) mode state. Initialize only the zero mode.

@@ -80,6 +80,10 @@ sheet_half_width = 0.1
 drift_current_scale = 0.05
 aw_mode1_amp = 5.0e-2
 piw_mode1_amp = 0.0
+ay_mode2_amp = 0.0
+a0_mode2_amp = 0.0
+aw_mode2_amp = 0.0
+piw_mode2_amp = 0.0
 
 <parthenon/output0>
 file_type = hdf5

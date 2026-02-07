@@ -28,6 +28,7 @@ def read_rows(summary_csv):
                 "S": parse_float(row, "S"),
                 "psi0": parse_float(row, "full_final_psi0_span"),
                 "psi_proj": parse_float(row, "full_final_psi_proj_span"),
+                "psi_w0": parse_float(row, "full_final_psi_w0_span"),
                 "jw_ew_abs": abs(parse_float(row, "full_final_jw_ew")),
                 "s_leak_abs": parse_float(row, "full_final_s_leak_abs"),
                 "mixed_ew2": parse_float(row, "full_final_mixed_ew2"),
@@ -94,6 +95,7 @@ def main():
     s_vals = [r["S"] for r in rows]
     psi0 = [r["psi0"] for r in rows]
     psi_proj = [r["psi_proj"] for r in rows]
+    psi_w0 = [r["psi_w0"] for r in rows]
     jw_ew_abs = [r["jw_ew_abs"] for r in rows]
     s_leak_abs = [r["s_leak_abs"] for r in rows]
     mixed_ew2 = [r["mixed_ew2"] for r in rows]
@@ -113,6 +115,9 @@ def main():
     xp, yp = finite_pair(s_vals, psi_proj)
     if yp:
         axs[0, 0].plot(xp, yp, marker="s", label="full_final_psi_proj_span")
+    xw, yw = finite_pair(s_vals, psi_w0)
+    if yw:
+        axs[0, 0].plot(xw, yw, marker="^", label="full_final_psi_w0_span")
     axs[0, 0].set_xscale("log")
     axs[0, 0].set_title("Reconnection Proxy")
     axs[0, 0].set_xlabel("Lundquist S")

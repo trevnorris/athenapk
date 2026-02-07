@@ -111,6 +111,7 @@ Implemented now:
   - `m4d_em_leak_w`
   - `m4d_psi0_span`
   - `m4d_psi_proj_span`
+  - `m4d_psi_w0_span`
   - `m4d_pulse_xc`
   - `m4d_em_a2_mode_<n>`
   - `m4d_em_pi2_mode_<n>`
@@ -292,6 +293,8 @@ electric proxy), mixed-sector proxies (`m4d_mixed_ew2`, `m4d_mixed_c2`), and
 flux-span proxies:
 - `m4d_psi0_span`: zero-mode `A_y^(0)` span
 - `m4d_psi_proj_span`: matched-kernel projected `A_y` span across active modes
+- `m4d_psi_w0_span`: brane-point (`w=0`) reconstructed `A_y` span using
+  modal coefficients `phi_n(0)` (odd Hermite modes vanish by parity)
 
 ### 4) Run EM-only pulse bring-up
 
@@ -349,7 +352,8 @@ python3 /projects/fluid-engine/athenapk/scripts/harris_scan_matrix.py \
 ```
 
 This prints a CSV table with final values and Pearson correlations between
-`m4d_psi0_span`, `m4d_psi_proj_span`, and key ledger/reconnection proxy channels.
+`m4d_psi0_span`, `m4d_psi_proj_span`, `m4d_psi_w0_span`, and key
+ledger/reconnection proxy channels.
 It also reports continuity-closure metrics based on
 `m4d_charge_mode_0`, `m4d_int_s_leak`, and `m4d_int_divj_mode0`, with `closure_status`
 computed from a normalized residual threshold (`--closure-norm-tol`, default `5e-2`).
@@ -545,7 +549,8 @@ controlled/full scan with fixed closure + activity thresholds for the tuned
 `inputs/harris_4d_full.in` baseline, and includes transport-closure gating
 (`--check-transport-closure`, plasma + EM mode-0 channels), EM bulk-ledger
 gating (`--check-em-bulk-ledger`) plus full-case correlation gates tying
-`m4d_psi0_span` (and projected `m4d_psi_proj_span`) to leakage/mixed-channel activity:
+`m4d_psi0_span` (plus `m4d_psi_proj_span` / `m4d_psi_w0_span`) to
+leakage/mixed-channel activity:
 - `|corr_psi0_s_leak_abs|`
 - `|corr_psi0_jw_ew|`
 - `|corr_psi0_mixed_ew2|`
@@ -1108,6 +1113,10 @@ Key parameters currently used from `<problem/harris_4d>`:
 - `drift_current_scale`
 - `aw_mode1_amp`
 - `piw_mode1_amp`
+- `ay_mode2_amp`
+- `a0_mode2_amp`
+- `aw_mode2_amp`
+- `piw_mode2_amp`
 - `init_charge_rel_tol`
 - `init_charge_abs_tol`
 
@@ -1117,6 +1126,8 @@ Key parameters currently used from `<problem/harris_4d>`:
   - hydro/MHD conservative state (`cons`) for a Harris-like zero-mode profile
   - mode-0 `A_y` perturbation in `em4d_a`
   - optional mode-1 `A_w` perturbation in `em4d_a` for mixed-sector triggering
+  - optional mode-2 seeds (`A_y`, `A_0`, `A_w`, `pi_w`) for projected-proxy
+    activation studies
   - species mode-0 plasma state in `plasma4d_cons` using q/m-aware splits that
     preserve mode-0 charge neutrality and target drift-current amplitude
 - The provided pulse/Harris decks now carry explicit defaults for frequently

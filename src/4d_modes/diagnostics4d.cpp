@@ -1264,6 +1264,69 @@ Real AyProjectedSpanHst(MeshData<Real> *md) {
   return (ay_proj_max > ay_proj_min) ? (ay_proj_max - ay_proj_min) : 0.0;
 }
 
+std::vector<Real> BranePointCoefficients(const ModeTables &tables, const int n_modes) {
+  std::vector<Real> coeff(static_cast<size_t>(n_modes), 0.0);
+  if (n_modes <= 0) {
+    return coeff;
+  }
+
+  // Evaluate phi_n(0) via Hermite recurrence H_{n+1}(0) = -2n H_{n-1}(0),
+  // consistent with the brane-coupling rule from docs/4d_em_fields_summary.md.
+  std::vector<Real> hermite_zero(static_cast<size_t>(n_modes), 0.0);
+  hermite_zero[0] = 1.0;
+  if (n_modes > 1) {
+    hermite_zero[1] = 0.0;
+  }
+  for (int n = 1; n + 1 < n_modes; ++n) {
+    hermite_zero[static_cast<size_t>(n + 1)] =
+        -2.0 * static_cast<Real>(n) * hermite_zero[static_cast<size_t>(n - 1)];
+  }
+
+  const Real normalizer_factor = tables.Lambda() * std::sqrt(std::acos(-1.0));
+  for (int n = 0; n < n_modes; ++n) {
+    const Real two_to_n = std::ldexp(1.0, n);
+    const Real n_factorial = std::tgamma(static_cast<Real>(n) + 1.0);
+    const Real normalization = std::sqrt(normalizer_factor * two_to_n * n_factorial);
+    coeff[static_cast<size_t>(n)] = hermite_zero[static_cast<size_t>(n)] / normalization;
+  }
+  return coeff;
+}
+
+Real AyBranePointSpanHst(MeshData<Real> *md) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
+  const auto brane_coeff = BranePointCoefficients(tables, n_modes);
+
+  Real ay_w0_min = std::numeric_limits<Real>::max();
+  Real ay_w0_max = std::numeric_limits<Real>::lowest();
+
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto a = bd->Get("em4d_a").data.GetHostMirrorAndCopy();
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          Real ay_w0 = 0.0;
+          for (int n = 0; n < n_modes; ++n) {
+            const int off = 5 * n;
+            ay_w0 += brane_coeff[static_cast<size_t>(n)] * a(off + kCompAY, k, j, i);
+          }
+          ay_w0_min = std::min(ay_w0_min, ay_w0);
+          ay_w0_max = std::max(ay_w0_max, ay_w0);
+        }
+      }
+    }
+  }
+
+  return (ay_w0_max > ay_w0_min) ? (ay_w0_max - ay_w0_min) : 0.0;
+}
+
 Real JwModeL2Integral(MeshData<Real> *md, const int mode_idx) {
   auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   const int n_modes = modes_pkg->Param<int>("n_modes");
@@ -1664,6 +1727,9 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     AyProjectedSpanHst,
                                                     "m4d_psi_proj_span"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    AyBranePointSpanHst,
+                                                    "m4d_psi_w0_span"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     PulseCentroidXHst,
                                                     "m4d_pulse_xc"));
