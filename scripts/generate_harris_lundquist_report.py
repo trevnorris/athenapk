@@ -111,6 +111,18 @@ def main():
         help="Minimum min(full max_abs_dpsi0_dt / controlled max_abs_dpsi0_dt) for PASS",
     )
     parser.add_argument(
+        "--psi-w0-enhancement-min",
+        type=float,
+        default=1.0,
+        help="Minimum min(full psi_w0 span / controlled psi_w0 span) for PASS",
+    )
+    parser.add_argument(
+        "--max-abs-dpsi-w0-enhancement-min",
+        type=float,
+        default=1.0,
+        help="Minimum min(full max_abs_dpsi_w0_dt / controlled max_abs_dpsi_w0_dt) for PASS",
+    )
+    parser.add_argument(
         "--controlled-max-jw-ew-abs",
         type=float,
         default=1.0e-12,
@@ -372,6 +384,18 @@ def main():
             series_min(rate_ratio),
             "min",
             args.max_abs_dpsi0_enhancement_min,
+        ),
+        (
+            "min(full_psi_w0_span/controlled_psi_w0_span)",
+            series_min(psi_w0_ratio),
+            "min",
+            args.psi_w0_enhancement_min,
+        ),
+        (
+            "min(full_max_abs_dpsi_w0_dt/controlled_max_abs_dpsi_w0_dt)",
+            series_min(rate_w0_ratio),
+            "min",
+            args.max_abs_dpsi_w0_enhancement_min,
         ),
         (
             "min(|full JwEw|)",

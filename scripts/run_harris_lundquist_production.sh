@@ -23,6 +23,8 @@ FULL_MIN_ABS_HELICITY_SUB="1.0e-11"
 FULL_MIN_ABS_EDOTB_SUB="1.0e-10"
 PSI0_ENHANCEMENT_MIN="1.0"
 MAX_ABS_DPSI0_ENHANCEMENT_MIN="1.0"
+PSI_W0_ENHANCEMENT_MIN="1.0"
+MAX_ABS_DPSI_W0_ENHANCEMENT_MIN="1.0"
 CONTROLLED_MAX_JW_EW_ABS="1.0e-12"
 CONTROLLED_MAX_S_LEAK_ABS="1.0e-12"
 CONTROLLED_MAX_JW_MODE_ACTIVITY_PROXY="1.0e-12"
@@ -76,6 +78,10 @@ Options:
                           Minimum min(full/control psi0 span ratio) report gate (default: 1.0)
   --max-abs-dpsi0-enhancement-min FLOAT
                           Minimum min(full/control max|dpsi0/dt| ratio) report gate (default: 1.0)
+  --psi-w0-enhancement-min FLOAT
+                          Minimum min(full/control psi_w0 span ratio) report gate (default: 1.0)
+  --max-abs-dpsi-w0-enhancement-min FLOAT
+                          Minimum min(full/control max|dpsi_w0/dt| ratio) report gate (default: 1.0)
   --controlled-max-jw-ew-abs FLOAT
                           Maximum max controlled |J^wE_w| report gate (default: 1.0e-12)
   --controlled-max-s-leak-abs FLOAT
@@ -179,6 +185,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --max-abs-dpsi0-enhancement-min)
       MAX_ABS_DPSI0_ENHANCEMENT_MIN="$2"
+      shift 2
+      ;;
+    --psi-w0-enhancement-min)
+      PSI_W0_ENHANCEMENT_MIN="$2"
+      shift 2
+      ;;
+    --max-abs-dpsi-w0-enhancement-min)
+      MAX_ABS_DPSI_W0_ENHANCEMENT_MIN="$2"
       shift 2
       ;;
     --controlled-max-jw-ew-abs)
@@ -395,6 +409,8 @@ if [[ "${SKIP_REPORT}" -eq 0 ]]; then
     --report-path "${REPORT_PATH}" \
     --psi0-enhancement-min "${PSI0_ENHANCEMENT_MIN}" \
     --max-abs-dpsi0-enhancement-min "${MAX_ABS_DPSI0_ENHANCEMENT_MIN}" \
+    --psi-w0-enhancement-min "${PSI_W0_ENHANCEMENT_MIN}" \
+    --max-abs-dpsi-w0-enhancement-min "${MAX_ABS_DPSI_W0_ENHANCEMENT_MIN}" \
     --controlled-max-jw-ew-abs "${CONTROLLED_MAX_JW_EW_ABS}" \
     --controlled-max-s-leak-abs "${CONTROLLED_MAX_S_LEAK_ABS}" \
     --controlled-max-jw-mode-activity-proxy "${CONTROLLED_MAX_JW_MODE_ACTIVITY_PROXY}" \
