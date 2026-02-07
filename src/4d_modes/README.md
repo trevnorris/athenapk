@@ -212,6 +212,8 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_gamma`
 - `plasma_pressure_transport_gain`
 - `plasma_pressure_rusanov_gain`
+- `plasma_pressure_signal_speed_cap`
+- `plasma_pressure_flux_relative_cap`
 - `plasma_pressure_transport_max_mode`
 - `plasma_pressure_floor`
 
@@ -498,12 +500,24 @@ Current pressure-transport status for tuned Harris decks:
     between the baseline upwind transport (`0`) and pressure-coupled Rusanov
     transport (`1`)
   - `plasma_pressure_rusanov_gain` scales the Rusanov signal speed
+  - `plasma_pressure_signal_speed_cap` clamps pressure-branch
+    velocity/signal-speed contributions (default `10.0`)
+  - `plasma_pressure_flux_relative_cap` limits pressure-branch fluxes
+    relative to baseline advective fluxes (default `50.0`)
   - `plasma_pressure_transport_max_mode` limits pressure-coupled transport to
     low modes (default `0`, i.e. mode-0 only)
-  - pressure-branch normal velocity and Rusanov components are bounded relative
-    to the baseline advective flux
 - tested full-case behavior:
   - stable through `1e-3` (`1e-8`, `1e-7`, `1e-6`, `1e-3` verified)
+  - calibration sweeps at `gain=1e-3` and stress checks at `gain=1e-1`:
+    - `plasma_pressure_transport_max_mode = 0..3`: PASS
+    - `plasma_pressure_rusanov_gain = 0.25..4.0`: PASS
+    - `plasma_pressure_flux_relative_cap = 10..200`: PASS
+    - `plasma_pressure_signal_speed_cap = 5..20`: PASS
+- recommended pressure-stabilizer defaults (current package defaults):
+  - `plasma_pressure_transport_max_mode = 0`
+  - `plasma_pressure_rusanov_gain = 1.0`
+  - `plasma_pressure_signal_speed_cap = 10.0`
+  - `plasma_pressure_flux_relative_cap = 50.0`
 - keep `plasma_pressure_transport_gain = 0.0` for baseline/CI unless explicitly
   testing the pressure-transport path
 
