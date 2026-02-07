@@ -633,6 +633,21 @@ python3 scripts/plot_phdf_slice.py \
 
 This produces a 2D PNG slice from a cell-centered Parthenon dataset in `phdf`
 output (single-level runs).
+
+### 20) Run projected two-fluid `w`-flux regression
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_harris_wflux_regression
+```
+
+This target runs `scripts/harris_wflux_regression.py`, which executes two tuned
+Harris scan runs:
+- baseline full-case `modes4d/plasma_w_flux_source_gain=0.0`
+- enabled full-case `modes4d/plasma_w_flux_source_gain=0.1`
+
+and enforces quantitative nonzero-effect gates on `final_jw_mode_1` while
+requiring closure/correlation/activity/transport statuses to remain `PASS`.
 - `--fail-on-scan-check`
 
 Current pressure-transport status for tuned Harris decks:
@@ -698,6 +713,8 @@ Current transverse two-fluid source status for tuned Harris decks:
     - `F_w(energy)=(energy + p)*v_w`
   - default is `0.0` (baseline unchanged), with focused smoke verified at
     `plasma_w_flux_source_gain=0.1`.
+- dedicated CMake gate:
+  - `cmake --build build-baseline --target modes4d_harris_wflux_regression`: PASS
 - tuned Harris regression (`modes4d_harris_regression`): PASS
 
 Current `N_w`-convergence status for tuned Harris decks:
