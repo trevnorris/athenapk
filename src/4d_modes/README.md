@@ -395,6 +395,7 @@ with fail-fast behavior on the first failing check:
 - `modes4d_scalar_pulse_regression`
 - `modes4d_em_conservative_regression`
 - `modes4d_harris_regression`
+- `modes4d_harris_lundquist_scan`
 
 ### 13) Run the Harris Lundquist scan target
 

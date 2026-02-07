@@ -184,9 +184,28 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_regression_tuned.py
         --binary $<TARGET_FILE:athenaPK>
         --workdir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/harris
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/lundquist
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_lundquist_scan.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/lundquist
+        --controlled-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_controlled.in
+        --full-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_full.in
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/lundquist/outputs
+        --fail-on-check
+        --check-transport-closure
+        --fail-on-scan-check
+        --scan-min-abs-corr corr_logS_full_final_psi0_span=7.0e-1
+        --scan-min-abs-corr corr_logS_full_final_s_leak_abs=5.0e-1
+        --scan-min-abs-corr corr_logS_full_final_jw_ew_abs=5.0e-1
+        --scan-min-abs-corr corr_logS_full_final_mixed_ew2=7.0e-1
+        --scan-min-abs-corr corr_logS_full_final_em_leak_w_abs=2.0e-1
+        --scan-min-abs-corr corr_logS_full_final_helicity_sub_abs=5.0e-1
+        --scan-min-abs-corr corr_logS_full_final_edotb_sub_abs=5.0e-1
+        --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1
+        --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1
       DEPENDS athenaPK
       USES_TERMINAL
-      COMMENT "Running Phase-10 4D validation bundle (controlled, scalar, KK, Harris)")
+      COMMENT "Running Phase-10 4D validation bundle (controlled, scalar, KK, Harris, Lundquist)")
   else()
     message(STATUS "Python3 interpreter not found; skipping modes4d_harris_regression target.")
   endif()
