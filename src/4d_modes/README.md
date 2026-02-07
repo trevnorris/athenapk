@@ -759,6 +759,33 @@ This target runs `scripts/cpaw_strict1d_regression.py`, which:
 
 The same gate is included in `modes4d_phase10_regression`.
 
+### 24) Run strict-1D CPAW MPI+HDF5 quantitative gate
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-mpi-hdf5 \
+  --target modes4d_cpaw_strict1d_mpi_hdf5_regression
+```
+
+This target is available only in MPI+HDF5-enabled builds
+(`PARTHENON_DISABLE_MPI=OFF`, `PARTHENON_DISABLE_HDF5=OFF`).
+
+It runs `scripts/cpaw_strict1d_mpi_hdf5_regression.py`, which:
+- launches strict-1D CPAW with MPI (`mpirun -n 2`) and HDF5 outputs enabled
+- enforces strict-1D mesh overrides (`nx2=1`, `nx3=1`, with meshblock matches)
+- checks completion and output presence:
+  - zero exit status
+  - `"Driver completed."` in logs
+  - final cycle floor (`>= 1`)
+  - final `parthenon.out0*.phdf` exists
+- checks quantitative field metrics from final `cons` in `.phdf`:
+  - all values finite
+  - strict-1D geometry reflected in output layout
+  - transverse magnetic activity floors:
+    - `mean(|B2|) >= 1e-4`
+    - `mean(|B3|) >= 1e-4`
+  - transverse parity:
+    - `|mean(|B2|)-mean(|B3|)| / max(mean(|B2|),mean(|B3|)) <= 1e-2`
+
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable
 - nonzero pressure transport now uses a bounded blended Rusanov path:

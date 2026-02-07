@@ -118,6 +118,20 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       DEPENDS athenaPK
       USES_TERMINAL
       COMMENT "Running strict-1D CPAW regression check")
+    if(NOT PARTHENON_DISABLE_MPI AND NOT PARTHENON_DISABLE_HDF5)
+      add_custom_target(
+        modes4d_cpaw_strict1d_mpi_hdf5_regression
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_cpaw_strict1d_mpi_hdf5_regression
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cpaw_strict1d_mpi_hdf5_regression.py
+          --binary $<TARGET_FILE:athenaPK>
+          --mpirun ${MPIEXEC_EXECUTABLE}
+          --ranks 2
+          --workdir ${CMAKE_BINARY_DIR}/modes4d_cpaw_strict1d_mpi_hdf5_regression
+          --output-dir ${CMAKE_BINARY_DIR}/modes4d_cpaw_strict1d_mpi_hdf5_regression/outputs
+        DEPENDS athenaPK
+        USES_TERMINAL
+        COMMENT "Running strict-1D CPAW MPI+HDF5 regression check")
+    endif()
     add_custom_target(
       modes4d_scalar_pulse_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_scalar_pulse_regression
