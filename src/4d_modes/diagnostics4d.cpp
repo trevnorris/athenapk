@@ -1218,6 +1218,52 @@ Real Ay0SpanHst(MeshData<Real> *md) {
   return (ay0_max > ay0_min) ? (ay0_max - ay0_min) : 0.0;
 }
 
+Real AyProjectedSpanHst(MeshData<Real> *md) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
+  const int n_quad = tables.NumQuadrature();
+  const auto &weights = tables.Weights();
+  const Real z_int = tables.Lambda() * std::sqrt(std::acos(-1.0));
+
+  std::vector<Real> proj_coeff(static_cast<size_t>(n_modes), 0.0);
+  for (int n = 0; n < n_modes; ++n) {
+    Real coeff = 0.0;
+    for (int q = 0; q < n_quad; ++q) {
+      coeff += weights[q] * tables.Phi(n, q);
+    }
+    proj_coeff[static_cast<size_t>(n)] = coeff / z_int;
+  }
+
+  Real ay_proj_min = std::numeric_limits<Real>::max();
+  Real ay_proj_max = std::numeric_limits<Real>::lowest();
+
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto a = bd->Get("em4d_a").data.GetHostMirrorAndCopy();
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          Real ay_proj = 0.0;
+          for (int n = 0; n < n_modes; ++n) {
+            const int off = 5 * n;
+            ay_proj += proj_coeff[static_cast<size_t>(n)] * a(off + kCompAY, k, j, i);
+          }
+          ay_proj_min = std::min(ay_proj_min, ay_proj);
+          ay_proj_max = std::max(ay_proj_max, ay_proj);
+        }
+      }
+    }
+  }
+
+  return (ay_proj_max > ay_proj_min) ? (ay_proj_max - ay_proj_min) : 0.0;
+}
+
 Real JwModeL2Integral(MeshData<Real> *md, const int mode_idx) {
   auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   const int n_modes = modes_pkg->Param<int>("n_modes");
@@ -1615,6 +1661,9 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
                                                     "m4d_em_leak_w"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     Ay0SpanHst, "m4d_psi0_span"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    AyProjectedSpanHst,
+                                                    "m4d_psi_proj_span"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     PulseCentroidXHst,
                                                     "m4d_pulse_xc"));

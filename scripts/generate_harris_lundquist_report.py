@@ -164,6 +164,9 @@ def main():
         "corr_logS_full_final_psi0_span": pearson(
             log_s, [parse_float(r, "full_final_psi0_span") for r in rows]
         ),
+        "corr_logS_full_final_psi_proj_span": pearson(
+            log_s, [parse_float(r, "full_final_psi_proj_span") for r in rows]
+        ),
         "corr_logS_full_final_s_leak_abs": pearson(
             log_s, [parse_float(r, "full_final_s_leak_abs") for r in rows]
         ),
@@ -198,10 +201,19 @@ def main():
         "corr_logS_full_max_dpsi0_dt": pearson(
             log_s, [parse_float(r, "full_max_dpsi0_dt") for r in rows]
         ),
+        "corr_logS_full_max_abs_dpsi_proj_dt": pearson(
+            log_s, [parse_float(r, "full_max_abs_dpsi_proj_dt") for r in rows]
+        ),
+        "corr_logS_full_max_dpsi_proj_dt": pearson(
+            log_s, [parse_float(r, "full_max_dpsi_proj_dt") for r in rows]
+        ),
     }
     corr_signal_spans = {
         "corr_logS_full_final_psi0_span": series_span(
             [parse_float(r, "full_final_psi0_span") for r in rows]
+        ),
+        "corr_logS_full_final_psi_proj_span": series_span(
+            [parse_float(r, "full_final_psi_proj_span") for r in rows]
         ),
         "corr_logS_full_final_s_leak_abs": series_span(
             [parse_float(r, "full_final_s_leak_abs") for r in rows]
@@ -247,7 +259,9 @@ def main():
         gate_rows.append((condition, value, status))
 
     psi_ratio = []
+    psi_proj_ratio = []
     rate_ratio = []
+    rate_proj_ratio = []
     controlled_jw_ew_abs = []
     controlled_s_leak_abs = []
     controlled_jw_mode_proxy = []
@@ -261,12 +275,32 @@ def main():
             psi_ratio.append(psi_f / psi_c)
         else:
             psi_ratio.append(math.nan)
+        psi_proj_c = parse_float(row, "controlled_final_psi_proj_span")
+        psi_proj_f = parse_float(row, "full_final_psi_proj_span")
+        if (
+            math.isfinite(psi_proj_c)
+            and psi_proj_c > 0.0
+            and math.isfinite(psi_proj_f)
+        ):
+            psi_proj_ratio.append(psi_proj_f / psi_proj_c)
+        else:
+            psi_proj_ratio.append(math.nan)
         rate_c = parse_float(row, "controlled_max_abs_dpsi0_dt")
         rate_f = parse_float(row, "full_max_abs_dpsi0_dt")
         if math.isfinite(rate_c) and rate_c > 0.0 and math.isfinite(rate_f):
             rate_ratio.append(rate_f / rate_c)
         else:
             rate_ratio.append(math.nan)
+        rate_proj_c = parse_float(row, "controlled_max_abs_dpsi_proj_dt")
+        rate_proj_f = parse_float(row, "full_max_abs_dpsi_proj_dt")
+        if (
+            math.isfinite(rate_proj_c)
+            and rate_proj_c > 0.0
+            and math.isfinite(rate_proj_f)
+        ):
+            rate_proj_ratio.append(rate_proj_f / rate_proj_c)
+        else:
+            rate_proj_ratio.append(math.nan)
 
         ctrl_jw = abs(parse_float(row, "controlled_final_jw_ew"))
         full_jw = abs(parse_float(row, "full_final_jw_ew"))
@@ -392,7 +426,9 @@ def main():
     lines.append("")
     lines.append(
         "| S | psi0_ctrl | psi0_full | psi0_ratio | "
+        "psi_proj_ctrl | psi_proj_full | psi_proj_ratio | "
         "max|dpsi/dt|_ctrl | max|dpsi/dt|_full | rate_ratio | "
+        "max|dpsi_proj/dt|_ctrl | max|dpsi_proj/dt|_full | rate_proj_ratio | "
         "|JwEw|_ctrl | |JwEw|_full | JwEw_ratio | "
         "S_leak_ctrl | S_leak_full | S_leak_ratio | "
         "mixed_ew2_ctrl | mixed_ew2_full | mixed_ew2_ratio | "
@@ -401,13 +437,21 @@ def main():
     )
     lines.append(
         "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | "
-        "---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | :---: | :---: | :---: |"
+        "---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | "
+        "---: | ---: | ---: | ---: | ---: | ---: | :---: | :---: | :---: | :---: |"
     )
     for row in rows:
         psi_ctrl = parse_float(row, "controlled_final_psi0_span")
         psi_full = parse_float(row, "full_final_psi0_span")
         psi_ratio_val = (
             psi_full / psi_ctrl if (math.isfinite(psi_ctrl) and psi_ctrl > 0.0) else math.nan
+        )
+        psi_proj_ctrl = parse_float(row, "controlled_final_psi_proj_span")
+        psi_proj_full = parse_float(row, "full_final_psi_proj_span")
+        psi_proj_ratio_val = (
+            psi_proj_full / psi_proj_ctrl
+            if (math.isfinite(psi_proj_ctrl) and psi_proj_ctrl > 0.0)
+            else math.nan
         )
         jw_ctrl_abs = abs(parse_float(row, "controlled_final_jw_ew"))
         jw_full_abs = abs(parse_float(row, "full_final_jw_ew"))
@@ -435,6 +479,13 @@ def main():
             if (math.isfinite(dpsi_rate_ctrl) and dpsi_rate_ctrl > 0.0)
             else math.nan
         )
+        dpsi_proj_rate_ctrl = parse_float(row, "controlled_max_abs_dpsi_proj_dt")
+        dpsi_proj_rate_full = parse_float(row, "full_max_abs_dpsi_proj_dt")
+        dpsi_proj_rate_ratio = (
+            dpsi_proj_rate_full / dpsi_proj_rate_ctrl
+            if (math.isfinite(dpsi_proj_rate_ctrl) and dpsi_proj_rate_ctrl > 0.0)
+            else math.nan
+        )
         jw_mode_activity_proxy = mode_activity_proxy(
             parse_float(row, "full_final_jw_mode_l2_1"),
             parse_float(row, "full_final_jw_ew"),
@@ -459,9 +510,15 @@ def main():
                     f"`{fmt_val(psi_ctrl)}`",
                     f"`{fmt_val(psi_full)}`",
                     f"`{fmt_val(psi_ratio_val)}`",
+                    f"`{fmt_val(psi_proj_ctrl)}`",
+                    f"`{fmt_val(psi_proj_full)}`",
+                    f"`{fmt_val(psi_proj_ratio_val)}`",
                     f"`{fmt_val(dpsi_rate_ctrl)}`",
                     f"`{fmt_val(dpsi_rate_full)}`",
                     f"`{fmt_val(dpsi_rate_ratio)}`",
+                    f"`{fmt_val(dpsi_proj_rate_ctrl)}`",
+                    f"`{fmt_val(dpsi_proj_rate_full)}`",
+                    f"`{fmt_val(dpsi_proj_rate_ratio)}`",
                     f"`{fmt_val(jw_ctrl_abs)}`",
                     f"`{fmt_val(jw_full_abs)}`",
                     f"`{fmt_val(jw_ratio)}`",
@@ -509,6 +566,15 @@ def main():
     )
     lines.append(
         f"| `corr_logS_full_max_dpsi0_dt` | `{fmt_val(metrics['corr_logS_full_max_dpsi0_dt'])}` |"
+    )
+    lines.append(
+        f"| `corr_logS_full_final_psi_proj_span` | `{fmt_val(metrics['corr_logS_full_final_psi_proj_span'])}` |"
+    )
+    lines.append(
+        f"| `corr_logS_full_max_abs_dpsi_proj_dt` | `{fmt_val(metrics['corr_logS_full_max_abs_dpsi_proj_dt'])}` |"
+    )
+    lines.append(
+        f"| `corr_logS_full_max_dpsi_proj_dt` | `{fmt_val(metrics['corr_logS_full_max_dpsi_proj_dt'])}` |"
     )
 
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")

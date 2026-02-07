@@ -256,7 +256,10 @@ def analyze_case(
     em_bulk_ledger_abs_rate_tol,
 ):
     times = cols["time"]
-    psi = cols["m4d_psi0_span"]
+    psi0 = cols["m4d_psi0_span"]
+    psi_proj = maybe_col(cols, "m4d_psi_proj_span")
+    if psi_proj is None or len(psi_proj) != len(psi0):
+        psi_proj = psi0
     leak = cols["m4d_int_s_leak"]
     leak_abs = cols.get("m4d_int_s_leak_abs", leak)
     jw_ew = cols["m4d_int_jw_ew"]
@@ -374,7 +377,15 @@ def analyze_case(
         final_dpsi0_dt,
         time_at_max_dpsi0_dt,
         time_at_max_abs_dpsi0_dt,
-    ) = reconnection_rate_metrics(times, psi)
+    ) = reconnection_rate_metrics(times, psi0)
+    (
+        max_dpsi_proj_dt,
+        min_dpsi_proj_dt,
+        max_abs_dpsi_proj_dt,
+        final_dpsi_proj_dt,
+        time_at_max_dpsi_proj_dt,
+        time_at_max_abs_dpsi_proj_dt,
+    ) = reconnection_rate_metrics(times, psi_proj)
 
     (
         momx_transport_max_norm,
@@ -522,7 +533,8 @@ def analyze_case(
 
     result = {
         "case": case_name,
-        "final_psi0_span": psi[-1],
+        "final_psi0_span": psi0[-1],
+        "final_psi_proj_span": psi_proj[-1],
         "final_s_leak": leak[-1],
         "final_s_leak_abs": leak_abs[-1],
         "final_jw_ew": jw_ew[-1],
@@ -539,23 +551,26 @@ def analyze_case(
         "final_em_leak_w": em_leak_w[-1] if em_leak_w is not None else math.nan,
         "final_helicity_sub": helicity_sub[-1] if helicity_sub is not None else math.nan,
         "final_edotb_sub": edotb_sub[-1] if edotb_sub is not None else math.nan,
-        "corr_psi0_s_leak": pearson(psi, leak),
-        "corr_psi0_s_leak_abs": pearson(psi, leak_abs),
-        "corr_psi0_jw_ew": pearson(psi, jw_ew),
-        "corr_psi0_brane_epar2": pearson(psi, epar2),
-        "corr_psi0_mixed_ew2": pearson(psi, mixed_ew2),
-        "corr_psi0_mixed_c2": pearson(psi, mixed_c2),
-        "corr_psi0_em_u_sub": pearson(psi, em_u_sub) if em_u_sub is not None else math.nan,
-        "corr_psi0_em_sw": pearson(psi, em_sw) if em_sw is not None else math.nan,
-        "corr_psi0_em_leak_w": pearson(psi, em_leak_w)
+        "corr_psi0_s_leak": pearson(psi0, leak),
+        "corr_psi0_s_leak_abs": pearson(psi0, leak_abs),
+        "corr_psi0_jw_ew": pearson(psi0, jw_ew),
+        "corr_psi0_brane_epar2": pearson(psi0, epar2),
+        "corr_psi0_mixed_ew2": pearson(psi0, mixed_ew2),
+        "corr_psi0_mixed_c2": pearson(psi0, mixed_c2),
+        "corr_psi0_em_u_sub": pearson(psi0, em_u_sub) if em_u_sub is not None else math.nan,
+        "corr_psi0_em_sw": pearson(psi0, em_sw) if em_sw is not None else math.nan,
+        "corr_psi0_em_leak_w": pearson(psi0, em_leak_w)
         if em_leak_w is not None
         else math.nan,
-        "corr_psi0_helicity_sub": pearson(psi, helicity_sub)
+        "corr_psi0_helicity_sub": pearson(psi0, helicity_sub)
         if helicity_sub is not None
         else math.nan,
-        "corr_psi0_edotb_sub": pearson(psi, edotb_sub)
+        "corr_psi0_edotb_sub": pearson(psi0, edotb_sub)
         if edotb_sub is not None
         else math.nan,
+        "corr_psiproj_s_leak_abs": pearson(psi_proj, leak_abs),
+        "corr_psiproj_jw_ew": pearson(psi_proj, jw_ew),
+        "corr_psiproj_mixed_ew2": pearson(psi_proj, mixed_ew2),
         "final_em_a2_mode_1": em_a2_mode1[-1] if em_a2_mode1 is not None else math.nan,
         "final_em_pi2_mode_1": em_pi2_mode1[-1] if em_pi2_mode1 is not None else math.nan,
         "final_jw_mode_l2_1": jw_mode1_l2[-1] if jw_mode1_l2 is not None else math.nan,
@@ -645,7 +660,7 @@ def analyze_case(
         "final_int_src_em_timelike_abs": int_src_em_timelike_abs[-1]
         if int_src_em_timelike_abs is not None
         else math.nan,
-        "corr_psi0_jw_mode_l2_1": pearson(psi, jw_mode1_l2)
+        "corr_psi0_jw_mode_l2_1": pearson(psi0, jw_mode1_l2)
         if jw_mode1_l2 is not None
         else math.nan,
         "closure_max_norm": closure_max_norm,
@@ -672,6 +687,12 @@ def analyze_case(
         "final_dpsi0_dt": final_dpsi0_dt,
         "time_at_max_dpsi0_dt": time_at_max_dpsi0_dt,
         "time_at_max_abs_dpsi0_dt": time_at_max_abs_dpsi0_dt,
+        "max_dpsi_proj_dt": max_dpsi_proj_dt,
+        "min_dpsi_proj_dt": min_dpsi_proj_dt,
+        "max_abs_dpsi_proj_dt": max_abs_dpsi_proj_dt,
+        "final_dpsi_proj_dt": final_dpsi_proj_dt,
+        "time_at_max_dpsi_proj_dt": time_at_max_dpsi_proj_dt,
+        "time_at_max_abs_dpsi_proj_dt": time_at_max_abs_dpsi_proj_dt,
         "em_bulk_ledger_max_abs_rate": em_bulk_ledger_max_abs_rate,
         "em_bulk_ledger_rms_abs_rate": em_bulk_ledger_rms_abs_rate,
         "em_bulk_ledger_final_rate": em_bulk_ledger_final_rate,
@@ -755,6 +776,7 @@ def print_table(results):
     keys = [
         "case",
         "final_psi0_span",
+        "final_psi_proj_span",
         "final_s_leak",
         "final_s_leak_abs",
         "final_jw_ew",
@@ -818,6 +840,9 @@ def print_table(results):
         "corr_psi0_helicity_sub",
         "corr_psi0_edotb_sub",
         "corr_psi0_jw_mode_l2_1",
+        "corr_psiproj_s_leak_abs",
+        "corr_psiproj_jw_ew",
+        "corr_psiproj_mixed_ew2",
         "closure_max_norm",
         "closure_rms_norm",
         "closure_max_abs_rate",
@@ -834,6 +859,12 @@ def print_table(results):
         "final_dpsi0_dt",
         "time_at_max_dpsi0_dt",
         "time_at_max_abs_dpsi0_dt",
+        "max_dpsi_proj_dt",
+        "min_dpsi_proj_dt",
+        "max_abs_dpsi_proj_dt",
+        "final_dpsi_proj_dt",
+        "time_at_max_dpsi_proj_dt",
+        "time_at_max_abs_dpsi_proj_dt",
         "em_bulk_ledger_max_abs_rate",
         "em_bulk_ledger_rms_abs_rate",
         "em_bulk_ledger_final_rate",

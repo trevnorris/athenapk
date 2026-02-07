@@ -110,6 +110,7 @@ Implemented now:
   - `m4d_em_sw`
   - `m4d_em_leak_w`
   - `m4d_psi0_span`
+  - `m4d_psi_proj_span`
   - `m4d_pulse_xc`
   - `m4d_em_a2_mode_<n>`
   - `m4d_em_pi2_mode_<n>`
@@ -288,7 +289,9 @@ This input deck includes a history output stream (`file_type = hst`) so the
 `m4d_*` diagnostics channels are emitted during the run.
 For reconnection-oriented analysis, this includes `m4d_brane_epar2` (parallel
 electric proxy), mixed-sector proxies (`m4d_mixed_ew2`, `m4d_mixed_c2`), and
-`m4d_psi0_span` as a zero-mode flux-function span proxy.
+flux-span proxies:
+- `m4d_psi0_span`: zero-mode `A_y^(0)` span
+- `m4d_psi_proj_span`: matched-kernel projected `A_y` span across active modes
 
 ### 4) Run EM-only pulse bring-up
 
@@ -346,7 +349,7 @@ python3 /projects/fluid-engine/athenapk/scripts/harris_scan_matrix.py \
 ```
 
 This prints a CSV table with final values and Pearson correlations between
-`m4d_psi0_span` and key ledger/reconnection proxy channels.
+`m4d_psi0_span`, `m4d_psi_proj_span`, and key ledger/reconnection proxy channels.
 It also reports continuity-closure metrics based on
 `m4d_charge_mode_0`, `m4d_int_s_leak`, and `m4d_int_divj_mode0`, with `closure_status`
 computed from a normalized residual threshold (`--closure-norm-tol`, default `5e-2`).
@@ -542,7 +545,7 @@ controlled/full scan with fixed closure + activity thresholds for the tuned
 `inputs/harris_4d_full.in` baseline, and includes transport-closure gating
 (`--check-transport-closure`, plasma + EM mode-0 channels), EM bulk-ledger
 gating (`--check-em-bulk-ledger`) plus full-case correlation gates tying
-`m4d_psi0_span` to leakage/mixed-channel activity:
+`m4d_psi0_span` (and projected `m4d_psi_proj_span`) to leakage/mixed-channel activity:
 - `|corr_psi0_s_leak_abs|`
 - `|corr_psi0_jw_ew|`
 - `|corr_psi0_mixed_ew2|`

@@ -485,6 +485,9 @@ def main():
         )
         controlled_max_abs_dpsi0_dt = parse_float(controlled_row, "max_abs_dpsi0_dt")
         controlled_max_dpsi0_dt = parse_float(controlled_row, "max_dpsi0_dt")
+        controlled_final_psi_proj_span = parse_float(controlled_row, "final_psi_proj_span")
+        controlled_max_abs_dpsi_proj_dt = parse_float(controlled_row, "max_abs_dpsi_proj_dt")
+        controlled_max_dpsi_proj_dt = parse_float(controlled_row, "max_dpsi_proj_dt")
         full_final_jw_ew = parse_float(full_row, "final_jw_ew")
         full_final_s_leak_abs = parse_float(full_row, "final_s_leak_abs")
         full_final_mixed_ew2 = parse_float(full_row, "final_mixed_ew2")
@@ -498,6 +501,9 @@ def main():
         )
         full_max_abs_dpsi0_dt = parse_float(full_row, "max_abs_dpsi0_dt")
         full_max_dpsi0_dt = parse_float(full_row, "max_dpsi0_dt")
+        full_final_psi_proj_span = parse_float(full_row, "final_psi_proj_span")
+        full_max_abs_dpsi_proj_dt = parse_float(full_row, "max_abs_dpsi_proj_dt")
+        full_max_dpsi_proj_dt = parse_float(full_row, "max_dpsi_proj_dt")
         controlled_final_psi0_span = parse_float(controlled_row, "final_psi0_span")
         full_final_psi0_span = parse_float(full_row, "final_psi0_span")
         rows.append(
@@ -516,7 +522,11 @@ def main():
                 "controlled_final_jw_mode_activity_proxy": controlled_final_jw_mode_activity_proxy,
                 "controlled_max_abs_dpsi0_dt": controlled_max_abs_dpsi0_dt,
                 "controlled_max_dpsi0_dt": controlled_max_dpsi0_dt,
+                "controlled_final_psi_proj_span": controlled_final_psi_proj_span,
+                "controlled_max_abs_dpsi_proj_dt": controlled_max_abs_dpsi_proj_dt,
+                "controlled_max_dpsi_proj_dt": controlled_max_dpsi_proj_dt,
                 "full_final_psi0_span": full_final_psi0_span,
+                "full_final_psi_proj_span": full_final_psi_proj_span,
                 "full_final_jw_ew": full_final_jw_ew,
                 "full_final_s_leak_abs": full_final_s_leak_abs,
                 "full_final_mixed_ew2": full_final_mixed_ew2,
@@ -530,8 +540,13 @@ def main():
                 "full_final_jw_mode_activity_proxy": full_final_jw_mode_activity_proxy,
                 "full_max_abs_dpsi0_dt": full_max_abs_dpsi0_dt,
                 "full_max_dpsi0_dt": full_max_dpsi0_dt,
+                "full_max_abs_dpsi_proj_dt": full_max_abs_dpsi_proj_dt,
+                "full_max_dpsi_proj_dt": full_max_dpsi_proj_dt,
                 "ratio_full_over_controlled_psi0_span": safe_ratio(
                     full_final_psi0_span, controlled_final_psi0_span
+                ),
+                "ratio_full_over_controlled_psi_proj_span": safe_ratio(
+                    full_final_psi_proj_span, controlled_final_psi_proj_span
                 ),
                 "ratio_full_over_controlled_jw_ew_abs": safe_ratio(
                     abs(full_final_jw_ew), abs(controlled_final_jw_ew)
@@ -548,6 +563,9 @@ def main():
                 "ratio_full_over_controlled_max_abs_dpsi0_dt": safe_ratio(
                     full_max_abs_dpsi0_dt, controlled_max_abs_dpsi0_dt
                 ),
+                "ratio_full_over_controlled_max_abs_dpsi_proj_dt": safe_ratio(
+                    full_max_abs_dpsi_proj_dt, controlled_max_abs_dpsi_proj_dt
+                ),
                 "full_corr_psi0_s_leak_abs": parse_float(full_row, "corr_psi0_s_leak_abs"),
                 "full_corr_psi0_jw_ew": parse_float(full_row, "corr_psi0_jw_ew"),
                 "full_corr_psi0_mixed_ew2": parse_float(full_row, "corr_psi0_mixed_ew2"),
@@ -555,6 +573,9 @@ def main():
                 "full_corr_psi0_helicity_sub": parse_float(full_row, "corr_psi0_helicity_sub"),
                 "full_corr_psi0_edotb_sub": parse_float(full_row, "corr_psi0_edotb_sub"),
                 "full_corr_psi0_jw_mode_l2_1": parse_float(full_row, "corr_psi0_jw_mode_l2_1"),
+                "full_corr_psiproj_s_leak_abs": parse_float(full_row, "corr_psiproj_s_leak_abs"),
+                "full_corr_psiproj_jw_ew": parse_float(full_row, "corr_psiproj_jw_ew"),
+                "full_corr_psiproj_mixed_ew2": parse_float(full_row, "corr_psiproj_mixed_ew2"),
                 "full_closure_status": full_row.get("closure_status", "N/A"),
                 "full_transport_closure_status": full_row.get(
                     "transport_closure_status", "N/A"
@@ -567,6 +588,7 @@ def main():
     log_s = [math.log10(r["S"]) for r in rows]
     corr_series = {
         "corr_logS_full_final_psi0_span": [r["full_final_psi0_span"] for r in rows],
+        "corr_logS_full_final_psi_proj_span": [r["full_final_psi_proj_span"] for r in rows],
         "corr_logS_full_final_s_leak_abs": [r["full_final_s_leak_abs"] for r in rows],
         "corr_logS_full_final_jw_ew_abs": [abs(r["full_final_jw_ew"]) for r in rows],
         "corr_logS_full_final_mixed_ew2": [r["full_final_mixed_ew2"] for r in rows],
@@ -583,6 +605,8 @@ def main():
         ],
         "corr_logS_full_max_abs_dpsi0_dt": [r["full_max_abs_dpsi0_dt"] for r in rows],
         "corr_logS_full_max_dpsi0_dt": [r["full_max_dpsi0_dt"] for r in rows],
+        "corr_logS_full_max_abs_dpsi_proj_dt": [r["full_max_abs_dpsi_proj_dt"] for r in rows],
+        "corr_logS_full_max_dpsi_proj_dt": [r["full_max_dpsi_proj_dt"] for r in rows],
     }
     scan_summary = {}
     for metric, values in corr_series.items():
@@ -591,6 +615,7 @@ def main():
         scan_summary[f"std_for_{metric}"] = series_std(values)
     metric_series = {
         "full_final_psi0_span": [r["full_final_psi0_span"] for r in rows],
+        "full_final_psi_proj_span": [r["full_final_psi_proj_span"] for r in rows],
         "full_final_s_leak_abs": [r["full_final_s_leak_abs"] for r in rows],
         "full_final_jw_ew_abs": [abs(r["full_final_jw_ew"]) for r in rows],
         "full_final_mixed_ew2": [r["full_final_mixed_ew2"] for r in rows],
@@ -603,6 +628,8 @@ def main():
         ],
         "full_max_abs_dpsi0_dt": [r["full_max_abs_dpsi0_dt"] for r in rows],
         "full_max_dpsi0_dt": [r["full_max_dpsi0_dt"] for r in rows],
+        "full_max_abs_dpsi_proj_dt": [r["full_max_abs_dpsi_proj_dt"] for r in rows],
+        "full_max_dpsi_proj_dt": [r["full_max_dpsi_proj_dt"] for r in rows],
     }
     for metric, values in metric_series.items():
         scan_summary[f"min_{metric}"] = series_min(values)
