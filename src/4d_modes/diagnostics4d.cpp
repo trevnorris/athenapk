@@ -45,6 +45,11 @@ enum class HelicitySubscaleQuantity {
   EdotBSub
 };
 
+enum class TransverseEnergyQuantity {
+  PoyntingW,
+  LeakageW
+};
+
 Real FieldL2Integral(MeshData<Real> *md, const std::string &field_name) {
   auto *pmb = md->GetBlockData(0)->GetBlockPointer();
   const auto &field_pack = md->PackVariables(std::vector<std::string>{field_name});
@@ -960,6 +965,163 @@ Real EdotBSubHst(MeshData<Real> *md) {
   return HelicitySubscaleIntegral(md, HelicitySubscaleQuantity::EdotBSub);
 }
 
+Real TransverseEnergyIntegral(MeshData<Real> *md, TransverseEnergyQuantity quantity) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
+  const int n_quad = tables.NumQuadrature();
+  const auto &weights = tables.Weights();
+  const auto &nodes = tables.Nodes();
+  const Real lambda = tables.Lambda();
+  const Real z_int = lambda * std::sqrt(std::acos(-1.0));
+  const Real mu0 = modes_pkg->Param<double>("em4d/mu0");
+
+  Real integral = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto *pmb = bd->GetBlockPointer();
+    auto &coords = pmb->coords;
+
+    auto a = bd->Get("em4d_a").data.GetHostMirrorAndCopy();
+    auto pi = bd->Get("em4d_pi").data.GetHostMirrorAndCopy();
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+    const bool has_x = (ib.e > ib.s);
+    const bool has_y = (jb.e > jb.s);
+    const bool has_z = (kb.e > kb.s);
+
+    std::vector<Real> a0_modes(n_modes, 0.0);
+    std::vector<Real> ax_modes(n_modes, 0.0);
+    std::vector<Real> ay_modes(n_modes, 0.0);
+    std::vector<Real> az_modes(n_modes, 0.0);
+    std::vector<Real> piw_modes(n_modes, 0.0);
+    std::vector<Real> pix_modes(n_modes, 0.0);
+    std::vector<Real> piy_modes(n_modes, 0.0);
+    std::vector<Real> piz_modes(n_modes, 0.0);
+    std::vector<Real> da0_dx_modes(n_modes, 0.0);
+    std::vector<Real> da0_dy_modes(n_modes, 0.0);
+    std::vector<Real> da0_dz_modes(n_modes, 0.0);
+    std::vector<Real> daw_dx_modes(n_modes, 0.0);
+    std::vector<Real> daw_dy_modes(n_modes, 0.0);
+    std::vector<Real> daw_dz_modes(n_modes, 0.0);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          const Real dx = has_x ? coords.Dxc<1>(i) : 1.0;
+          const Real dy = has_y ? coords.Dxc<2>(j) : 1.0;
+          const Real dz = has_z ? coords.Dxc<3>(k) : 1.0;
+
+          for (int n = 0; n < n_modes; ++n) {
+            const int off = 5 * n;
+            a0_modes[n] = a(off + kCompA0, k, j, i);
+            ax_modes[n] = a(off + kCompAX, k, j, i);
+            ay_modes[n] = a(off + kCompAY, k, j, i);
+            az_modes[n] = a(off + kCompAZ, k, j, i);
+            piw_modes[n] = pi(off + kCompAW, k, j, i);
+            pix_modes[n] = pi(off + kCompAX, k, j, i);
+            piy_modes[n] = pi(off + kCompAY, k, j, i);
+            piz_modes[n] = pi(off + kCompAZ, k, j, i);
+
+            if (has_x) {
+              da0_dx_modes[n] =
+                  (a(off + kCompA0, k, j, i + 1) - a(off + kCompA0, k, j, i - 1)) /
+                  (2.0 * dx);
+              daw_dx_modes[n] =
+                  (a(off + kCompAW, k, j, i + 1) - a(off + kCompAW, k, j, i - 1)) /
+                  (2.0 * dx);
+            }
+            if (has_y) {
+              da0_dy_modes[n] =
+                  (a(off + kCompA0, k, j + 1, i) - a(off + kCompA0, k, j - 1, i)) /
+                  (2.0 * dy);
+              daw_dy_modes[n] =
+                  (a(off + kCompAW, k, j + 1, i) - a(off + kCompAW, k, j - 1, i)) /
+                  (2.0 * dy);
+            }
+            if (has_z) {
+              da0_dz_modes[n] =
+                  (a(off + kCompA0, k + 1, j, i) - a(off + kCompA0, k - 1, j, i)) /
+                  (2.0 * dz);
+              daw_dz_modes[n] =
+                  (a(off + kCompAW, k + 1, j, i) - a(off + kCompAW, k - 1, j, i)) /
+                  (2.0 * dz);
+            }
+          }
+
+          Real local_w_integral = 0.0;
+          for (int q = 0; q < n_quad; ++q) {
+            Real d_w_a0 = 0.0;
+            Real d_w_ax = 0.0;
+            Real d_w_ay = 0.0;
+            Real d_w_az = 0.0;
+            Real piw_node = 0.0;
+            Real pix_node = 0.0;
+            Real piy_node = 0.0;
+            Real piz_node = 0.0;
+            Real da0_dx_node = 0.0;
+            Real da0_dy_node = 0.0;
+            Real da0_dz_node = 0.0;
+            Real daw_dx_node = 0.0;
+            Real daw_dy_node = 0.0;
+            Real daw_dz_node = 0.0;
+
+            for (int n = 0; n < n_modes; ++n) {
+              const Real phi_nq = tables.Phi(n, q);
+              const Real dphi_nq = tables.DPhi(n, q);
+              d_w_a0 += a0_modes[n] * dphi_nq;
+              d_w_ax += ax_modes[n] * dphi_nq;
+              d_w_ay += ay_modes[n] * dphi_nq;
+              d_w_az += az_modes[n] * dphi_nq;
+              piw_node += piw_modes[n] * phi_nq;
+              pix_node += pix_modes[n] * phi_nq;
+              piy_node += piy_modes[n] * phi_nq;
+              piz_node += piz_modes[n] * phi_nq;
+              da0_dx_node += da0_dx_modes[n] * phi_nq;
+              da0_dy_node += da0_dy_modes[n] * phi_nq;
+              da0_dz_node += da0_dz_modes[n] * phi_nq;
+              daw_dx_node += daw_dx_modes[n] * phi_nq;
+              daw_dy_node += daw_dy_modes[n] * phi_nq;
+              daw_dz_node += daw_dz_modes[n] * phi_nq;
+            }
+
+            const Real ex = -pix_node - da0_dx_node;
+            const Real ey = -piy_node - da0_dy_node;
+            const Real ez = -piz_node - da0_dz_node;
+            const Real cx = daw_dx_node - d_w_ax;
+            const Real cy = daw_dy_node - d_w_ay;
+            const Real cz = daw_dz_node - d_w_az;
+            const Real edotc = (ex * cx) + (ey * cy) + (ez * cz);
+
+            if (quantity == TransverseEnergyQuantity::PoyntingW) {
+              local_w_integral += weights[q] * (edotc / mu0);
+            } else {
+              const Real w = nodes[q];
+              const Real z = std::exp(-(w * w) / (lambda * lambda));
+              const Real leakage_weight = (-2.0 * w) / (lambda * lambda * z_int);
+              local_w_integral +=
+                  weights[q] * leakage_weight * ((z / mu0) * edotc);
+            }
+          }
+
+          integral += local_w_integral * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return integral;
+}
+
+Real EMPoyntingWHst(MeshData<Real> *md) {
+  return TransverseEnergyIntegral(md, TransverseEnergyQuantity::PoyntingW);
+}
+
+Real EMLeakageWHst(MeshData<Real> *md) {
+  return TransverseEnergyIntegral(md, TransverseEnergyQuantity::LeakageW);
+}
+
 Real BraneE2Hst(MeshData<Real> *md) {
   return BraneMixedIntegral(md, BraneMixedQuantity::BraneE2);
 }
@@ -1355,6 +1517,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     EdotBSubHst,
                                                     "m4d_edotb_sub"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMPoyntingWHst,
+                                                    "m4d_em_sw"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMLeakageWHst,
+                                                    "m4d_em_leak_w"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     Ay0SpanHst, "m4d_psi0_span"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,

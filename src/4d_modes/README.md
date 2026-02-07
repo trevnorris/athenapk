@@ -77,6 +77,8 @@ Implemented now:
   - `m4d_em_u_resolved`
   - `m4d_helicity_sub`
   - `m4d_edotb_sub`
+  - `m4d_em_sw`
+  - `m4d_em_leak_w`
   - `m4d_psi0_span`
   - `m4d_pulse_xc`
   - `m4d_em_a2_mode_<n>`

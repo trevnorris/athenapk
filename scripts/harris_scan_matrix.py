@@ -161,6 +161,8 @@ def analyze_case(
     mixed_c2 = cols["m4d_mixed_c2"]
     em_u_bulk = maybe_col(cols, "m4d_em_u_bulk")
     em_u_resolved = maybe_col(cols, "m4d_em_u_resolved")
+    em_sw = maybe_col(cols, "m4d_em_sw")
+    em_leak_w = maybe_col(cols, "m4d_em_leak_w")
     helicity_sub = maybe_col(cols, "m4d_helicity_sub")
     edotb_sub = maybe_col(cols, "m4d_edotb_sub")
     em_a2_mode1 = maybe_col(cols, "m4d_em_a2_mode_1")
@@ -399,6 +401,8 @@ def analyze_case(
         if em_u_resolved is not None
         else math.nan,
         "final_em_u_sub": em_u_sub[-1] if em_u_sub is not None else math.nan,
+        "final_em_sw": em_sw[-1] if em_sw is not None else math.nan,
+        "final_em_leak_w": em_leak_w[-1] if em_leak_w is not None else math.nan,
         "final_helicity_sub": helicity_sub[-1] if helicity_sub is not None else math.nan,
         "final_edotb_sub": edotb_sub[-1] if edotb_sub is not None else math.nan,
         "corr_psi0_s_leak": pearson(psi, leak),
@@ -408,6 +412,10 @@ def analyze_case(
         "corr_psi0_mixed_ew2": pearson(psi, mixed_ew2),
         "corr_psi0_mixed_c2": pearson(psi, mixed_c2),
         "corr_psi0_em_u_sub": pearson(psi, em_u_sub) if em_u_sub is not None else math.nan,
+        "corr_psi0_em_sw": pearson(psi, em_sw) if em_sw is not None else math.nan,
+        "corr_psi0_em_leak_w": pearson(psi, em_leak_w)
+        if em_leak_w is not None
+        else math.nan,
         "corr_psi0_helicity_sub": pearson(psi, helicity_sub)
         if helicity_sub is not None
         else math.nan,
@@ -592,6 +600,8 @@ def print_table(results):
         "final_em_u_bulk",
         "final_em_u_resolved",
         "final_em_u_sub",
+        "final_em_sw",
+        "final_em_leak_w",
         "final_helicity_sub",
         "final_edotb_sub",
         "final_em_a2_mode_1",
@@ -631,6 +641,8 @@ def print_table(results):
         "corr_psi0_mixed_ew2",
         "corr_psi0_mixed_c2",
         "corr_psi0_em_u_sub",
+        "corr_psi0_em_sw",
+        "corr_psi0_em_leak_w",
         "corr_psi0_helicity_sub",
         "corr_psi0_edotb_sub",
         "corr_psi0_jw_mode_l2_1",
