@@ -402,7 +402,28 @@ but adds a full-case override:
 It is an experimental check for the stabilized nonzero pressure-transport path
 and is not part of `modes4d_phase10_regression`.
 
-### 13) Run the Phase-10 validation bundle target
+### 13) Run the pressure-window Harris regression target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_harris_pressure_window_regression
+```
+
+This target scans finite nonzero pressure gains using tuned Harris gates:
+- `1e-8`
+- `1e-7`
+- `1e-6`
+- `1e-3`
+
+It enforces:
+- tuned closure/correlation/activity gates (same as `modes4d_harris_regression`)
+- transport-closure gating
+- explicit non-finite (`nan`/`inf`) checks on full-case ledger channels
+
+It is a dedicated pressure-path regression and is intentionally not part of
+`modes4d_phase10_regression`.
+
+### 14) Run the Phase-10 validation bundle target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \
@@ -419,7 +440,7 @@ with fail-fast behavior on the first failing check:
 - `modes4d_harris_regression`
 - `modes4d_harris_lundquist_scan`
 
-### 14) Run the Harris Lundquist scan target
+### 15) Run the Harris Lundquist scan target
 
 ```bash
 cmake --build /projects/fluid-engine/athenapk/build-baseline \

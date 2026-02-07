@@ -148,6 +148,16 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       USES_TERMINAL
       COMMENT "Running experimental 4D Harris pressure-transport regression (full-case gain=1e-3)")
     add_custom_target(
+      modes4d_harris_pressure_window_regression
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_pressure_window_regression
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_pressure_window_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_harris_pressure_window_regression
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_harris_pressure_window_regression/outputs
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running 4D Harris pressure-window regression (finite nonzero gains)")
+    add_custom_target(
       modes4d_harris_lundquist_scan
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_scan
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_lundquist_scan.py
