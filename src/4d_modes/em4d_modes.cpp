@@ -333,6 +333,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_srcpiy_mode0_step = 0.0;
   Real diag_srcpiz_mode0_step = 0.0;
   Real diag_srcpiw_mode0_step = 0.0;
+  Real diag_src_timelike_a0_from_piw_step = 0.0;
+  Real diag_src_timelike_a0_from_piw_abs_step = 0.0;
+  Real diag_src_timelike_aw_from_pi0_step = 0.0;
+  Real diag_src_timelike_aw_from_pi0_abs_step = 0.0;
 
   const int num_blocks = md->NumBlocks();
   for (int b = 0; b < num_blocks; ++b) {
@@ -845,11 +849,15 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             const Real lap_aw = use_conservative_transport
                                     ? 0.0
                                     : (c2 * laplacian(a_old, idx_aw, k, j, i));
+            const Real rhs_a0_timelike_from_piw =
+                -(c2 * coupling_coeff * mixed_dt_aw_prev);
+            const Real rhs_aw_timelike_from_pi0 =
+                -(c2 * coupling_raise * mixed_dt_a0_next);
 
             const Real rhs_a0 = lap_a0 -
                                 (c2 * mass_squared[n] * a_old(idx_a0, k, j, i)) -
-                                (c2 * coupling_coeff * mixed_dt_aw_prev) -
-                                (mu0 * j0_modes[n]) - (damping * pi_old(idx_a0, k, j, i));
+                                (mu0 * j0_modes[n]) - (damping * pi_old(idx_a0, k, j, i)) +
+                                rhs_a0_timelike_from_piw;
             const Real rhs_ax = lap_ax -
                                 (c2 * mass_squared[n] * a_old(idx_ax, k, j, i)) +
                                 (c2 * coupling_coeff * mixed_grad_aw_x) -
@@ -865,10 +873,21 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                                 (c2 * coupling_coeff * mixed_grad_aw_z) -
                                 (mu0 * jz_modes[n]) -
                                 (damping * pi_old(idx_az, k, j, i));
-            const Real rhs_aw = lap_aw -
-                                (c2 * mixed_div_a_next) -
-                                (c2 * coupling_raise * mixed_dt_a0_next) -
-                                (mu0 * jw_modes[n]) - (damping * pi_old(idx_aw, k, j, i));
+            const Real rhs_aw = lap_aw - (c2 * mixed_div_a_next) -
+                                (mu0 * jw_modes[n]) -
+                                (damping * pi_old(idx_aw, k, j, i)) +
+                                rhs_aw_timelike_from_pi0;
+
+            // Track the time-like mixed couplings explicitly so conservative-path runs
+            // can be diagnosed before tightening behavioral gates.
+            diag_src_timelike_a0_from_piw_step +=
+                dt * cell_volume * rhs_a0_timelike_from_piw;
+            diag_src_timelike_a0_from_piw_abs_step +=
+                dt * cell_volume * std::abs(rhs_a0_timelike_from_piw);
+            diag_src_timelike_aw_from_pi0_step +=
+                dt * cell_volume * rhs_aw_timelike_from_pi0;
+            diag_src_timelike_aw_from_pi0_abs_step +=
+                dt * cell_volume * std::abs(rhs_aw_timelike_from_pi0);
 
             pi_new(idx_a0, k, j, i) = pi_old(idx_a0, k, j, i) + (dt * rhs_a0);
             pi_new(idx_ax, k, j, i) = pi_old(idx_ax, k, j, i) + (dt * rhs_ax);
@@ -964,6 +983,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   auto *diag_srcpiy_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiy_mode0");
   auto *diag_srcpiz_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiz_mode0");
   auto *diag_srcpiw_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiw_mode0");
+  auto *diag_src_timelike_a0_from_piw =
+      modes_pkg->MutableParam<double>("diag/int_src_timelike_a0_from_piw");
+  auto *diag_src_timelike_a0_from_piw_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_timelike_a0_from_piw_abs");
+  auto *diag_src_timelike_aw_from_pi0 =
+      modes_pkg->MutableParam<double>("diag/int_src_timelike_aw_from_pi0");
+  auto *diag_src_timelike_aw_from_pi0_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_timelike_aw_from_pi0_abs");
   *diag_ja_ea += diag_ja_ea_step;
   *diag_jw_ew += diag_jw_ew_step;
   *diag_s_leak += diag_s_leak_step;
@@ -984,6 +1011,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_srcpiy_mode0 += diag_srcpiy_mode0_step;
   *diag_srcpiz_mode0 += diag_srcpiz_mode0_step;
   *diag_srcpiw_mode0 += diag_srcpiw_mode0_step;
+  *diag_src_timelike_a0_from_piw += diag_src_timelike_a0_from_piw_step;
+  *diag_src_timelike_a0_from_piw_abs += diag_src_timelike_a0_from_piw_abs_step;
+  *diag_src_timelike_aw_from_pi0 += diag_src_timelike_aw_from_pi0_step;
+  *diag_src_timelike_aw_from_pi0_abs += diag_src_timelike_aw_from_pi0_abs_step;
 }
 
 } // namespace Modes4D

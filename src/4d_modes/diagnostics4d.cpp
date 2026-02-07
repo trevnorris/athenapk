@@ -204,6 +204,26 @@ Real SrcPiwMode0AccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_srcpiw_mode0");
 }
 
+Real SrcTimelikeA0FromPiwAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_timelike_a0_from_piw");
+}
+
+Real SrcTimelikeA0FromPiwAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_timelike_a0_from_piw_abs");
+}
+
+Real SrcTimelikeAwFromPi0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_timelike_aw_from_pi0");
+}
+
+Real SrcTimelikeAwFromPi0AbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_timelike_aw_from_pi0_abs");
+}
+
 Real ContinuityLocalL1Hst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/continuity_local_l1");
@@ -1391,6 +1411,10 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_srcpiy_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcpiz_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcpiw_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_timelike_a0_from_piw", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_timelike_a0_from_piw_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_timelike_aw_from_pi0", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_timelike_aw_from_pi0_abs", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l1", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l2", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_max_abs", 0.0, true);
@@ -1481,6 +1505,18 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     SrcPiwMode0AccumulatorHst,
                                                     "m4d_int_srcpiw_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcTimelikeA0FromPiwAccumulatorHst,
+      "m4d_int_src_timelike_a0_from_piw"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcTimelikeA0FromPiwAbsAccumulatorHst,
+      "m4d_int_src_timelike_a0_from_piw_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcTimelikeAwFromPi0AccumulatorHst,
+      "m4d_int_src_timelike_aw_from_pi0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcTimelikeAwFromPi0AbsAccumulatorHst,
+      "m4d_int_src_timelike_aw_from_pi0_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ContinuityLocalL1Hst, "m4d_cont_local_l1"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(

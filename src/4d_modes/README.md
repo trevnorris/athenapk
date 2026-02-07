@@ -90,6 +90,10 @@ Implemented now:
   - `m4d_int_srcpiy_mode0`
   - `m4d_int_srcpiz_mode0`
   - `m4d_int_srcpiw_mode0`
+  - `m4d_int_src_timelike_a0_from_piw`
+  - `m4d_int_src_timelike_a0_from_piw_abs`
+  - `m4d_int_src_timelike_aw_from_pi0`
+  - `m4d_int_src_timelike_aw_from_pi0_abs`
   - `m4d_brane_e2`
   - `m4d_brane_b2`
   - `m4d_brane_epar2`
@@ -245,7 +249,7 @@ with `c_wave` and `damping` configured in `<modes4d>` as:
 - `plasma_pseudospectral_transport`
 
 `<problem/em4d_pulse>` also supports:
-- `component` (`ay_mode0`, `aw_mode0`, `aw_mode1`)
+- `component` (`ay_mode0`, `aw_mode0`, `a0_mode1`, `aw_mode1`)
 - `pi_pulse_scale` (initial `pi` pulse multiplier)
 
 ### 5) Run controlled-vs-full Harris scan summary
@@ -391,6 +395,33 @@ the optional conservative EM transport path
   `d/dt(m4d_pi*_mode_0) + d/dt(m4d_int_divpi*_mode0) - d/dt(m4d_int_srcpi*_mode0)`
   with normalized and absolute-rate tolerances
 
+Companion targeted time-like coupling check:
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_em_timelike_regression
+```
+
+This target runs `scripts/modes4d_em_timelike_regression.py` and executes two
+short pulse cases tuned to exercise the source-step time-like mixed couplings:
+- `aw_mode0` seeded with `pi` checks the `pi_w^(n-1) -> rhs_a0^(n)` path
+- `a0_mode1` seeded with `pi` checks the `pi_0^(n+1) -> rhs_aw^(n)` path
+
+Companion conservative-path diagnostics check:
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_em_conservative_timelike_diag_regression
+```
+
+This target runs `scripts/modes4d_em_conservative_timelike_diag_regression.py`
+and verifies conservative-path history channels for explicit time-like source
+terms are present, finite, and active where expected:
+- `m4d_int_src_timelike_a0_from_piw`
+- `m4d_int_src_timelike_a0_from_piw_abs`
+- `m4d_int_src_timelike_aw_from_pi0`
+- `m4d_int_src_timelike_aw_from_pi0_abs`
+
 ### 11) Run the dedicated tuned Harris regression target
 
 ```bash
@@ -512,6 +543,7 @@ with fail-fast behavior on the first failing check:
 - `modes4d_controlled_parity_regression`
 - `modes4d_kk_coulomb_regression`
 - `modes4d_scalar_pulse_regression`
+- `modes4d_em_timelike_regression`
 - `modes4d_em_conservative_regression`
 - `modes4d_harris_regression`
 - `modes4d_harris_pseudospectral_regression`
@@ -657,4 +689,9 @@ Key parameters currently used from `<problem/harris_4d>`:
   - optional mode-1 `A_w` perturbation in `em4d_a` for mixed-sector triggering
   - species mode-0 plasma state in `plasma4d_cons` using q/m-aware splits that
     preserve mode-0 charge neutrality and target drift-current amplitude
+- The provided pulse/Harris decks now carry explicit defaults for frequently
+  overridden regression knobs:
+  - `modes4d/em_conservative_transport = false`
+  - `problem/em4d_pulse/component`
+  - `problem/em4d_pulse/pi_pulse_scale`
 - This is a bring-up scaffold and not yet the final physics model from the docs.

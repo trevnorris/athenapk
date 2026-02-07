@@ -128,6 +128,26 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       USES_TERMINAL
       COMMENT "Running conservative-EM transport regression checks (scalar + short Harris)")
     add_custom_target(
+      modes4d_em_timelike_regression
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_em_timelike_regression
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_em_timelike_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_em_timelike_regression
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_em_timelike_regression/outputs
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running targeted time-like EM mixed-coupling regression checks")
+    add_custom_target(
+      modes4d_em_conservative_timelike_diag_regression
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_em_conservative_timelike_diag_regression
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_em_conservative_timelike_diag_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_em_conservative_timelike_diag_regression
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_em_conservative_timelike_diag_regression/outputs
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running conservative-path time-like EM diagnostics regression checks")
+    add_custom_target(
       modes4d_harris_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_regression
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_regression_tuned.py
@@ -221,6 +241,11 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/em4d_scalar_pulse_regression.py
         --binary $<TARGET_FILE:athenaPK>
         --workdir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/scalar_pulse
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_timelike
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_em_timelike_regression.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_timelike
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_timelike/outputs
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/em_conservative
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/modes4d_em_conservative_regression.py
         --binary $<TARGET_FILE:athenaPK>

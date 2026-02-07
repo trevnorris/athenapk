@@ -62,12 +62,17 @@ void ProblemGenerator(MeshBlock *pmb, parthenon::ParameterInput *pin) {
     pulse_idx = 2;
   } else if (component == "aw_mode0") {
     pulse_idx = 4;
+  } else if (component == "a0_mode1") {
+    PARTHENON_REQUIRE(n_modes > 1,
+                      "problem/em4d_pulse/component=a0_mode1 requires modes4d/n_modes > 1.");
+    pulse_idx = 5;
   } else if (component == "aw_mode1") {
     PARTHENON_REQUIRE(n_modes > 1,
                       "problem/em4d_pulse/component=aw_mode1 requires modes4d/n_modes > 1.");
     pulse_idx = 9;
   } else {
-    PARTHENON_FAIL("problem/em4d_pulse/component must be one of: ay_mode0, aw_mode0, aw_mode1");
+    PARTHENON_FAIL(
+        "problem/em4d_pulse/component must be one of: ay_mode0, aw_mode0, a0_mode1, aw_mode1");
   }
   const int n_em_vars = em_a.GetDim(4);
   const int n_plasma_vars = plasma.GetDim(4);
