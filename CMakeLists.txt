@@ -137,6 +137,18 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       USES_TERMINAL
       COMMENT "Running tuned 4D Harris regression (closure + activity checks)")
     add_custom_target(
+      modes4d_harris_lundquist_scan
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_scan
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/harris_lundquist_scan.py
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_scan
+        --controlled-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_controlled.in
+        --full-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_full.in
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_scan/outputs
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running 4D Harris Lundquist scan (controlled vs full)")
+    add_custom_target(
       modes4d_phase10_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_phase10_regression/controlled_smoke

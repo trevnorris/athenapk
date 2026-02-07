@@ -1,0 +1,329 @@
+#!/usr/bin/env python3
+"""Run controlled/full Harris scans over Lundquist number S."""
+
+import argparse
+import csv
+import math
+import subprocess
+import sys
+from pathlib import Path
+
+
+def parse_input_sections(path):
+    sections = {}
+    current = None
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("<") and line.endswith(">"):
+            current = line[1:-1].strip()
+            sections.setdefault(current, {})
+            continue
+        if "=" in line and current is not None:
+            key, value = line.split("=", 1)
+            sections[current][key.strip()] = value.strip()
+    return sections
+
+
+def get_float(sections, section, key, default):
+    value = sections.get(section, {}).get(key)
+    if value is None:
+        return default
+    return float(value)
+
+
+def parse_s_values(raw):
+    values = []
+    for token in raw.split(","):
+        stripped = token.strip()
+        if not stripped:
+            continue
+        value = float(stripped)
+        if value <= 0.0:
+            raise ValueError(f"Lundquist values must be > 0. Got {value}")
+        values.append(value)
+    if not values:
+        raise ValueError("At least one Lundquist value must be provided.")
+    return values
+
+
+def parse_scan_csv(stdout_text):
+    lines = [line.strip() for line in stdout_text.splitlines() if line.strip()]
+    header_idx = None
+    for idx, line in enumerate(lines):
+        if line.startswith("case,"):
+            header_idx = idx
+            break
+    if header_idx is None:
+        raise RuntimeError("Could not find CSV header from harris_scan_matrix.py output.")
+
+    rows = []
+    for line in lines[header_idx + 1 :]:
+        if line.startswith("controlled,") or line.startswith("full,"):
+            rows.append(line)
+        if len(rows) == 2:
+            break
+    if len(rows) < 2:
+        raise RuntimeError("Could not find controlled/full CSV rows from scan output.")
+
+    reader = csv.DictReader([lines[header_idx], *rows])
+    parsed = {row["case"]: row for row in reader}
+    if "controlled" not in parsed or "full" not in parsed:
+        raise RuntimeError("Scan CSV rows missing controlled/full cases.")
+    return parsed
+
+
+def parse_float(row, key):
+    try:
+        return float(row.get(key, "nan"))
+    except ValueError:
+        return math.nan
+
+
+def pearson(xs, ys):
+    if len(xs) != len(ys) or len(xs) < 2:
+        return math.nan
+    mx = sum(xs) / len(xs)
+    my = sum(ys) / len(ys)
+    vx = sum((x - mx) * (x - mx) for x in xs)
+    vy = sum((y - my) * (y - my) for y in ys)
+    if vx <= 0.0 or vy <= 0.0:
+        return math.nan
+    cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    return cov / math.sqrt(vx * vy)
+
+
+def resolve_input_path(raw_value, repo_root, workdir):
+    path = Path(raw_value)
+    if path.is_absolute():
+        return path.resolve()
+    for base in (Path.cwd(), workdir, repo_root):
+        candidate = (base / path).resolve()
+        if candidate.exists():
+            return candidate
+    return (repo_root / path).resolve()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--binary", required=True, help="Path to athenaPK binary")
+    parser.add_argument("--workdir", default=".", help="Directory to run simulations in")
+    parser.add_argument(
+        "--controlled-input",
+        default="inputs/harris_4d_controlled.in",
+        help="Controlled-limit Harris input deck",
+    )
+    parser.add_argument(
+        "--full-input",
+        default="inputs/harris_4d_full.in",
+        help="Full-channel Harris input deck",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="harris_lundquist_scan_outputs",
+        help="Directory for scan outputs",
+    )
+    parser.add_argument(
+        "--summary-csv",
+        default="lundquist_scan_summary.csv",
+        help="Filename for summary CSV in output-dir",
+    )
+    parser.add_argument(
+        "--s-values",
+        default="250,500,1000,2000",
+        help="Comma-separated Lundquist values to scan",
+    )
+    parser.add_argument(
+        "--length-scale",
+        type=float,
+        default=-1.0,
+        help="Characteristic length for S=L*Va/eta; <=0 infers from x1max-x1min",
+    )
+    parser.add_argument(
+        "--alfven-speed",
+        type=float,
+        default=-1.0,
+        help="Alfven speed for S=L*Va/eta; <=0 infers from b0/sqrt(mu0*n_bg)",
+    )
+    parser.add_argument(
+        "--fail-on-check",
+        action="store_true",
+        help="Propagate fail-on-check to each controlled/full scan run",
+    )
+    parser.add_argument(
+        "--check-transport-closure",
+        action="store_true",
+        help="Propagate transport-closure gating to each controlled/full scan run",
+    )
+    parser.add_argument(
+        "--scan-arg",
+        action="append",
+        default=[],
+        help="Additional argument forwarded to harris_scan_matrix.py",
+    )
+    args = parser.parse_args()
+
+    repo_root = Path(__file__).resolve().parents[1]
+    scan_script = repo_root / "scripts" / "harris_scan_matrix.py"
+
+    binary = Path(args.binary).resolve()
+    workdir = Path(args.workdir).resolve()
+    controlled_input = resolve_input_path(args.controlled_input, repo_root, workdir)
+    full_input = resolve_input_path(args.full_input, repo_root, workdir)
+    output_dir_arg = Path(args.output_dir)
+    output_dir = (
+        output_dir_arg.resolve()
+        if output_dir_arg.is_absolute()
+        else (workdir / output_dir_arg).resolve()
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    s_values = parse_s_values(args.s_values)
+    sections = parse_input_sections(full_input)
+    x1min = get_float(sections, "parthenon/mesh", "x1min", -1.0)
+    x1max = get_float(sections, "parthenon/mesh", "x1max", 1.0)
+    inferred_l = x1max - x1min
+    if inferred_l <= 0.0:
+        raise RuntimeError("Could not infer positive length scale from full input deck.")
+    length_scale = args.length_scale if args.length_scale > 0.0 else inferred_l
+
+    b0 = get_float(sections, "problem/harris_4d", "b0", 1.0)
+    n_bg = get_float(sections, "problem/harris_4d", "n_bg", 0.2)
+    mu0 = get_float(sections, "modes4d", "em_mu0", 1.0)
+    if n_bg <= 0.0 or mu0 <= 0.0:
+        raise RuntimeError("Cannot infer Alfven speed with non-positive n_bg or em_mu0.")
+    inferred_va = abs(b0) / math.sqrt(mu0 * n_bg)
+    alfven_speed = args.alfven_speed if args.alfven_speed > 0.0 else inferred_va
+
+    rows = []
+    for s_value in s_values:
+        eta = (length_scale * alfven_speed) / s_value
+        case_tag = str(s_value).replace(".", "p")
+        case_outdir = output_dir / f"S_{case_tag}"
+        case_outdir.mkdir(parents=True, exist_ok=True)
+
+        cmd = [
+            sys.executable,
+            str(scan_script),
+            "--binary",
+            str(binary),
+            "--workdir",
+            str(workdir),
+            "--controlled-input",
+            str(controlled_input),
+            "--full-input",
+            str(full_input),
+            "--output-dir",
+            str(case_outdir),
+            "--athena-arg",
+            "diffusion/resistivity=ohmic",
+            "--athena-arg",
+            "diffusion/resistivity_coeff=fixed",
+            "--athena-arg",
+            "diffusion/integrator=rkl2",
+            "--athena-arg",
+            "diffusion/rkl2_max_dt_ratio=100.0",
+            "--athena-arg",
+            f"diffusion/ohm_diff_coeff_code={eta:.12e}",
+        ]
+        if args.fail_on_check:
+            cmd.append("--fail-on-check")
+        if args.check_transport_closure:
+            cmd.append("--check-transport-closure")
+        for scan_arg in args.scan_arg:
+            cmd.append(scan_arg)
+
+        proc = subprocess.run(
+            cmd,
+            cwd=workdir,
+            text=True,
+            capture_output=True,
+        )
+        (case_outdir / "scan_stdout.log").write_text(proc.stdout, encoding="utf-8")
+        (case_outdir / "scan_stderr.log").write_text(proc.stderr, encoding="utf-8")
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"Lundquist scan failed for S={s_value} (eta={eta:.6e}), "
+                f"returncode={proc.returncode}. See {case_outdir}/scan_stderr.log"
+            )
+
+        parsed = parse_scan_csv(proc.stdout)
+        full_row = parsed["full"]
+        controlled_row = parsed["controlled"]
+        rows.append(
+            {
+                "S": s_value,
+                "eta": eta,
+                "controlled_final_psi0_span": parse_float(controlled_row, "final_psi0_span"),
+                "full_final_psi0_span": parse_float(full_row, "final_psi0_span"),
+                "full_final_jw_ew": parse_float(full_row, "final_jw_ew"),
+                "full_final_s_leak_abs": parse_float(full_row, "final_s_leak_abs"),
+                "full_final_mixed_ew2": parse_float(full_row, "final_mixed_ew2"),
+                "full_final_mixed_c2": parse_float(full_row, "final_mixed_c2"),
+                "full_final_em_leak_w": parse_float(full_row, "final_em_leak_w"),
+                "full_final_helicity_sub": parse_float(full_row, "final_helicity_sub"),
+                "full_final_edotb_sub": parse_float(full_row, "final_edotb_sub"),
+                "full_corr_psi0_s_leak_abs": parse_float(full_row, "corr_psi0_s_leak_abs"),
+                "full_corr_psi0_jw_ew": parse_float(full_row, "corr_psi0_jw_ew"),
+                "full_corr_psi0_mixed_ew2": parse_float(full_row, "corr_psi0_mixed_ew2"),
+                "full_corr_psi0_em_leak_w": parse_float(full_row, "corr_psi0_em_leak_w"),
+                "full_corr_psi0_helicity_sub": parse_float(full_row, "corr_psi0_helicity_sub"),
+                "full_corr_psi0_edotb_sub": parse_float(full_row, "corr_psi0_edotb_sub"),
+                "full_closure_status": full_row.get("closure_status", "N/A"),
+                "full_transport_closure_status": full_row.get(
+                    "transport_closure_status", "N/A"
+                ),
+                "full_correlation_status": full_row.get("correlation_status", "N/A"),
+                "full_activity_status": full_row.get("activity_status", "N/A"),
+            }
+        )
+
+    log_s = [math.log10(r["S"]) for r in rows]
+    scan_summary = {
+        "corr_logS_full_final_psi0_span": pearson(
+            log_s, [r["full_final_psi0_span"] for r in rows]
+        ),
+        "corr_logS_full_final_s_leak_abs": pearson(
+            log_s, [r["full_final_s_leak_abs"] for r in rows]
+        ),
+        "corr_logS_full_final_jw_ew_abs": pearson(
+            log_s, [abs(r["full_final_jw_ew"]) for r in rows]
+        ),
+        "corr_logS_full_final_mixed_ew2": pearson(
+            log_s, [r["full_final_mixed_ew2"] for r in rows]
+        ),
+        "corr_logS_full_final_em_leak_w_abs": pearson(
+            log_s, [abs(r["full_final_em_leak_w"]) for r in rows]
+        ),
+        "corr_logS_full_final_helicity_sub_abs": pearson(
+            log_s, [abs(r["full_final_helicity_sub"]) for r in rows]
+        ),
+        "corr_logS_full_final_edotb_sub_abs": pearson(
+            log_s, [abs(r["full_final_edotb_sub"]) for r in rows]
+        ),
+    }
+
+    summary_csv = output_dir / args.summary_csv
+    fieldnames = list(rows[0].keys())
+    with summary_csv.open("w", encoding="utf-8", newline="") as fp:
+        writer = csv.DictWriter(fp, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(",".join(fieldnames))
+    for row in rows:
+        print(",".join(f"{row[k]:.6e}" if isinstance(row[k], float) else str(row[k]) for k in fieldnames))
+    print(
+        "scan_summary,"
+        + ",".join(f"{k}={v:.6e}" for k, v in scan_summary.items())
+    )
+    print(f"summary_csv,{summary_csv}")
+    print(
+        "scan_settings,"
+        f"L={length_scale:.6e},Va={alfven_speed:.6e},b0={b0:.6e},n_bg={n_bg:.6e},mu0={mu0:.6e}"
+    )
+
+
+if __name__ == "__main__":
+    main()

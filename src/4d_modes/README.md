@@ -396,6 +396,37 @@ with fail-fast behavior on the first failing check:
 - `modes4d_em_conservative_regression`
 - `modes4d_harris_regression`
 
+### 13) Run the Harris Lundquist scan target
+
+```bash
+cmake --build /projects/fluid-engine/athenapk/build-baseline \
+  --target modes4d_harris_lundquist_scan
+```
+
+This target runs `scripts/harris_lundquist_scan.py`, which performs a controlled
+vs full Harris scan over multiple Lundquist numbers and writes:
+- per-`S` run logs under
+  `build-baseline/modes4d_harris_lundquist_scan/outputs/S_<value>/`
+- aggregate CSV summary:
+  `build-baseline/modes4d_harris_lundquist_scan/outputs/lundquist_scan_summary.csv`
+
+Default scan settings:
+- `S = 250,500,1000,2000`
+- `eta = (L * V_A) / S`
+- inferred from `inputs/harris_4d_full.in` unless overridden:
+  - `L = x1max - x1min`
+  - `V_A = |b0| / sqrt(mu0 * n_bg)`
+
+Each scan point forwards resistive runtime overrides to AthenaPK:
+- `diffusion/resistivity=ohmic`
+- `diffusion/resistivity_coeff=fixed`
+- `diffusion/integrator=rkl2`
+- `diffusion/rkl2_max_dt_ratio=100.0`
+- `diffusion/ohm_diff_coeff_code=<eta>`
+
+It reports per-`S` closure/transport/correlation/activity statuses from
+`harris_scan_matrix.py` and scan-level correlations versus `log10(S)`.
+
 ## Input requirements for `harris_4d`
 
 Required right now:

@@ -66,6 +66,17 @@ def maybe_col(cols, key):
     return cols.get(key)
 
 
+def resolve_input_path(raw_value, repo_root, workdir):
+    path = Path(raw_value)
+    if path.is_absolute():
+        return path.resolve()
+    for base in (Path.cwd(), workdir, repo_root):
+        candidate = (base / path).resolve()
+        if candidate.exists():
+            return candidate
+    return (repo_root / path).resolve()
+
+
 def continuity_closure_metrics(times, charge_mode0, int_s_leak, int_divj_mode0, abs_rate_tol):
     if len(times) < 2 or len(charge_mode0) != len(times) or len(int_s_leak) != len(times):
         return (math.nan, math.nan, math.nan, math.nan)
@@ -569,7 +580,7 @@ def analyze_case(
     return result
 
 
-def run_case(binary, input_path, workdir, output_hst):
+def run_case(binary, input_path, workdir, output_hst, extra_args=None):
     for filename in ("parthenon.out0.hst", "parthenon.out1.hst"):
         try:
             (workdir / filename).unlink()
@@ -577,6 +588,8 @@ def run_case(binary, input_path, workdir, output_hst):
             pass
 
     cmd = [str(binary), "-i", str(input_path)]
+    if extra_args:
+        cmd.extend(extra_args)
     subprocess.run(cmd, cwd=workdir, check=True)
 
     produced = workdir / "parthenon.out1.hst"
@@ -811,6 +824,24 @@ def main():
         help="Full-channel input deck",
     )
     parser.add_argument(
+        "--athena-arg",
+        action="append",
+        default=[],
+        help="Additional athenaPK runtime override passed to both controlled/full runs",
+    )
+    parser.add_argument(
+        "--controlled-arg",
+        action="append",
+        default=[],
+        help="Additional athenaPK runtime override passed only to controlled run",
+    )
+    parser.add_argument(
+        "--full-arg",
+        action="append",
+        default=[],
+        help="Additional athenaPK runtime override passed only to full run",
+    )
+    parser.add_argument(
         "--closure-norm-tol",
         type=float,
         default=5.0e-2,
@@ -930,17 +961,35 @@ def main():
     )
     args = parser.parse_args()
 
+    repo_root = Path(__file__).resolve().parents[1]
     binary = Path(args.binary).resolve()
     workdir = Path(args.workdir).resolve()
-    controlled_input = Path(args.controlled_input).resolve()
-    full_input = Path(args.full_input).resolve()
-    output_dir = Path(args.output_dir).resolve()
+    controlled_input = resolve_input_path(args.controlled_input, repo_root, workdir)
+    full_input = resolve_input_path(args.full_input, repo_root, workdir)
+    output_dir_arg = Path(args.output_dir)
+    output_dir = (
+        output_dir_arg.resolve()
+        if output_dir_arg.is_absolute()
+        else (workdir / output_dir_arg).resolve()
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    controlled_args = list(args.athena_arg) + list(args.controlled_arg)
+    full_args = list(args.athena_arg) + list(args.full_arg)
     controlled_cols = run_case(
-        binary, controlled_input, workdir, output_dir / "harris_controlled.out1.hst"
+        binary,
+        controlled_input,
+        workdir,
+        output_dir / "harris_controlled.out1.hst",
+        controlled_args,
     )
-    full_cols = run_case(binary, full_input, workdir, output_dir / "harris_full.out1.hst")
+    full_cols = run_case(
+        binary,
+        full_input,
+        workdir,
+        output_dir / "harris_full.out1.hst",
+        full_args,
+    )
 
     results = [
         analyze_case(
