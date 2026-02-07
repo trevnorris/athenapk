@@ -47,6 +47,12 @@ jobs:
           # Pick GPU with most available memory
           export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=memory.free,index --format=csv,nounits,noheader | sort -nr | head -1 | awk '{ print $NF }')
           ctest -L ${{ matrix.parallel }} --timeout 3600
+      - name: Run MPI+HDF5 Modes4D Bundle
+        if: ${{ matrix.parallel == 'mpi' }}
+        run: |
+          # Pick GPU with most available memory
+          export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=memory.free,index --format=csv,nounits,noheader | sort -nr | head -1 | awk '{ print $NF }')
+          cmake --build build -t modes4d_mpi_hdf5_regression
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
@@ -66,5 +72,8 @@ jobs:
             build/tst/regression/outputs/field_loop/field_loop.png
             build/tst/regression/outputs/riemann_hydro/shock_tube.png
             build/tst/regression/outputs/turbulence/parthenon.out1.hst
+            build/modes4d_mpi_hdf5_regression/cpaw_strict1d/outputs/cpaw_strict1d_mpi_hdf5.log
+            build/modes4d_mpi_hdf5_regression/cpaw_strict1d/parthenon.out0.final.phdf
+            build/modes4d_mpi_hdf5_regression/harris_full/parthenon.out0.final.phdf
+            build/modes4d_mpi_hdf5_regression/harris_full/parthenon.out1.hst
           retention-days: 3
-

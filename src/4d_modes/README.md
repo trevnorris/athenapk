@@ -805,6 +805,10 @@ It provides a one-command MPI smoke bundle covering:
 - strict-1D CPAW quantitative parity in `.phdf`
 - full-channel Harris runtime smoke with MPI/HDF5 outputs
 
+CI integration:
+- `.github/workflows/ci.yml` runs this bundle in the `mpi` matrix leg on
+  pull requests before merge.
+
 Current pressure-transport status for tuned Harris decks:
 - default `plasma_pressure_transport_gain = 0.0` is regression-stable
 - nonzero pressure transport now uses a bounded blended Rusanov path:
