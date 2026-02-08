@@ -574,7 +574,7 @@ def main():
             slope_metrics["slope_delta_full_minus_controlled_max_abs_dpsi_w0_dt"],
             "max",
             args.max_slope_delta_dpsi_w0_max,
-            "informational",
+            "blocking",
         ),
         (
             "legacy_slope_delta_full_minus_controlled_max_abs_dpsi0_dt",
