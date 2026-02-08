@@ -9,6 +9,7 @@ WORKDIR="${REPO_ROOT}/build-baseline/modes4d_harris_ablation_campaign"
 CONTROLLED_INPUT="${REPO_ROOT}/inputs/harris_4d_controlled.in"
 FULL_INPUT="${REPO_ROOT}/inputs/harris_4d_full.in"
 OUTPUT_DIR="${WORKDIR}/outputs"
+OUTPUT_DIR_EXPLICIT=0
 TLIM="0.10"
 NLIM="1000"
 OUTPUT_DT="0.01"
@@ -58,6 +59,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --output-dir)
       OUTPUT_DIR="$2"
+      OUTPUT_DIR_EXPLICIT=1
       shift 2
       ;;
     --tlim)
@@ -92,15 +94,26 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-mkdir -p "${WORKDIR}" "${OUTPUT_DIR}"
+mkdir -p "${WORKDIR}"
+WORKDIR_ABS="$(cd "${WORKDIR}" && pwd)"
+if [[ "${OUTPUT_DIR_EXPLICIT}" -eq 1 ]]; then
+  if [[ "${OUTPUT_DIR}" = /* ]]; then
+    OUTPUT_DIR_RESOLVED="${OUTPUT_DIR}"
+  else
+    OUTPUT_DIR_RESOLVED="${WORKDIR_ABS}/${OUTPUT_DIR}"
+  fi
+else
+  OUTPUT_DIR_RESOLVED="${WORKDIR_ABS}/outputs"
+fi
+mkdir -p "${OUTPUT_DIR_RESOLVED}"
 
 CMD=(
   python3 "${REPO_ROOT}/scripts/harris_ablation_campaign.py"
   --binary "${BINARY}"
-  --workdir "${WORKDIR}"
+  --workdir "${WORKDIR_ABS}"
   --controlled-input "${CONTROLLED_INPUT}"
   --full-input "${FULL_INPUT}"
-  --output-dir "${OUTPUT_DIR}"
+  --output-dir "${OUTPUT_DIR_RESOLVED}"
   --tlim "${TLIM}"
   --nlim "${NLIM}"
   --output-dt "${OUTPUT_DT}"
