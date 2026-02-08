@@ -10,7 +10,7 @@ SKIP_PREREQS=0
 
 usage() {
   cat <<'EOF'
-Generate a final results pack combining production and ablation artifacts.
+Generate a final results pack combining production, ablation, and uncertainty artifacts.
 
 Usage:
   ./scripts/run_modes4d_results_pack.sh [options]
@@ -18,7 +18,7 @@ Usage:
 Options:
   --build-dir DIR      Baseline build directory (default: ./build-baseline)
   --output-dir DIR     Results-pack output directory (default: <build-dir>/modes4d_results_pack)
-  --skip-prereqs       Skip running production/ablation prerequisite targets
+  --skip-prereqs       Skip running production/ablation/phase-ensemble prerequisite targets
   -h, --help           Show this help
 EOF
 }
@@ -54,6 +54,7 @@ mkdir -p "${OUTPUT_DIR}"
 if [[ "${SKIP_PREREQS}" -eq 0 ]]; then
   cmake --build "${BUILD_DIR}" --target modes4d_harris_lundquist_production
   cmake --build "${BUILD_DIR}" --target modes4d_harris_ablation_campaign
+  cmake --build "${BUILD_DIR}" --target modes4d_harris_lundquist_phase_ensemble
 fi
 
 python3 "${REPO_ROOT}/scripts/generate_modes4d_results_pack.py" \
@@ -68,4 +69,6 @@ python3 "${REPO_ROOT}/scripts/generate_modes4d_results_pack.py" \
   --ablation-summary-csv "${BUILD_DIR}/modes4d_harris_ablation_campaign/outputs/ablation_summary.csv" \
   --ablation-report "${BUILD_DIR}/modes4d_harris_ablation_campaign/outputs/ablation_report.md" \
   --ablation-plot "${BUILD_DIR}/modes4d_harris_ablation_campaign/outputs/plots/ablation_channels.png" \
+  --phase-ensemble-summary-csv "${BUILD_DIR}/modes4d_harris_lundquist_phase_ensemble/outputs/phase_ensemble_summary.csv" \
+  --phase-ensemble-report "${BUILD_DIR}/modes4d_harris_lundquist_phase_ensemble/outputs/phase_ensemble_report.md" \
   --output-dir "${OUTPUT_DIR}"

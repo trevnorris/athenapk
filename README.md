@@ -114,10 +114,15 @@ For the 4D modes development flow in this repo, use these scripts:
       --workdir ./build-baseline/modes4d_harris_lundquist_phase_ensemble_custom \
       --edotb-gate-mode informational
 
+5. Publication results pack (production + ablation + phase-ensemble uncertainty):
+
+    ./scripts/run_modes4d_results_pack.sh --build-dir ./build-baseline
+
 Key outputs are written under `<workdir>/outputs`, including:
 - `lundquist_scan_summary.csv` and `production_report.md` for production runs
 - `envelope_summary.csv` and `envelope_report.md` for envelope campaigns
 - `phase_ensemble_summary.csv` and `phase_ensemble_report.md` for phase ensembles
+- `modes4d_results_status.csv` and `modes4d_results_pack.md` for publication bundles
 - `overall_status,PASS|FAIL` and `topology_status,PASS|FAIL` in production stdout
 
 #### Building AthenaPK

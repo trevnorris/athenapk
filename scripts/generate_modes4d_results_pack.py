@@ -4,6 +4,7 @@
 import argparse
 import csv
 import math
+import statistics
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -193,13 +194,81 @@ def build_ablation_table(rows):
     return table_rows, overall
 
 
-def write_summary_csv(path, lundquist_status, ablation_status, topology_status, overall_status):
+def build_phase_ensemble_table(rows):
+    def seed_key(row):
+        try:
+            return int((row.get("seed") or "0").strip())
+        except ValueError:
+            return 0
+
+    rows_sorted = sorted(rows, key=seed_key)
+    table_rows = []
+    pass_count = 0
+    gate_modes = set()
+    for row in rows_sorted:
+        seed = (row.get("seed") or "").strip()
+        status = (row.get("status") or "FAIL").strip().upper()
+        if status == "PASS":
+            pass_count += 1
+        gate_mode = (row.get("edotb_gate_mode") or "strict").strip()
+        gate_modes.add(gate_mode)
+        table_rows.append(
+            (
+                seed,
+                status,
+                parse_float(row, "phase_x"),
+                parse_float(row, "phase_z"),
+                parse_float(row, "min_ratio_psi_w0_span"),
+                parse_float(row, "min_ratio_max_abs_dpsi_w0_dt"),
+                parse_float(row, "slope_delta_full_minus_controlled_max_abs_dpsi_w0_dt"),
+                parse_float(row, "min_full_jw_ew_abs"),
+                (row.get("failure_reason") or "none").strip(),
+                gate_mode,
+            )
+        )
+
+    def stats_from(values):
+        finite = [value for value in values if math.isfinite(value)]
+        if not finite:
+            return {"mean": math.nan, "std": math.nan, "min": math.nan, "max": math.nan}
+        return {
+            "mean": statistics.fmean(finite),
+            "std": (statistics.pstdev(finite) if len(finite) > 1 else 0.0),
+            "min": min(finite),
+            "max": max(finite),
+        }
+
+    metrics = {
+        "ratio_psi_w0_span": stats_from([row[4] for row in table_rows]),
+        "ratio_max_abs_dpsi_w0_dt": stats_from([row[5] for row in table_rows]),
+        "slope_delta_max_abs_dpsi_w0_dt": stats_from([row[6] for row in table_rows]),
+        "min_full_jw_ew_abs": stats_from([row[7] for row in table_rows]),
+    }
+    overall = "PASS" if pass_count == len(rows_sorted) else "FAIL"
+    summary = {
+        "total": len(rows_sorted),
+        "pass_count": pass_count,
+        "gate_modes": ",".join(sorted(gate_modes)),
+        "metrics": metrics,
+    }
+    return table_rows, overall, summary
+
+
+def write_summary_csv(
+    path,
+    lundquist_status,
+    ablation_status,
+    topology_status,
+    phase_ensemble_status,
+    overall_status,
+):
     with path.open("w", encoding="utf-8", newline="") as fp:
         writer = csv.writer(fp)
         writer.writerow(["component", "status"])
         writer.writerow(["lundquist_gates", lundquist_status])
         writer.writerow(["ablation_gates", ablation_status])
         writer.writerow(["topology_gates", topology_status])
+        writer.writerow(["phase_ensemble_gates", phase_ensemble_status])
         writer.writerow(["overall", overall_status])
 
 
@@ -210,13 +279,18 @@ def write_markdown_report(
     topology_report,
     ablation_summary_csv,
     ablation_report,
+    phase_ensemble_summary_csv,
+    phase_ensemble_report,
     panel_png,
     lundquist_gate_rows,
     topology_gate_rows,
     ablation_rows,
+    phase_ensemble_rows,
+    phase_ensemble_summary,
     lundquist_status,
     topology_status,
     ablation_status,
+    phase_ensemble_status,
     overall_status,
 ):
     lines = []
@@ -227,6 +301,7 @@ def write_markdown_report(
     lines.append(f"- Lundquist gate status: **{lundquist_status}**")
     lines.append(f"- Topology gate status: **{topology_status}**")
     lines.append(f"- Ablation gate status: **{ablation_status}**")
+    lines.append(f"- Phase-ensemble uncertainty status: **{phase_ensemble_status}**")
     lines.append("")
     lines.append("## Artifacts")
     lines.append("")
@@ -235,6 +310,8 @@ def write_markdown_report(
     lines.append(f"- Topology report: `{topology_report}`")
     lines.append(f"- Ablation summary CSV: `{ablation_summary_csv}`")
     lines.append(f"- Ablation report: `{ablation_report}`")
+    lines.append(f"- Phase-ensemble summary CSV: `{phase_ensemble_summary_csv}`")
+    lines.append(f"- Phase-ensemble report: `{phase_ensemble_report}`")
     lines.append(f"- Combined panel: `{panel_png}`")
     lines.append("")
     lines.append("## Lundquist Gates")
@@ -273,6 +350,58 @@ def write_markdown_report(
             )
             + " |"
         )
+    lines.append("")
+    lines.append("## Phase-Ensemble Uncertainty")
+    lines.append("")
+    lines.append(
+        f"- Passing seeds: `{phase_ensemble_summary['pass_count']}/{phase_ensemble_summary['total']}`"
+    )
+    lines.append(f"- edotb gate mode(s): `{phase_ensemble_summary['gate_modes']}`")
+    for metric_name, metric_stats in phase_ensemble_summary["metrics"].items():
+        lines.append(
+            "- "
+            + metric_name
+            + f": mean=`{fmt(metric_stats['mean'])}`, std=`{fmt(metric_stats['std'])}`, "
+            + f"min=`{fmt(metric_stats['min'])}`, max=`{fmt(metric_stats['max'])}`"
+        )
+    lines.append("")
+    lines.append(
+        "| seed | status | phase_x | phase_z | min psi_w0 ratio | min w0-rate ratio | "
+        "slope delta dpsi_w0 | min |JwEw| | edotb mode | failure |"
+    )
+    lines.append(
+        "| ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | :--- |"
+    )
+    for (
+        seed,
+        status,
+        phase_x,
+        phase_z,
+        ratio_span,
+        ratio_rate,
+        slope_delta,
+        min_jw_ew_abs,
+        failure_reason,
+        gate_mode,
+    ) in phase_ensemble_rows:
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    seed,
+                    status,
+                    fmt(phase_x),
+                    fmt(phase_z),
+                    fmt(ratio_span),
+                    fmt(ratio_rate),
+                    fmt(slope_delta),
+                    fmt(min_jw_ew_abs),
+                    gate_mode,
+                    failure_reason,
+                ]
+            )
+            + " |"
+        )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -282,6 +411,14 @@ def render_panel(
     lundquist_subscale_png,
     topology_png,
     ablation_png,
+    phase_ensemble_status,
+    phase_ensemble_pass_count,
+    phase_ensemble_total,
+    phase_ensemble_gate_modes,
+    phase_ratio_span_mean,
+    phase_ratio_span_std,
+    phase_rate_ratio_mean,
+    phase_rate_ratio_std,
     lundquist_status,
     topology_status,
     ablation_status,
@@ -313,6 +450,8 @@ def render_panel(
             f"Lundquist gates: {lundquist_status}",
             f"Topology gates: {topology_status}",
             f"Ablation gates: {ablation_status}",
+            f"Phase ensemble: {phase_ensemble_status}"
+            f" ({phase_ensemble_pass_count}/{phase_ensemble_total})",
             f"Overall: {overall_status}",
             "",
             "Novelty evidence bundle:",
@@ -320,10 +459,21 @@ def render_panel(
             "- controlled-vs-full topology comparison",
             "- channel-causality ablations",
             "- combined report/plots for PR review",
+            "- deterministic phase-ensemble uncertainty sweep",
         ]
     )
     axs[1, 1].text(0.0, 0.95, summary_text, va="top", fontsize=12)
     axs[1, 2].axis("off")
+    uncertainty_text = "\n".join(
+        [
+            "Phase Ensemble Summary",
+            "",
+            f"edotb mode(s): {phase_ensemble_gate_modes}",
+            f"psi_w0 ratio mean +/- std: {fmt(phase_ratio_span_mean)} +/- {fmt(phase_ratio_span_std)}",
+            f"w0 rate ratio mean +/- std: {fmt(phase_rate_ratio_mean)} +/- {fmt(phase_rate_ratio_std)}",
+        ]
+    )
+    axs[1, 2].text(0.0, 0.95, uncertainty_text, va="top", fontsize=12)
 
     fig.savefig(panel_path, dpi=150)
     plt.close(fig)
@@ -342,6 +492,8 @@ def main():
     parser.add_argument("--ablation-summary-csv", required=True)
     parser.add_argument("--ablation-report", required=True)
     parser.add_argument("--ablation-plot", required=True)
+    parser.add_argument("--phase-ensemble-summary-csv", default="")
+    parser.add_argument("--phase-ensemble-report", default="")
     parser.add_argument("--output-dir", default="modes4d_results_pack")
     args = parser.parse_args()
 
@@ -359,6 +511,17 @@ def main():
     ablation_summary_csv = Path(args.ablation_summary_csv).resolve()
     ablation_report = Path(args.ablation_report).resolve()
     ablation_png = Path(args.ablation_plot).resolve()
+    phase_ensemble_summary_csv = (
+        Path(args.phase_ensemble_summary_csv).resolve() if args.phase_ensemble_summary_csv else None
+    )
+    phase_ensemble_report = (
+        Path(args.phase_ensemble_report).resolve() if args.phase_ensemble_report else None
+    )
+
+    if (phase_ensemble_summary_csv is None) != (phase_ensemble_report is None):
+        raise ValueError(
+            "Both --phase-ensemble-summary-csv and --phase-ensemble-report must be provided together."
+        )
 
     for path in [
         lundquist_summary_csv,
@@ -375,18 +538,53 @@ def main():
     ]:
         if not path.exists():
             raise FileNotFoundError(f"Missing required input: {path}")
+    for optional_path in [phase_ensemble_summary_csv, phase_ensemble_report]:
+        if optional_path is not None and not optional_path.exists():
+            raise FileNotFoundError(f"Missing required input: {optional_path}")
 
     lundquist_rows = load_csv_rows(lundquist_summary_csv)
     topology_status_rows = load_status_map(topology_status_csv)
     topology_gate_rows = load_topology_gate_rows(topology_gates_csv)
     ablation_rows_src = load_csv_rows(ablation_summary_csv)
+    phase_ensemble_rows_src = (
+        load_csv_rows(phase_ensemble_summary_csv) if phase_ensemble_summary_csv is not None else []
+    )
 
     lundquist_gate_rows, lundquist_status = build_lundquist_gate_table(lundquist_rows)
     topology_status = topology_status_rows.get("overall", "FAIL")
     ablation_rows, ablation_status = build_ablation_table(ablation_rows_src)
+    phase_ensemble_rows, phase_ensemble_status, phase_ensemble_summary = build_phase_ensemble_table(
+        phase_ensemble_rows_src
+    )
+    if phase_ensemble_summary["total"] == 0:
+        phase_ensemble_status = "SKIP"
+        phase_ensemble_summary = {
+            "total": 0,
+            "pass_count": 0,
+            "gate_modes": "n/a",
+            "metrics": {
+                "ratio_psi_w0_span": {"mean": math.nan, "std": math.nan, "min": math.nan, "max": math.nan},
+                "ratio_max_abs_dpsi_w0_dt": {
+                    "mean": math.nan,
+                    "std": math.nan,
+                    "min": math.nan,
+                    "max": math.nan,
+                },
+                "slope_delta_max_abs_dpsi_w0_dt": {
+                    "mean": math.nan,
+                    "std": math.nan,
+                    "min": math.nan,
+                    "max": math.nan,
+                },
+                "min_full_jw_ew_abs": {"mean": math.nan, "std": math.nan, "min": math.nan, "max": math.nan},
+            },
+        }
+    status_components = [lundquist_status, topology_status, ablation_status]
+    if phase_ensemble_status != "SKIP":
+        status_components.append(phase_ensemble_status)
     overall_status = (
         "PASS"
-        if (lundquist_status == "PASS" and topology_status == "PASS" and ablation_status == "PASS")
+        if all(status == "PASS" for status in status_components)
         else "FAIL"
     )
 
@@ -400,12 +598,27 @@ def main():
         lundquist_subscale_png,
         topology_png,
         ablation_png,
+        phase_ensemble_status,
+        phase_ensemble_summary["pass_count"],
+        phase_ensemble_summary["total"],
+        phase_ensemble_summary["gate_modes"],
+        phase_ensemble_summary["metrics"]["ratio_psi_w0_span"]["mean"],
+        phase_ensemble_summary["metrics"]["ratio_psi_w0_span"]["std"],
+        phase_ensemble_summary["metrics"]["ratio_max_abs_dpsi_w0_dt"]["mean"],
+        phase_ensemble_summary["metrics"]["ratio_max_abs_dpsi_w0_dt"]["std"],
         lundquist_status,
         topology_status,
         ablation_status,
         overall_status,
     )
-    write_summary_csv(summary_csv, lundquist_status, ablation_status, topology_status, overall_status)
+    write_summary_csv(
+        summary_csv,
+        lundquist_status,
+        ablation_status,
+        topology_status,
+        phase_ensemble_status,
+        overall_status,
+    )
     write_markdown_report(
         report_md,
         lundquist_summary_csv,
@@ -413,19 +626,25 @@ def main():
         topology_report,
         ablation_summary_csv,
         ablation_report,
+        phase_ensemble_summary_csv if phase_ensemble_summary_csv is not None else "n/a",
+        phase_ensemble_report if phase_ensemble_report is not None else "n/a",
         panel_png,
         lundquist_gate_rows,
         topology_gate_rows,
         ablation_rows,
+        phase_ensemble_rows,
+        phase_ensemble_summary,
         lundquist_status,
         topology_status,
         ablation_status,
+        phase_ensemble_status,
         overall_status,
     )
 
     print(f"results_panel,{panel_png}")
     print(f"results_status_csv,{summary_csv}")
     print(f"results_report,{report_md}")
+    print(f"phase_ensemble_status,{phase_ensemble_status}")
     print(f"results_status,{overall_status}")
 
 

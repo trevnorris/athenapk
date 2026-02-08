@@ -360,6 +360,20 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
       USES_TERMINAL
       COMMENT "Running 4D Harris ablation campaign (causal channel checks + report)")
     add_custom_target(
+      modes4d_harris_lundquist_phase_ensemble
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_phase_ensemble
+      COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_harris_lundquist_phase_ensemble.sh
+        --binary $<TARGET_FILE:athenaPK>
+        --workdir ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_phase_ensemble
+        --controlled-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_controlled.in
+        --full-input ${CMAKE_CURRENT_SOURCE_DIR}/inputs/harris_4d_full.in
+        --output-dir ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_phase_ensemble/outputs
+        --edotb-gate-mode informational
+        --fail-on-any-fail
+      DEPENDS athenaPK
+      USES_TERMINAL
+      COMMENT "Running deterministic phase-ensemble uncertainty sweep for 4D Harris Lundquist scan")
+    add_custom_target(
       modes4d_results_pack
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modes4d_results_pack
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_modes4d_results_pack.py
@@ -374,11 +388,14 @@ if(AthenaPK_ENABLE_4D_MODES AND AthenaPK_ENABLE_4D_MODES_REGRESSION_TARGET)
         --ablation-summary-csv ${CMAKE_BINARY_DIR}/modes4d_harris_ablation_campaign/outputs/ablation_summary.csv
         --ablation-report ${CMAKE_BINARY_DIR}/modes4d_harris_ablation_campaign/outputs/ablation_report.md
         --ablation-plot ${CMAKE_BINARY_DIR}/modes4d_harris_ablation_campaign/outputs/plots/ablation_channels.png
+        --phase-ensemble-summary-csv ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_phase_ensemble/outputs/phase_ensemble_summary.csv
+        --phase-ensemble-report ${CMAKE_BINARY_DIR}/modes4d_harris_lundquist_phase_ensemble/outputs/phase_ensemble_report.md
         --output-dir ${CMAKE_BINARY_DIR}/modes4d_results_pack
       DEPENDS
         athenaPK
         modes4d_harris_lundquist_production
         modes4d_harris_ablation_campaign
+        modes4d_harris_lundquist_phase_ensemble
       USES_TERMINAL
       COMMENT "Generating combined modes4d results panel/report bundle")
     add_custom_target(
