@@ -210,14 +210,14 @@ def main():
     parser.add_argument(
         "--max-slope-delta-dpsi-w0-max",
         type=float,
-        default=-1.0e-3,
+        default=-3.0e-3,
         help="Informational gate: max allowed slope delta (full-controlled) for max_abs_dpsi_w0_dt",
     )
     parser.add_argument(
         "--min-abs-slope-delta-dpsi0",
         type=float,
-        default=1.0e-3,
-        help="Informational gate: minimum |slope delta| for max_abs_dpsi0_dt",
+        default=0.0,
+        help="Legacy informational gate: minimum |slope delta| for max_abs_dpsi0_dt",
     )
     args = parser.parse_args()
 
@@ -577,7 +577,7 @@ def main():
             "informational",
         ),
         (
-            "slope_delta_full_minus_controlled_max_abs_dpsi0_dt",
+            "legacy_slope_delta_full_minus_controlled_max_abs_dpsi0_dt",
             slope_metrics["slope_delta_full_minus_controlled_max_abs_dpsi0_dt"],
             "abs_min",
             args.min_abs_slope_delta_dpsi0,

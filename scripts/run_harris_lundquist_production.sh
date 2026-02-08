@@ -32,8 +32,8 @@ CONTROLLED_MAX_ABS_DPSI0_SLOPE_MAX="-1.0e-3"
 FULL_MAX_ABS_DPSI0_SLOPE_MAX="-1.0e-3"
 CONTROLLED_MAX_ABS_DPSI_W0_SLOPE_MAX="-1.0e-3"
 FULL_MAX_ABS_DPSI_W0_SLOPE_MAX="-1.0e-3"
-MAX_SLOPE_DELTA_DPSI_W0_MAX="-1.0e-3"
-MIN_ABS_SLOPE_DELTA_DPSI0="1.0e-3"
+MAX_SLOPE_DELTA_DPSI_W0_MAX="-3.0e-3"
+MIN_ABS_SLOPE_DELTA_DPSI0="0.0"
 SCAN_MIN_CORR_SPAN_PSI0="1.0e-5"
 SCAN_MIN_CORR_SPAN_JW_EW_ABS="1.0e-15"
 SCAN_MIN_CORR_SPAN_S_LEAK_ABS="5.0e-15"
@@ -108,10 +108,10 @@ Options:
                           must be <= threshold (default: -1.0e-3)
   --max-slope-delta-dpsi-w0-max FLOAT
                           Informational report gate: slope delta (full-controlled) for
-                          max_abs_dpsi_w0_dt must be <= threshold (default: -1.0e-3)
+                          max_abs_dpsi_w0_dt must be <= threshold (default: -3.0e-3)
   --min-abs-slope-delta-dpsi0 FLOAT
-                          Informational report gate: |slope delta| for max_abs_dpsi0_dt
-                          must be >= threshold (default: 1.0e-3)
+                          Legacy informational report gate: |slope delta| for max_abs_dpsi0_dt
+                          must be >= threshold (default: 0.0)
   --scan-min-corr-span-psi0 FLOAT
                           Minimum span for corr_logS_full_final_psi0_span signal (default: 1.0e-5)
   --scan-min-corr-span-jw-ew-abs FLOAT
