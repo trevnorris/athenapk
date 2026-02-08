@@ -499,26 +499,43 @@ if [[ "${SKIP_REPORT}" -eq 0 ]]; then
   if [[ -z "${REPORT_PATH}" ]]; then
     REPORT_PATH="${OUTPUT_DIR}/production_report.md"
   fi
-  python3 "${REPO_ROOT}/scripts/generate_harris_lundquist_report.py" \
-    --summary-csv "${SUMMARY_CSV}" \
-    --plots-dir "${PLOT_OUTPUT_DIR}" \
-    --report-path "${REPORT_PATH}" \
-    --psi0-enhancement-min "${PSI0_ENHANCEMENT_MIN}" \
-    --max-abs-dpsi0-enhancement-min "${MAX_ABS_DPSI0_ENHANCEMENT_MIN}" \
-    --psi-w0-enhancement-min "${PSI_W0_ENHANCEMENT_MIN}" \
-    --max-abs-dpsi-w0-enhancement-min "${MAX_ABS_DPSI_W0_ENHANCEMENT_MIN}" \
-    --controlled-max-jw-ew-abs "${CONTROLLED_MAX_JW_EW_ABS}" \
-    --controlled-max-s-leak-abs "${CONTROLLED_MAX_S_LEAK_ABS}" \
-    --controlled-max-jw-mode-activity-proxy "${CONTROLLED_MAX_JW_MODE_ACTIVITY_PROXY}" \
-    --full-min-jw-ew-abs "${FULL_MIN_JW_EW_ABS}" \
-    --full-min-s-leak-abs "${FULL_MIN_S_LEAK_ABS}" \
-    --full-min-jw-mode-activity-proxy "${FULL_MIN_JW_MODE_ACTIVITY_PROXY}" \
-    --controlled-max-abs-dpsi0-slope-max="${CONTROLLED_MAX_ABS_DPSI0_SLOPE_MAX}" \
-    --full-max-abs-dpsi0-slope-max="${FULL_MAX_ABS_DPSI0_SLOPE_MAX}" \
-    --controlled-max-abs-dpsi-w0-slope-max="${CONTROLLED_MAX_ABS_DPSI_W0_SLOPE_MAX}" \
-    --full-max-abs-dpsi-w0-slope-max="${FULL_MAX_ABS_DPSI_W0_SLOPE_MAX}" \
-    --max-slope-delta-dpsi-w0-max="${MAX_SLOPE_DELTA_DPSI_W0_MAX}" \
-    --min-abs-slope-delta-dpsi0 "${MIN_ABS_SLOPE_DELTA_DPSI0}"
+  REPORT_OUTPUT="$(
+    python3 "${REPO_ROOT}/scripts/generate_harris_lundquist_report.py" \
+      --summary-csv "${SUMMARY_CSV}" \
+      --plots-dir "${PLOT_OUTPUT_DIR}" \
+      --report-path "${REPORT_PATH}" \
+      --psi0-enhancement-min "${PSI0_ENHANCEMENT_MIN}" \
+      --max-abs-dpsi0-enhancement-min "${MAX_ABS_DPSI0_ENHANCEMENT_MIN}" \
+      --psi-w0-enhancement-min "${PSI_W0_ENHANCEMENT_MIN}" \
+      --max-abs-dpsi-w0-enhancement-min "${MAX_ABS_DPSI_W0_ENHANCEMENT_MIN}" \
+      --controlled-max-jw-ew-abs "${CONTROLLED_MAX_JW_EW_ABS}" \
+      --controlled-max-s-leak-abs "${CONTROLLED_MAX_S_LEAK_ABS}" \
+      --controlled-max-jw-mode-activity-proxy "${CONTROLLED_MAX_JW_MODE_ACTIVITY_PROXY}" \
+      --full-min-jw-ew-abs "${FULL_MIN_JW_EW_ABS}" \
+      --full-min-s-leak-abs "${FULL_MIN_S_LEAK_ABS}" \
+      --full-min-jw-mode-activity-proxy "${FULL_MIN_JW_MODE_ACTIVITY_PROXY}" \
+      --controlled-max-abs-dpsi0-slope-max="${CONTROLLED_MAX_ABS_DPSI0_SLOPE_MAX}" \
+      --full-max-abs-dpsi0-slope-max="${FULL_MAX_ABS_DPSI0_SLOPE_MAX}" \
+      --controlled-max-abs-dpsi-w0-slope-max="${CONTROLLED_MAX_ABS_DPSI_W0_SLOPE_MAX}" \
+      --full-max-abs-dpsi-w0-slope-max="${FULL_MAX_ABS_DPSI_W0_SLOPE_MAX}" \
+      --max-slope-delta-dpsi-w0-max="${MAX_SLOPE_DELTA_DPSI_W0_MAX}" \
+      --min-abs-slope-delta-dpsi0 "${MIN_ABS_SLOPE_DELTA_DPSI0}"
+  )"
+  printf '%s\n' "${REPORT_OUTPUT}"
+
+  REPORT_OVERALL_STATUS="$(
+    printf '%s\n' "${REPORT_OUTPUT}" \
+      | awk -F',' '/^overall_status,/ {print $2}' \
+      | tail -n 1
+  )"
+  if [[ -z "${REPORT_OVERALL_STATUS}" ]]; then
+    printf 'Could not determine report overall_status from generate_harris_lundquist_report.py output.\n' >&2
+    exit 1
+  fi
+  if [[ "${REPORT_OVERALL_STATUS}" != "PASS" ]]; then
+    printf 'Production report overall_status=%s (expected PASS)\n' "${REPORT_OVERALL_STATUS}" >&2
+    exit 1
+  fi
 fi
 
 if [[ "${SKIP_TOPOLOGY}" -eq 0 ]]; then
