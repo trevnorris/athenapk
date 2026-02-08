@@ -8,7 +8,7 @@ BINARY="${REPO_ROOT}/build-baseline/bin/athenaPK"
 WORKDIR="${REPO_ROOT}/build-baseline/modes4d_harris_lundquist_production"
 CONTROLLED_INPUT="${REPO_ROOT}/inputs/harris_4d_controlled.in"
 FULL_INPUT="${REPO_ROOT}/inputs/harris_4d_full.in"
-OUTPUT_DIR="${WORKDIR}/outputs"
+OUTPUT_DIR=""
 S_VALUES="250,500,1000,2000"
 TLIM="0.20"
 NLIM="2000"
@@ -45,6 +45,7 @@ SKIP_REPORT=0
 TOPOLOGY_OUTPUT_DIR=""
 TOPOLOGY_S_VALUE=""
 SKIP_TOPOLOGY=0
+OUTPUT_DIR_EXPLICIT=0
 
 usage() {
   cat <<'EOF'
@@ -153,6 +154,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --output-dir)
       OUTPUT_DIR="$2"
+      OUTPUT_DIR_EXPLICIT=1
       shift 2
       ;;
     --s-values)
@@ -311,14 +313,25 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-mkdir -p "${WORKDIR}" "${OUTPUT_DIR}"
+if [[ "${OUTPUT_DIR_EXPLICIT}" -eq 0 ]]; then
+  OUTPUT_DIR="outputs"
+fi
+
+mkdir -p "${WORKDIR}"
+WORKDIR_ABS="$(cd "${WORKDIR}" && pwd)"
+if [[ "${OUTPUT_DIR}" = /* ]]; then
+  OUTPUT_DIR_RESOLVED="${OUTPUT_DIR}"
+else
+  OUTPUT_DIR_RESOLVED="${WORKDIR_ABS}/${OUTPUT_DIR}"
+fi
+mkdir -p "${OUTPUT_DIR_RESOLVED}"
 
 python3 "${REPO_ROOT}/scripts/harris_lundquist_scan.py" \
   --binary "${BINARY}" \
-  --workdir "${WORKDIR}" \
+  --workdir "${WORKDIR_ABS}" \
   --controlled-input "${CONTROLLED_INPUT}" \
   --full-input "${FULL_INPUT}" \
-  --output-dir "${OUTPUT_DIR}" \
+  --output-dir "${OUTPUT_DIR_RESOLVED}" \
   --s-values "${S_VALUES}" \
   --fail-on-check \
   --check-transport-closure \
@@ -369,7 +382,7 @@ python3 "${REPO_ROOT}/scripts/harris_lundquist_scan.py" \
   --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1 \
   --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1
 
-SUMMARY_CSV="${OUTPUT_DIR}/lundquist_scan_summary.csv"
+SUMMARY_CSV="${OUTPUT_DIR_RESOLVED}/lundquist_scan_summary.csv"
 if [[ ! -f "${SUMMARY_CSV}" ]]; then
   printf 'Expected summary CSV missing: %s\n' "${SUMMARY_CSV}" >&2
   exit 1
@@ -485,7 +498,7 @@ PY
 
 if [[ "${SKIP_PLOTS}" -eq 0 ]]; then
   if [[ -z "${PLOT_OUTPUT_DIR}" ]]; then
-    PLOT_OUTPUT_DIR="${OUTPUT_DIR}/plots"
+    PLOT_OUTPUT_DIR="${OUTPUT_DIR_RESOLVED}/plots"
   fi
   python3 "${REPO_ROOT}/scripts/plot_harris_lundquist_summary.py" \
     --summary-csv "${SUMMARY_CSV}" \
@@ -494,10 +507,10 @@ fi
 
 if [[ "${SKIP_REPORT}" -eq 0 ]]; then
   if [[ -z "${PLOT_OUTPUT_DIR}" ]]; then
-    PLOT_OUTPUT_DIR="${OUTPUT_DIR}/plots"
+    PLOT_OUTPUT_DIR="${OUTPUT_DIR_RESOLVED}/plots"
   fi
   if [[ -z "${REPORT_PATH}" ]]; then
-    REPORT_PATH="${OUTPUT_DIR}/production_report.md"
+    REPORT_PATH="${OUTPUT_DIR_RESOLVED}/production_report.md"
   fi
   REPORT_OUTPUT="$(
     python3 "${REPO_ROOT}/scripts/generate_harris_lundquist_report.py" \
@@ -549,7 +562,7 @@ if [[ "${SKIP_TOPOLOGY}" -eq 0 ]]; then
 
   python3 "${REPO_ROOT}/scripts/generate_harris_topology_comparison.py" \
     --summary-csv "${SUMMARY_CSV}" \
-    --scan-output-dir "${OUTPUT_DIR}" \
+    --scan-output-dir "${OUTPUT_DIR_RESOLVED}" \
     --full-min-jw-ew-abs "${FULL_MIN_JW_EW_ABS}" \
     --full-min-s-leak-abs "${FULL_MIN_S_LEAK_ABS}" \
     --full-min-mixed-ew2 "${FULL_MIN_MIXED_EW2}" \

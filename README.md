@@ -85,6 +85,29 @@ The Python package list is stored in:
 
     requirements.txt
 
+#### 4D Modes Workflow (Local)
+
+For the 4D modes development flow in this repo, use these scripts:
+
+1. Validation bundle:
+
+    ./scripts/run_modes4d_validation.sh --skip-configure --skip-mpi
+
+2. Production Lundquist scan (controlled vs full, with report + topology gates):
+
+    ./scripts/run_harris_lundquist_production.sh \
+      --workdir ./build-baseline/modes4d_harris_lundquist_production_custom
+
+3. Envelope campaign over multiple `S`-sets and `tlim` values:
+
+    ./scripts/run_harris_lundquist_envelope_campaign.sh \
+      --workdir ./build-baseline/modes4d_harris_lundquist_envelope_campaign_custom
+
+Key outputs are written under `<workdir>/outputs`, including:
+- `lundquist_scan_summary.csv` and `production_report.md` for production runs
+- `envelope_summary.csv` and `envelope_report.md` for envelope campaigns
+- `overall_status,PASS|FAIL` and `topology_status,PASS|FAIL` in production stdout
+
 #### Building AthenaPK
 
 Obtain all (AthenaPK, Parthenon, and Kokkos) sources
