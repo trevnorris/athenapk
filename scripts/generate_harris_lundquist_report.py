@@ -219,6 +219,24 @@ def main():
         default=0.0,
         help="Legacy informational gate: minimum |slope delta| for max_abs_dpsi0_dt",
     )
+    parser.add_argument(
+        "--scan-min-abs-corr-edotb-sub-abs",
+        type=float,
+        default=5.0e-1,
+        help="Scan gate threshold for |corr_logS_full_final_edotb_sub_abs|",
+    )
+    parser.add_argument(
+        "--scan-max-corr-edotb-sub-abs",
+        type=float,
+        default=-2.0e-1,
+        help="Scan gate threshold for corr_logS_full_final_edotb_sub_abs <= threshold",
+    )
+    parser.add_argument(
+        "--scan-edotb-gate-class",
+        choices=("blocking", "informational"),
+        default="blocking",
+        help="Gate class for edotb_sub scan-level correlation gates",
+    )
     args = parser.parse_args()
 
     summary_csv = Path(args.summary_csv).resolve()
@@ -356,7 +374,12 @@ def main():
         ("corr_logS_full_final_mixed_ew2", "abs_min", 7.0e-1, "blocking"),
         ("corr_logS_full_final_em_leak_w_abs", "abs_min", 2.0e-1, "blocking"),
         ("corr_logS_full_final_helicity_sub_abs", "abs_min", 5.0e-1, "blocking"),
-        ("corr_logS_full_final_edotb_sub_abs", "abs_min", 5.0e-1, "blocking"),
+        (
+            "corr_logS_full_final_edotb_sub_abs",
+            "abs_min",
+            args.scan_min_abs_corr_edotb_sub_abs,
+            args.scan_edotb_gate_class,
+        ),
         (
             "corr_logS_full_final_jw_mode_activity_proxy",
             "abs_min",
@@ -364,7 +387,12 @@ def main():
             "blocking",
         ),
         ("corr_logS_full_final_helicity_sub_abs", "max", -2.0e-1, "blocking"),
-        ("corr_logS_full_final_edotb_sub_abs", "max", -2.0e-1, "blocking"),
+        (
+            "corr_logS_full_final_edotb_sub_abs",
+            "max",
+            args.scan_max_corr_edotb_sub_abs,
+            args.scan_edotb_gate_class,
+        ),
     ]
 
     gate_rows = []

@@ -38,6 +38,9 @@ SCAN_MIN_CORR_SPAN_PSI0="1.0e-5"
 SCAN_MIN_CORR_SPAN_JW_EW_ABS="1.0e-15"
 SCAN_MIN_CORR_SPAN_S_LEAK_ABS="5.0e-15"
 SCAN_MIN_CORR_SPAN_JW_MODE_ACTIVITY_PROXY="1.0e-15"
+SCAN_MIN_ABS_CORR_EDOTB_SUB_ABS="5.0e-1"
+SCAN_MAX_CORR_EDOTB_SUB_ABS="-2.0e-1"
+SCAN_EDOTB_GATE_CLASS="blocking"
 PLOT_OUTPUT_DIR=""
 SKIP_PLOTS=0
 REPORT_PATH=""
@@ -122,6 +125,15 @@ Options:
                           Minimum span for corr_logS_full_final_s_leak_abs signal (default: 5.0e-15)
   --scan-min-corr-span-jw-mode-activity-proxy FLOAT
                           Minimum span for corr_logS_full_final_jw_mode_activity_proxy (default: 1.0e-15)
+  --scan-min-abs-corr-edotb-sub-abs FLOAT
+                          Minimum |corr_logS_full_final_edotb_sub_abs| scan-level gate
+                          (default: 5.0e-1)
+  --scan-max-corr-edotb-sub-abs FLOAT
+                          Maximum corr_logS_full_final_edotb_sub_abs scan-level gate
+                          (default: -2.0e-1)
+  --scan-edotb-gate-class CLASS
+                          `blocking` (default) or `informational` for edotb_sub
+                          scan-level correlation gates in report status logic
   --scan-arg ARG          Extra argument forwarded directly to harris_lundquist_scan.py
                           (repeatable; useful for extra --athena-arg overrides)
   --plot-output-dir DIR   Plot output directory (default: <output-dir>/plots)
@@ -276,6 +288,18 @@ while [[ $# -gt 0 ]]; do
       SCAN_MIN_CORR_SPAN_JW_MODE_ACTIVITY_PROXY="$2"
       shift 2
       ;;
+    --scan-min-abs-corr-edotb-sub-abs)
+      SCAN_MIN_ABS_CORR_EDOTB_SUB_ABS="$2"
+      shift 2
+      ;;
+    --scan-max-corr-edotb-sub-abs)
+      SCAN_MAX_CORR_EDOTB_SUB_ABS="$2"
+      shift 2
+      ;;
+    --scan-edotb-gate-class)
+      SCAN_EDOTB_GATE_CLASS="$2"
+      shift 2
+      ;;
     --scan-arg)
       EXTRA_SCAN_ARGS+=("$2")
       shift 2
@@ -378,7 +402,7 @@ python3 "${REPO_ROOT}/scripts/harris_lundquist_scan.py" \
   --scan-min-abs-corr corr_logS_full_final_mixed_ew2=7.0e-1 \
   --scan-min-abs-corr corr_logS_full_final_em_leak_w_abs=2.0e-1 \
   --scan-min-abs-corr corr_logS_full_final_helicity_sub_abs=5.0e-1 \
-  --scan-min-abs-corr corr_logS_full_final_edotb_sub_abs=5.0e-1 \
+  --scan-min-abs-corr corr_logS_full_final_edotb_sub_abs="${SCAN_MIN_ABS_CORR_EDOTB_SUB_ABS}" \
   --scan-min-abs-corr corr_logS_full_final_jw_mode_activity_proxy=5.0e-1 \
   --scan-min-metric min_full_final_jw_ew_abs="${FULL_MIN_JW_EW_ABS}" \
   --scan-min-metric min_full_final_s_leak_abs="${FULL_MIN_S_LEAK_ABS}" \
@@ -392,7 +416,7 @@ python3 "${REPO_ROOT}/scripts/harris_lundquist_scan.py" \
   --scan-min-corr-span corr_logS_full_final_s_leak_abs="${SCAN_MIN_CORR_SPAN_S_LEAK_ABS}" \
   --scan-min-corr-span corr_logS_full_final_jw_mode_activity_proxy="${SCAN_MIN_CORR_SPAN_JW_MODE_ACTIVITY_PROXY}" \
   --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1 \
-  --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1 \
+  --scan-max-corr corr_logS_full_final_edotb_sub_abs="${SCAN_MAX_CORR_EDOTB_SUB_ABS}" \
   "${EXTRA_SCAN_ARG_FLAGS[@]}"
 
 SUMMARY_CSV="${OUTPUT_DIR_RESOLVED}/lundquist_scan_summary.csv"
@@ -545,7 +569,10 @@ if [[ "${SKIP_REPORT}" -eq 0 ]]; then
       --controlled-max-abs-dpsi-w0-slope-max="${CONTROLLED_MAX_ABS_DPSI_W0_SLOPE_MAX}" \
       --full-max-abs-dpsi-w0-slope-max="${FULL_MAX_ABS_DPSI_W0_SLOPE_MAX}" \
       --max-slope-delta-dpsi-w0-max="${MAX_SLOPE_DELTA_DPSI_W0_MAX}" \
-      --min-abs-slope-delta-dpsi0 "${MIN_ABS_SLOPE_DELTA_DPSI0}"
+      --min-abs-slope-delta-dpsi0 "${MIN_ABS_SLOPE_DELTA_DPSI0}" \
+      --scan-min-abs-corr-edotb-sub-abs "${SCAN_MIN_ABS_CORR_EDOTB_SUB_ABS}" \
+      --scan-max-corr-edotb-sub-abs="${SCAN_MAX_CORR_EDOTB_SUB_ABS}" \
+      --scan-edotb-gate-class "${SCAN_EDOTB_GATE_CLASS}"
   )"
   printf '%s\n' "${REPORT_OUTPUT}"
 

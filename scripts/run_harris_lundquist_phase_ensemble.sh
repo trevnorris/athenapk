@@ -17,6 +17,7 @@ SEEDS="0,1,2,3,4"
 SKIP_PLOTS=1
 SKIP_TOPOLOGY=1
 FAIL_ON_ANY_FAIL=0
+EDOTB_GATE_MODE="strict"
 
 usage() {
   cat <<'EOF'
@@ -37,6 +38,8 @@ Options:
   --nlim INT               Cycle cap per scan run (default: 2000)
   --output-dt FLOAT        History output dt (default: 0.02)
   --seeds CSV              Integer seeds mapped to deterministic phases (default: 0,1,2,3,4)
+  --edotb-gate-mode MODE   `strict` (default) or `informational` for edotb_sub
+                           scan-level correlation gates during ensemble runs
   --with-plots             Enable production plots for each seed (default: off)
   --with-topology          Enable topology exports for each seed (default: off)
   --fail-on-any-fail       Exit nonzero if any seed case fails
@@ -89,6 +92,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --seeds)
       SEEDS="$2"
+      shift 2
+      ;;
+    --edotb-gate-mode)
+      EDOTB_GATE_MODE="$2"
       shift 2
       ;;
     --with-plots)
@@ -144,6 +151,7 @@ CMD=(
   --nlim "${NLIM}"
   --output-dt "${OUTPUT_DT}"
   --seeds "${SEEDS}"
+  --edotb-gate-mode "${EDOTB_GATE_MODE}"
 )
 
 if [[ "${SKIP_PLOTS}" -eq 1 ]]; then

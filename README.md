@@ -108,6 +108,12 @@ For the 4D modes development flow in this repo, use these scripts:
     ./scripts/run_harris_lundquist_phase_ensemble.sh \
       --workdir ./build-baseline/modes4d_harris_lundquist_phase_ensemble_custom
 
+   Optional edotb uncertainty policy for ensemble-only analysis:
+
+    ./scripts/run_harris_lundquist_phase_ensemble.sh \
+      --workdir ./build-baseline/modes4d_harris_lundquist_phase_ensemble_custom \
+      --edotb-gate-mode informational
+
 Key outputs are written under `<workdir>/outputs`, including:
 - `lundquist_scan_summary.csv` and `production_report.md` for production runs
 - `envelope_summary.csv` and `envelope_report.md` for envelope campaigns

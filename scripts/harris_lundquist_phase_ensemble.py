@@ -135,6 +135,8 @@ def write_report(path: Path, rows: list[dict[str, str]]) -> None:
     lines.append(f"- Generated (UTC): {datetime.now(timezone.utc).isoformat()}")
     lines.append(f"- Total seeds: **{len(rows)}**")
     lines.append(f"- Passing seeds: **{len(pass_rows)}**")
+    gate_modes = sorted({row.get("edotb_gate_mode", "strict") for row in rows})
+    lines.append(f"- edotb gate mode(s): **{', '.join(gate_modes)}**")
     lines.append("")
     if pass_rows:
         lines.append("## Passing-Seed Aggregate")
@@ -191,6 +193,16 @@ def main() -> None:
     parser.add_argument("--nlim", type=int, default=2000)
     parser.add_argument("--output-dt", type=float, default=0.02)
     parser.add_argument("--seeds", default="0,1,2,3,4")
+    parser.add_argument(
+        "--edotb-gate-mode",
+        choices=("strict", "informational"),
+        default="strict",
+        help=(
+            "Policy for edotb_sub scan-level correlation gates during ensemble runs: "
+            "'strict' keeps production defaults, 'informational' neutralizes only "
+            "edotb_sub corr gates while preserving all other gates."
+        ),
+    )
     parser.add_argument("--scan-arg", action="append", default=[])
     parser.add_argument("--skip-plots", action="store_true")
     parser.add_argument("--skip-topology", action="store_true")
@@ -252,6 +264,17 @@ def main() -> None:
             "--scan-arg",
             f"problem/harris_4d/perturb_phase_z={case.phase_z:.12g}",
         ]
+        if args.edotb_gate_mode == "informational":
+            cmd.extend(
+                [
+                    "--scan-min-abs-corr-edotb-sub-abs",
+                    "0.0",
+                    "--scan-max-corr-edotb-sub-abs",
+                    "1.0",
+                    "--scan-edotb-gate-class",
+                    "informational",
+                ]
+            )
         for extra in args.scan_arg:
             cmd.extend(["--scan-arg", extra])
         if args.skip_plots:
@@ -302,6 +325,7 @@ def main() -> None:
                 "failure_reason": failure_reason,
                 "phase_x": f"{case.phase_x:.6e}",
                 "phase_z": f"{case.phase_z:.6e}",
+                "edotb_gate_mode": args.edotb_gate_mode,
                 "min_ratio_psi_w0_span": fmt(min_ratio_psi_w0_span),
                 "min_ratio_max_abs_dpsi_w0_dt": fmt(min_ratio_rate_w0),
                 "min_full_jw_ew_abs": fmt(min_full_jw_ew_abs),
