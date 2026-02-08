@@ -214,6 +214,7 @@ def main():
                 "transport_status",
                 "correlation_status",
                 "activity_status",
+                "gate_class",
             ]
         )
         for row in rows:
@@ -224,6 +225,7 @@ def main():
                     row["transport_status"],
                     row["correlation_status"],
                     row["activity_status"],
+                    "blocking",
                 ]
             )
 
