@@ -101,6 +101,8 @@ def run_scenario(
     tlim,
     nlim,
     output_dt,
+    athena_args,
+    scan_args,
     check_transport_closure,
     check_em_bulk_ledger,
 ):
@@ -129,6 +131,10 @@ def run_scenario(
         "--athena-arg",
         f"parthenon/output1/dt={output_dt}",
     ]
+    for scan_arg in scan_args:
+        cmd.append(scan_arg)
+    for athena_arg in athena_args:
+        cmd.extend(["--athena-arg", athena_arg])
     if check_transport_closure:
         cmd.append("--check-transport-closure")
     if check_em_bulk_ledger:
@@ -302,6 +308,18 @@ def main():
     parser.add_argument("--nlim", type=int, default=1000)
     parser.add_argument("--output-dt", type=float, default=0.01)
     parser.add_argument(
+        "--athena-arg",
+        action="append",
+        default=[],
+        help="Additional athenaPK runtime override passed to both controlled/full runs",
+    )
+    parser.add_argument(
+        "--scan-arg",
+        action="append",
+        default=[],
+        help="Additional harris_scan_matrix.py argument forwarded as-is",
+    )
+    parser.add_argument(
         "--ablation-strong-ratio-threshold",
         type=float,
         default=0.5,
@@ -359,6 +377,8 @@ def main():
             args.tlim,
             args.nlim,
             args.output_dt,
+            args.athena_arg,
+            args.scan_arg,
             args.check_transport_closure,
             args.check_em_bulk_ledger,
         )

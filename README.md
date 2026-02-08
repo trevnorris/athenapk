@@ -129,6 +129,24 @@ For the 4D modes development flow in this repo, use these scripts:
    - phase ensemble seeds `0..9`
    - MPI+HDF5 smoke with resistivity set for `S=4000`
 
+7. Refined high-S profile (`highs_pub_v3_hr2_s3`, 64x32x32 mesh):
+
+    ./scripts/run_harris_lundquist_production.sh \
+      --workdir ./build-baseline/modes4d_harris_lundquist_production_highs_pub_v3_hr2 \
+      --s-values 250,500,1000,2000,4000 \
+      --tlim 0.26 --nlim 6000 --output-dt 0.026 \
+      --closure-local-mode0-abs-rate-tol 3.0e-6 \
+      --athena-arg parthenon/mesh/nx1=64 \
+      --athena-arg parthenon/mesh/nx2=32 \
+      --athena-arg parthenon/mesh/nx3=32 \
+      --athena-arg parthenon/meshblock/nx1=32 \
+      --athena-arg parthenon/meshblock/nx2=16 \
+      --athena-arg parthenon/meshblock/nx3=16
+
+   Refined ablation now supports repeated forwarding flags:
+   - `--athena-arg` for mesh/runtime overrides
+   - `--scan-arg` for direct `harris_scan_matrix.py` options
+
 Key outputs are written under `<workdir>/outputs`, including:
 - `lundquist_scan_summary.csv` and `production_report.md` for production runs
 - `envelope_summary.csv` and `envelope_report.md` for envelope campaigns

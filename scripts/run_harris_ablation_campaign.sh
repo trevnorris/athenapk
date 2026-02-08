@@ -15,6 +15,8 @@ NLIM="1000"
 OUTPUT_DT="0.01"
 ABLATION_STRONG_RATIO_THRESHOLD="0.5"
 FAIL_ON_ABLATION_CHECK=0
+ATHENA_ARGS=()
+SCAN_ARGS=()
 
 usage() {
   cat <<'EOF'
@@ -34,6 +36,9 @@ Options:
   --output-dt FLOAT        History dt override (default: 0.01)
   --ablation-strong-ratio-threshold FLOAT
                           Expected strong-reduction ratio threshold (default: 0.5)
+  --athena-arg ARG         Extra athenaPK override passed to both controlled/full runs
+                          (repeatable)
+  --scan-arg ARG          Extra harris_scan_matrix.py arg forwarded as-is (repeatable)
   --fail-on-ablation-check Exit nonzero when ablation checks fail
   -h, --help               Show this help
 EOF
@@ -76,6 +81,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --ablation-strong-ratio-threshold)
       ABLATION_STRONG_RATIO_THRESHOLD="$2"
+      shift 2
+      ;;
+    --athena-arg)
+      ATHENA_ARGS+=("$2")
+      shift 2
+      ;;
+    --scan-arg)
+      SCAN_ARGS+=("$2")
       shift 2
       ;;
     --fail-on-ablation-check)
@@ -121,6 +134,14 @@ CMD=(
   --check-transport-closure
   --check-em-bulk-ledger
 )
+
+for arg in "${ATHENA_ARGS[@]}"; do
+  CMD+=(--athena-arg "$arg")
+done
+
+for arg in "${SCAN_ARGS[@]}"; do
+  CMD+=(--scan-arg="$arg")
+done
 
 if [[ "${FAIL_ON_ABLATION_CHECK}" -eq 1 ]]; then
   CMD+=(--fail-on-ablation-check)
