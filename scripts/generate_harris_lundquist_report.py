@@ -104,6 +104,12 @@ def gate_max(value, threshold):
     return "PASS" if value <= threshold else "FAIL"
 
 
+def gate_min(value, threshold):
+    if not math.isfinite(value):
+        return "FAIL"
+    return "PASS" if value >= threshold else "FAIL"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--summary-csv", required=True, help="Path to lundquist_scan_summary.csv")
@@ -176,6 +182,42 @@ def main():
         type=float,
         default=1.0e-14,
         help="Minimum min(full jw_mode_activity_proxy) required for full activation PASS",
+    )
+    parser.add_argument(
+        "--controlled-max-abs-dpsi0-slope-max",
+        type=float,
+        default=-1.0e-3,
+        help="Informational gate: max allowed controlled slope_logS(max_abs_dpsi0_dt)",
+    )
+    parser.add_argument(
+        "--full-max-abs-dpsi0-slope-max",
+        type=float,
+        default=-1.0e-3,
+        help="Informational gate: max allowed full slope_logS(max_abs_dpsi0_dt)",
+    )
+    parser.add_argument(
+        "--controlled-max-abs-dpsi-w0-slope-max",
+        type=float,
+        default=-1.0e-3,
+        help="Informational gate: max allowed controlled slope_logS(max_abs_dpsi_w0_dt)",
+    )
+    parser.add_argument(
+        "--full-max-abs-dpsi-w0-slope-max",
+        type=float,
+        default=-1.0e-3,
+        help="Informational gate: max allowed full slope_logS(max_abs_dpsi_w0_dt)",
+    )
+    parser.add_argument(
+        "--max-slope-delta-dpsi-w0-max",
+        type=float,
+        default=-1.0e-3,
+        help="Informational gate: max allowed slope delta (full-controlled) for max_abs_dpsi_w0_dt",
+    )
+    parser.add_argument(
+        "--min-abs-slope-delta-dpsi0",
+        type=float,
+        default=1.0e-3,
+        help="Informational gate: minimum |slope delta| for max_abs_dpsi0_dt",
     )
     args = parser.parse_args()
 
@@ -497,6 +539,65 @@ def main():
             gate_ok = gate_ok and (status == "PASS")
         compare_gate_rows.append((cond, value, status, gate_class))
 
+    slope_gate_rows = []
+    slope_gate_specs = [
+        (
+            "slope_logS_controlled_max_abs_dpsi0_dt",
+            slope_metrics["slope_logS_controlled_max_abs_dpsi0_dt"],
+            "max",
+            args.controlled_max_abs_dpsi0_slope_max,
+            "informational",
+        ),
+        (
+            "slope_logS_full_max_abs_dpsi0_dt",
+            slope_metrics["slope_logS_full_max_abs_dpsi0_dt"],
+            "max",
+            args.full_max_abs_dpsi0_slope_max,
+            "informational",
+        ),
+        (
+            "slope_logS_controlled_max_abs_dpsi_w0_dt",
+            slope_metrics["slope_logS_controlled_max_abs_dpsi_w0_dt"],
+            "max",
+            args.controlled_max_abs_dpsi_w0_slope_max,
+            "informational",
+        ),
+        (
+            "slope_logS_full_max_abs_dpsi_w0_dt",
+            slope_metrics["slope_logS_full_max_abs_dpsi_w0_dt"],
+            "max",
+            args.full_max_abs_dpsi_w0_slope_max,
+            "informational",
+        ),
+        (
+            "slope_delta_full_minus_controlled_max_abs_dpsi_w0_dt",
+            slope_metrics["slope_delta_full_minus_controlled_max_abs_dpsi_w0_dt"],
+            "max",
+            args.max_slope_delta_dpsi_w0_max,
+            "informational",
+        ),
+        (
+            "slope_delta_full_minus_controlled_max_abs_dpsi0_dt",
+            slope_metrics["slope_delta_full_minus_controlled_max_abs_dpsi0_dt"],
+            "abs_min",
+            args.min_abs_slope_delta_dpsi0,
+            "informational",
+        ),
+    ]
+    for name, value, mode, threshold, gate_class in slope_gate_specs:
+        if mode == "max":
+            status = gate_max(value, threshold)
+            cond = f"{name} <= {threshold:.1e}"
+        elif mode == "min":
+            status = gate_min(value, threshold)
+            cond = f"{name} >= {threshold:.1e}"
+        else:
+            status = gate_abs(value, threshold)
+            cond = f"|{name}| >= {threshold:.1e}"
+        if gate_class == "blocking":
+            gate_ok = gate_ok and (status == "PASS")
+        slope_gate_rows.append((cond, value, status, gate_class))
+
     per_case_ok = True
     for row in rows:
         for status_key in (
@@ -753,6 +854,15 @@ def main():
     lines.append(
         f"| `slope_delta_full_minus_controlled_max_abs_dpsi_w0_dt` | `{fmt_val(slope_metrics['slope_delta_full_minus_controlled_max_abs_dpsi_w0_dt'])}` |"
     )
+    lines.append("")
+    lines.append("## Rate Scaling Gates")
+    lines.append("")
+    lines.append("| Gate | Value | Status | Class |")
+    lines.append("| --- | ---: | :---: | :--- |")
+    for condition, value, status, gate_class in slope_gate_rows:
+        lines.append(
+            f"| `{condition}` | `{fmt_val(value)}` | `{status}` | `{gate_class}` |"
+        )
 
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"production_report,{report_path}")

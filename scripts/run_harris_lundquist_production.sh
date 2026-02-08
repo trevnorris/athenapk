@@ -28,6 +28,12 @@ MAX_ABS_DPSI_W0_ENHANCEMENT_MIN="1.2"
 CONTROLLED_MAX_JW_EW_ABS="1.0e-12"
 CONTROLLED_MAX_S_LEAK_ABS="1.0e-12"
 CONTROLLED_MAX_JW_MODE_ACTIVITY_PROXY="1.0e-12"
+CONTROLLED_MAX_ABS_DPSI0_SLOPE_MAX="-1.0e-3"
+FULL_MAX_ABS_DPSI0_SLOPE_MAX="-1.0e-3"
+CONTROLLED_MAX_ABS_DPSI_W0_SLOPE_MAX="-1.0e-3"
+FULL_MAX_ABS_DPSI_W0_SLOPE_MAX="-1.0e-3"
+MAX_SLOPE_DELTA_DPSI_W0_MAX="-1.0e-3"
+MIN_ABS_SLOPE_DELTA_DPSI0="1.0e-3"
 SCAN_MIN_CORR_SPAN_PSI0="1.0e-5"
 SCAN_MIN_CORR_SPAN_JW_EW_ABS="1.0e-15"
 SCAN_MIN_CORR_SPAN_S_LEAK_ABS="5.0e-15"
@@ -88,6 +94,24 @@ Options:
                           Maximum max controlled S_leak_abs report gate (default: 1.0e-12)
   --controlled-max-jw-mode-activity-proxy FLOAT
                           Maximum max controlled jw_mode_activity_proxy report gate (default: 1.0e-12)
+  --controlled-max-abs-dpsi0-slope-max FLOAT
+                          Informational report gate: controlled slope_logS(max_abs_dpsi0_dt)
+                          must be <= threshold (default: -1.0e-3)
+  --full-max-abs-dpsi0-slope-max FLOAT
+                          Informational report gate: full slope_logS(max_abs_dpsi0_dt)
+                          must be <= threshold (default: -1.0e-3)
+  --controlled-max-abs-dpsi-w0-slope-max FLOAT
+                          Informational report gate: controlled slope_logS(max_abs_dpsi_w0_dt)
+                          must be <= threshold (default: -1.0e-3)
+  --full-max-abs-dpsi-w0-slope-max FLOAT
+                          Informational report gate: full slope_logS(max_abs_dpsi_w0_dt)
+                          must be <= threshold (default: -1.0e-3)
+  --max-slope-delta-dpsi-w0-max FLOAT
+                          Informational report gate: slope delta (full-controlled) for
+                          max_abs_dpsi_w0_dt must be <= threshold (default: -1.0e-3)
+  --min-abs-slope-delta-dpsi0 FLOAT
+                          Informational report gate: |slope delta| for max_abs_dpsi0_dt
+                          must be >= threshold (default: 1.0e-3)
   --scan-min-corr-span-psi0 FLOAT
                           Minimum span for corr_logS_full_final_psi0_span signal (default: 1.0e-5)
   --scan-min-corr-span-jw-ew-abs FLOAT
@@ -205,6 +229,30 @@ while [[ $# -gt 0 ]]; do
       ;;
     --controlled-max-jw-mode-activity-proxy)
       CONTROLLED_MAX_JW_MODE_ACTIVITY_PROXY="$2"
+      shift 2
+      ;;
+    --controlled-max-abs-dpsi0-slope-max)
+      CONTROLLED_MAX_ABS_DPSI0_SLOPE_MAX="$2"
+      shift 2
+      ;;
+    --full-max-abs-dpsi0-slope-max)
+      FULL_MAX_ABS_DPSI0_SLOPE_MAX="$2"
+      shift 2
+      ;;
+    --controlled-max-abs-dpsi-w0-slope-max)
+      CONTROLLED_MAX_ABS_DPSI_W0_SLOPE_MAX="$2"
+      shift 2
+      ;;
+    --full-max-abs-dpsi-w0-slope-max)
+      FULL_MAX_ABS_DPSI_W0_SLOPE_MAX="$2"
+      shift 2
+      ;;
+    --max-slope-delta-dpsi-w0-max)
+      MAX_SLOPE_DELTA_DPSI_W0_MAX="$2"
+      shift 2
+      ;;
+    --min-abs-slope-delta-dpsi0)
+      MIN_ABS_SLOPE_DELTA_DPSI0="$2"
       shift 2
       ;;
     --scan-min-corr-span-psi0)
@@ -464,7 +512,13 @@ if [[ "${SKIP_REPORT}" -eq 0 ]]; then
     --controlled-max-jw-mode-activity-proxy "${CONTROLLED_MAX_JW_MODE_ACTIVITY_PROXY}" \
     --full-min-jw-ew-abs "${FULL_MIN_JW_EW_ABS}" \
     --full-min-s-leak-abs "${FULL_MIN_S_LEAK_ABS}" \
-    --full-min-jw-mode-activity-proxy "${FULL_MIN_JW_MODE_ACTIVITY_PROXY}"
+    --full-min-jw-mode-activity-proxy "${FULL_MIN_JW_MODE_ACTIVITY_PROXY}" \
+    --controlled-max-abs-dpsi0-slope-max="${CONTROLLED_MAX_ABS_DPSI0_SLOPE_MAX}" \
+    --full-max-abs-dpsi0-slope-max="${FULL_MAX_ABS_DPSI0_SLOPE_MAX}" \
+    --controlled-max-abs-dpsi-w0-slope-max="${CONTROLLED_MAX_ABS_DPSI_W0_SLOPE_MAX}" \
+    --full-max-abs-dpsi-w0-slope-max="${FULL_MAX_ABS_DPSI_W0_SLOPE_MAX}" \
+    --max-slope-delta-dpsi-w0-max="${MAX_SLOPE_DELTA_DPSI_W0_MAX}" \
+    --min-abs-slope-delta-dpsi0 "${MIN_ABS_SLOPE_DELTA_DPSI0}"
 fi
 
 if [[ "${SKIP_TOPOLOGY}" -eq 0 ]]; then
