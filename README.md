@@ -103,9 +103,15 @@ For the 4D modes development flow in this repo, use these scripts:
     ./scripts/run_harris_lundquist_envelope_campaign.sh \
       --workdir ./build-baseline/modes4d_harris_lundquist_envelope_campaign_custom
 
+4. Deterministic phase-ensemble uncertainty sweep (same production gates):
+
+    ./scripts/run_harris_lundquist_phase_ensemble.sh \
+      --workdir ./build-baseline/modes4d_harris_lundquist_phase_ensemble_custom
+
 Key outputs are written under `<workdir>/outputs`, including:
 - `lundquist_scan_summary.csv` and `production_report.md` for production runs
 - `envelope_summary.csv` and `envelope_report.md` for envelope campaigns
+- `phase_ensemble_summary.csv` and `phase_ensemble_report.md` for phase ensembles
 - `overall_status,PASS|FAIL` and `topology_status,PASS|FAIL` in production stdout
 
 #### Building AthenaPK

@@ -46,6 +46,7 @@ TOPOLOGY_OUTPUT_DIR=""
 TOPOLOGY_S_VALUE=""
 SKIP_TOPOLOGY=0
 OUTPUT_DIR_EXPLICIT=0
+EXTRA_SCAN_ARGS=()
 
 usage() {
   cat <<'EOF'
@@ -121,6 +122,8 @@ Options:
                           Minimum span for corr_logS_full_final_s_leak_abs signal (default: 5.0e-15)
   --scan-min-corr-span-jw-mode-activity-proxy FLOAT
                           Minimum span for corr_logS_full_final_jw_mode_activity_proxy (default: 1.0e-15)
+  --scan-arg ARG          Extra argument forwarded directly to harris_lundquist_scan.py
+                          (repeatable; useful for extra --athena-arg overrides)
   --plot-output-dir DIR   Plot output directory (default: <output-dir>/plots)
   --skip-plots            Skip post-scan plotting
   --report-path PATH      Markdown report path (default: <output-dir>/production_report.md)
@@ -273,6 +276,10 @@ while [[ $# -gt 0 ]]; do
       SCAN_MIN_CORR_SPAN_JW_MODE_ACTIVITY_PROXY="$2"
       shift 2
       ;;
+    --scan-arg)
+      EXTRA_SCAN_ARGS+=("$2")
+      shift 2
+      ;;
     --plot-output-dir)
       PLOT_OUTPUT_DIR="$2"
       shift 2
@@ -325,6 +332,11 @@ else
   OUTPUT_DIR_RESOLVED="${WORKDIR_ABS}/${OUTPUT_DIR}"
 fi
 mkdir -p "${OUTPUT_DIR_RESOLVED}"
+
+EXTRA_SCAN_ARG_FLAGS=()
+for arg in "${EXTRA_SCAN_ARGS[@]}"; do
+  EXTRA_SCAN_ARG_FLAGS+=(--scan-arg="$arg")
+done
 
 python3 "${REPO_ROOT}/scripts/harris_lundquist_scan.py" \
   --binary "${BINARY}" \
@@ -380,7 +392,8 @@ python3 "${REPO_ROOT}/scripts/harris_lundquist_scan.py" \
   --scan-min-corr-span corr_logS_full_final_s_leak_abs="${SCAN_MIN_CORR_SPAN_S_LEAK_ABS}" \
   --scan-min-corr-span corr_logS_full_final_jw_mode_activity_proxy="${SCAN_MIN_CORR_SPAN_JW_MODE_ACTIVITY_PROXY}" \
   --scan-max-corr corr_logS_full_final_helicity_sub_abs=-2.0e-1 \
-  --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1
+  --scan-max-corr corr_logS_full_final_edotb_sub_abs=-2.0e-1 \
+  "${EXTRA_SCAN_ARG_FLAGS[@]}"
 
 SUMMARY_CSV="${OUTPUT_DIR_RESOLVED}/lundquist_scan_summary.csv"
 if [[ ! -f "${SUMMARY_CSV}" ]]; then

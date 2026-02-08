@@ -19,6 +19,10 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
       pin->GetOrAddReal("problem/harris_4d", "sheet_half_width", 0.1);
   const Real perturbation_amp =
       pin->GetOrAddReal("problem/harris_4d", "perturbation_amp", 1.0e-3);
+  const Real perturb_phase_x =
+      pin->GetOrAddReal("problem/harris_4d", "perturb_phase_x", 0.0);
+  const Real perturb_phase_z =
+      pin->GetOrAddReal("problem/harris_4d", "perturb_phase_z", 0.0);
   const Real drift_current_scale =
       pin->GetOrAddReal("problem/harris_4d", "drift_current_scale", 0.0);
   const Real aw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "aw_mode1_amp", 0.0);
@@ -113,8 +117,8 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
           plasma(n, k, j, i) = 0.0;
         }
 
-        const Real phase_x = (lx > 0.0) ? (kTwoPi * (x - x1min) / lx) : 0.0;
-        const Real phase_z = (lz > 0.0) ? (kTwoPi * (z - x3min) / lz) : 0.0;
+        const Real phase_x = (lx > 0.0) ? (kTwoPi * (x - x1min) / lx) + perturb_phase_x : 0.0;
+        const Real phase_z = (lz > 0.0) ? (kTwoPi * (z - x3min) / lz) + perturb_phase_z : 0.0;
         const Real ay_perturb = perturbation_amp * std::cos(phase_x) * std::cos(phase_z);
         em_a(2, k, j, i) = ay_perturb; // mode 0, A_y component
 
