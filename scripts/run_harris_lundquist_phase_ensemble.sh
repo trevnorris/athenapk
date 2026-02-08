@@ -164,7 +164,8 @@ if [[ "${FAIL_ON_ANY_FAIL}" -eq 1 ]]; then
   CMD+=(--fail-on-any-fail)
 fi
 for arg in "${SCAN_ARGS[@]}"; do
-  CMD+=(--scan-arg "$arg")
+  # Keep values beginning with '--' from being parsed as top-level args.
+  CMD+=("--scan-arg=${arg}")
 done
 
 "${CMD[@]}"

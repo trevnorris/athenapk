@@ -161,7 +161,8 @@ if [[ "${SKIP_TOPOLOGY}" -eq 1 ]]; then
   CMD+=(--skip-topology)
 fi
 for arg in "${EXTRA_ARGS[@]}"; do
-  CMD+=(--extra-arg "$arg")
+  # Keep values that begin with '--' from being parsed as top-level options.
+  CMD+=("--extra-arg=${arg}")
 done
 
 "${CMD[@]}"
