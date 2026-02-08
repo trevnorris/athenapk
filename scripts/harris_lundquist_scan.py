@@ -94,6 +94,25 @@ def pearson(xs, ys):
     return cov / math.sqrt(vx * vy)
 
 
+def loglog_slope(xs, ys):
+    samples = []
+    for x, y in zip(xs, ys):
+        if not (math.isfinite(x) and math.isfinite(y)):
+            continue
+        if x <= 0.0 or y <= 0.0:
+            continue
+        samples.append((math.log10(x), math.log10(y)))
+    if len(samples) < 2:
+        return math.nan
+    mean_x = sum(x for x, _ in samples) / len(samples)
+    mean_y = sum(y for _, y in samples) / len(samples)
+    var_x = sum((x - mean_x) * (x - mean_x) for x, _ in samples)
+    if var_x <= 0.0:
+        return math.nan
+    cov_xy = sum((x - mean_x) * (y - mean_y) for x, y in samples)
+    return cov_xy / var_x
+
+
 def finite_values(values):
     return [value for value in values if math.isfinite(value)]
 
@@ -660,6 +679,43 @@ def main():
         scan_summary[f"max_{metric}"] = series_max(values)
         scan_summary[f"span_{metric}"] = series_span(values)
         scan_summary[f"std_{metric}"] = series_std(values)
+    slope_metrics = {
+        "slope_logS_controlled_max_abs_dpsi0_dt": loglog_slope(
+            [r["S"] for r in rows],
+            [r["controlled_max_abs_dpsi0_dt"] for r in rows],
+        ),
+        "slope_logS_full_max_abs_dpsi0_dt": loglog_slope(
+            [r["S"] for r in rows],
+            [r["full_max_abs_dpsi0_dt"] for r in rows],
+        ),
+        "slope_logS_controlled_max_abs_dpsi_w0_dt": loglog_slope(
+            [r["S"] for r in rows],
+            [r["controlled_max_abs_dpsi_w0_dt"] for r in rows],
+        ),
+        "slope_logS_full_max_abs_dpsi_w0_dt": loglog_slope(
+            [r["S"] for r in rows],
+            [r["full_max_abs_dpsi_w0_dt"] for r in rows],
+        ),
+    }
+    scan_summary.update(slope_metrics)
+    scan_summary["slope_delta_full_minus_controlled_max_abs_dpsi0_dt"] = (
+        slope_metrics["slope_logS_full_max_abs_dpsi0_dt"]
+        - slope_metrics["slope_logS_controlled_max_abs_dpsi0_dt"]
+        if (
+            math.isfinite(slope_metrics["slope_logS_full_max_abs_dpsi0_dt"])
+            and math.isfinite(slope_metrics["slope_logS_controlled_max_abs_dpsi0_dt"])
+        )
+        else math.nan
+    )
+    scan_summary["slope_delta_full_minus_controlled_max_abs_dpsi_w0_dt"] = (
+        slope_metrics["slope_logS_full_max_abs_dpsi_w0_dt"]
+        - slope_metrics["slope_logS_controlled_max_abs_dpsi_w0_dt"]
+        if (
+            math.isfinite(slope_metrics["slope_logS_full_max_abs_dpsi_w0_dt"])
+            and math.isfinite(slope_metrics["slope_logS_controlled_max_abs_dpsi_w0_dt"])
+        )
+        else math.nan
+    )
     scan_check_status, scan_check_failures = evaluate_scan_summary(
         scan_summary,
         min_abs_corr,

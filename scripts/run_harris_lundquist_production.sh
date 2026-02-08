@@ -329,11 +329,36 @@ fi
 
 python3 - "${SUMMARY_CSV}" <<'PY'
 import csv
+import math
 import pathlib
 import sys
 
 summary_csv = pathlib.Path(sys.argv[1])
 rows = list(csv.DictReader(summary_csv.open("r", encoding="utf-8")))
+
+
+def slope_loglog(xs, ys):
+    samples = []
+    for x, y in zip(xs, ys):
+        try:
+            xf = float(x)
+            yf = float(y)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(xf) or not math.isfinite(yf):
+            continue
+        if xf <= 0.0 or yf <= 0.0:
+            continue
+        samples.append((math.log10(xf), math.log10(yf)))
+    if len(samples) < 2:
+        return float("nan")
+    mean_x = sum(x for x, _ in samples) / len(samples)
+    mean_y = sum(y for _, y in samples) / len(samples)
+    var_x = sum((x - mean_x) * (x - mean_x) for x, _ in samples)
+    if var_x <= 0.0:
+        return float("nan")
+    cov_xy = sum((x - mean_x) * (y - mean_y) for x, y in samples)
+    return cov_xy / var_x
 
 print("production_summary_csv," + str(summary_csv))
 print(
@@ -385,6 +410,29 @@ for row in rows:
             ]
         )
     )
+
+s_vals = [row.get("S", "") for row in rows]
+ctrl_dpsi0 = [row.get("controlled_max_abs_dpsi0_dt", "") for row in rows]
+full_dpsi0 = [row.get("full_max_abs_dpsi0_dt", "") for row in rows]
+ctrl_dpsiw0 = [row.get("controlled_max_abs_dpsi_w0_dt", "") for row in rows]
+full_dpsiw0 = [row.get("full_max_abs_dpsi_w0_dt", "") for row in rows]
+
+slope_ctrl_dpsi0 = slope_loglog(s_vals, ctrl_dpsi0)
+slope_full_dpsi0 = slope_loglog(s_vals, full_dpsi0)
+slope_ctrl_dpsiw0 = slope_loglog(s_vals, ctrl_dpsiw0)
+slope_full_dpsiw0 = slope_loglog(s_vals, full_dpsiw0)
+
+print(
+    "scan_rate_slope_summary,"
+    f"slope_logS_controlled_max_abs_dpsi0_dt={slope_ctrl_dpsi0:.6e},"
+    f"slope_logS_full_max_abs_dpsi0_dt={slope_full_dpsi0:.6e},"
+    f"slope_delta_full_minus_controlled_max_abs_dpsi0_dt="
+    f"{(slope_full_dpsi0 - slope_ctrl_dpsi0):.6e},"
+    f"slope_logS_controlled_max_abs_dpsi_w0_dt={slope_ctrl_dpsiw0:.6e},"
+    f"slope_logS_full_max_abs_dpsi_w0_dt={slope_full_dpsiw0:.6e},"
+    f"slope_delta_full_minus_controlled_max_abs_dpsi_w0_dt="
+    f"{(slope_full_dpsiw0 - slope_ctrl_dpsiw0):.6e}"
+)
 PY
 
 if [[ "${SKIP_PLOTS}" -eq 0 ]]; then
