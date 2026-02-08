@@ -118,11 +118,23 @@ For the 4D modes development flow in this repo, use these scripts:
 
     ./scripts/run_modes4d_results_pack.sh --build-dir ./build-baseline
 
+6. Frozen high-S publication profile (`highs_pub_v2`, includes `S=4000`):
+
+    ./scripts/run_harris_highs_pub_v2_bundle.sh
+
+   This profile uses:
+   - `S=250,500,1000,2000,4000`
+   - `tlim=0.20`, `nlim=2000`, `output_dt=0.02`
+   - `closure_local_mode0_abs_rate_tol=2.0e-6`
+   - phase ensemble seeds `0..9`
+   - MPI+HDF5 smoke with resistivity set for `S=4000`
+
 Key outputs are written under `<workdir>/outputs`, including:
 - `lundquist_scan_summary.csv` and `production_report.md` for production runs
 - `envelope_summary.csv` and `envelope_report.md` for envelope campaigns
 - `phase_ensemble_summary.csv` and `phase_ensemble_report.md` for phase ensembles
 - `modes4d_results_status.csv` and `modes4d_results_pack.md` for publication bundles
+- `uncertainty_bands_report.md` and `uncertainty_bands.png` for phase-ensemble bands
 - `overall_status,PASS|FAIL` and `topology_status,PASS|FAIL` in production stdout
 
 #### Building AthenaPK
