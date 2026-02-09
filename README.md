@@ -147,6 +147,17 @@ For the 4D modes development flow in this repo, use these scripts:
    - `--athena-arg` for mesh/runtime overrides
    - `--scan-arg` for direct `harris_scan_matrix.py` options
 
+8. GPU build helper (CUDA/Kokkos):
+
+    ./scripts/configure_build_gpu.sh --jobs 2
+
+   This writes a GPU binary at:
+   - `./build-gpu-cuda124/bin/athenaPK`
+
+   To run with an explicit CUDA 12.4 toolkit:
+
+    CUDA_HOME=/usr/local/cuda-12.4 ./scripts/configure_build_gpu.sh --jobs 2
+
 Key outputs are written under `<workdir>/outputs`, including:
 - `lundquist_scan_summary.csv` and `production_report.md` for production runs
 - `envelope_summary.csv` and `envelope_report.md` for envelope campaigns
@@ -196,6 +207,10 @@ An Intel Skylake system (AVX512 instructions) with NVidia Volta V100 GPUs and wi
     cd build-gpu && make
     # or alternatively build with
     cmake --build build-gpu
+
+For local CUDA 12.4 + RTX40 development in this repo, prefer the helper wrapper:
+
+    CUDA_HOME=/usr/local/cuda-12.4 ./scripts/configure_build_gpu.sh --jobs 2
 
 #### Run AthenaPK
 

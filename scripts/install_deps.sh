@@ -9,6 +9,7 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 INSTALL_SYSTEM=true
 INSTALL_PYTHON=true
 ASSUME_YES=false
+INSTALL_GPU_TOOLCHAIN=false
 
 usage() {
   cat <<'EOF'
@@ -19,12 +20,14 @@ Install AthenaPK simulation dependencies (system + Python).
 Options:
   --python-only      Install only Python dependencies
   --system-only      Install only system dependencies
+  --gpu-toolchain    Install GPU build toolchain packages (CUDA + host compiler)
   --python <bin>     Python executable to use (default: PYTHON_BIN env or python3)
   -y, --yes          Pass -y to apt-get install
   -h, --help         Show this help message
 
 Examples:
   ./scripts/install_deps.sh --yes
+  ./scripts/install_deps.sh --gpu-toolchain --yes
   ./scripts/install_deps.sh --python-only
   ./scripts/install_deps.sh --system-only --yes
 EOF
@@ -37,6 +40,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --system-only)
       INSTALL_PYTHON=false
+      ;;
+    --gpu-toolchain)
+      INSTALL_GPU_TOOLCHAIN=true
       ;;
     --python)
       shift
@@ -102,6 +108,31 @@ if ${INSTALL_SYSTEM}; then
     libhdf5-dev
     libhdf5-openmpi-dev
   )
+  if ${INSTALL_GPU_TOOLCHAIN}; then
+    # Keep CUDA deps explicit/optional because they are large and not needed on CPU-only hosts.
+    # Prefer NVIDIA CUDA 12.x toolkit packages when available.
+    if apt-cache show cuda-toolkit-12-4 >/dev/null 2>&1; then
+      APT_PACKAGES+=(
+        cuda-toolkit-12-4
+      )
+    elif apt-cache show cuda-toolkit-12-3 >/dev/null 2>&1; then
+      APT_PACKAGES+=(
+        cuda-toolkit-12-3
+      )
+    elif apt-cache show cuda-toolkit-12-2 >/dev/null 2>&1; then
+      APT_PACKAGES+=(
+        cuda-toolkit-12-2
+      )
+    else
+      # Fallback to Ubuntu/Pop package (often CUDA 11.x), which typically
+      # needs an older GCC host compiler for nvcc compatibility.
+      APT_PACKAGES+=(
+        nvidia-cuda-toolkit
+        gcc-10
+        g++-10
+      )
+    fi
+  fi
 
   "${SUDO_CMD[@]}" apt-get update
   APT_INSTALL_CMD=(apt-get install)
@@ -110,6 +141,26 @@ if ${INSTALL_SYSTEM}; then
   fi
   APT_INSTALL_CMD+=("${APT_PACKAGES[@]}")
   "${SUDO_CMD[@]}" "${APT_INSTALL_CMD[@]}"
+
+  if ${INSTALL_GPU_TOOLCHAIN}; then
+    echo "[deps] Verifying CUDA toolchain..."
+    if ! command -v nvcc >/dev/null 2>&1; then
+      echo "error: nvcc not found on PATH after install." >&2
+      echo "hint: ensure CUDA bin path is exported (e.g. /usr/local/cuda/bin)." >&2
+      exit 1
+    fi
+    NVCC_VERSION_LINE="$(nvcc --version | rg 'release [0-9]+' -m1 || true)"
+    echo "${NVCC_VERSION_LINE}"
+
+    # Host-compiler guard for older CUDA toolchains.
+    if [[ "${NVCC_VERSION_LINE}" == *"release 11."* ]]; then
+      if command -v g++-10 >/dev/null 2>&1; then
+        echo "[deps] g++-10 detected for CUDA 11.x host compiler compatibility."
+      else
+        echo "warning: g++-10 not found. CUDA 11.x builds may fail with newer host gcc." >&2
+      fi
+    fi
+  fi
 fi
 
 if ${INSTALL_PYTHON}; then
