@@ -84,6 +84,9 @@ Implemented now:
   - `m4d_int_divpiy_mode0`
   - `m4d_int_divpiz_mode0`
   - `m4d_int_divpiw_mode0`
+  - `m4d_int_div_mode0_plasma_abs`
+  - `m4d_int_div_mode0_em_abs`
+  - `m4d_int_div_mode0_total_abs`
   - `m4d_int_srcmomx_mode0`
   - `m4d_int_srcmomy_mode0`
   - `m4d_int_srcmomz_mode0`
@@ -94,6 +97,10 @@ Implemented now:
   - `m4d_int_srcpiy_mode0`
   - `m4d_int_srcpiz_mode0`
   - `m4d_int_srcpiw_mode0`
+  - `m4d_int_src_mode0_plasma_abs`
+  - `m4d_int_src_mode0_em_abs`
+  - `m4d_int_src_mode0_timelike_abs`
+  - `m4d_int_src_mode0_total_abs`
   - `m4d_int_src_timelike_a0_from_piw`
   - `m4d_int_src_timelike_a0_from_piw_abs`
   - `m4d_int_src_timelike_aw_from_pi0`
@@ -366,6 +373,18 @@ The momentum/energy transport companions (`m4d_int_divmomx_mode0`,
 `m4d_int_divmomy_mode0`, `m4d_int_divmomz_mode0`, `m4d_int_divmomw_mode0`,
 `m4d_int_divenergy_mode0`) are accumulated the same way from corrected
 `plasma4d_cons` fluxes.
+The scan CSV also reports compact transfer/separation summaries used for
+4D-to-3D spillover triage:
+- w-slice separation:
+  - `final_psi_w0_minus_psi_proj_span`
+  - `final_psi_w0_minus_psi0_span`
+  - `final_psi_w0_over_psi_proj_span`
+  - `final_psi_w0_over_psi0_span`
+- mode-0 transfer totals:
+  - `final_int_src_mode0_total_abs`
+  - `final_int_div_mode0_total_abs`
+  - plus split plasma/EM/timelike totals
+    (`*_mode0_plasma_abs`, `*_mode0_em_abs`, `*_mode0_timelike_abs`)
 Full-case activity gates can be enabled with:
 - `--full-min-jw-ew-abs`
 - `--full-min-s-leak-abs`
@@ -1110,9 +1129,21 @@ Key parameters currently used from `<problem/harris_4d>`:
 - `p_bg`
 - `sheet_half_width`
 - `perturbation_amp`
+- `perturb_phase_x`
+- `perturb_phase_z`
 - `drift_current_scale`
 - `aw_mode1_amp`
 - `piw_mode1_amp`
+- `ay_mode1_amp`
+- `piy_mode1_amp`
+- `aw_mode1_phase_x`
+- `aw_mode1_phase_z`
+- `piw_mode1_phase_x`
+- `piw_mode1_phase_z`
+- `ay_mode1_phase_x`
+- `ay_mode1_phase_z`
+- `piy_mode1_phase_x`
+- `piy_mode1_phase_z`
 - `ay_mode2_amp`
 - `a0_mode2_amp`
 - `aw_mode2_amp`
@@ -1125,7 +1156,8 @@ Key parameters currently used from `<problem/harris_4d>`:
 - The `harris_4d` initializer currently sets:
   - hydro/MHD conservative state (`cons`) for a Harris-like zero-mode profile
   - mode-0 `A_y` perturbation in `em4d_a`
-  - optional mode-1 `A_w` perturbation in `em4d_a` for mixed-sector triggering
+  - optional mode-1 `A_w/Pi_w` and `A_y/Pi_y` seeds (with independent `x/z`
+    phase offsets) for mixed-sector and symmetry-breaking studies
   - optional mode-2 seeds (`A_y`, `A_0`, `A_w`, `pi_w`) for projected-proxy
     activation studies
   - species mode-0 plasma state in `plasma4d_cons` using q/m-aware splits that

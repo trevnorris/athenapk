@@ -66,6 +66,33 @@ def maybe_col(cols, key):
     return cols.get(key)
 
 
+def combine_abs_series(series_list):
+    length = None
+    for series in series_list:
+        if series is None:
+            continue
+        if length is None:
+            length = len(series)
+        elif len(series) != length:
+            return None
+    if length is None:
+        return None
+
+    combined = []
+    for i in range(length):
+        total = 0.0
+        any_finite = False
+        for series in series_list:
+            if series is None:
+                continue
+            value = series[i]
+            if math.isfinite(value):
+                total += abs(value)
+                any_finite = True
+        combined.append(total if any_finite else math.nan)
+    return combined
+
+
 def mode_activity_proxy(jw_mode_l2, jw_ew):
     candidates = []
     if isinstance(jw_mode_l2, float) and math.isfinite(jw_mode_l2):
@@ -318,9 +345,110 @@ def analyze_case(
     int_src_em_damping_abs = maybe_col(cols, "m4d_int_src_em_damping_abs")
     int_src_em_spatial_mixed_abs = maybe_col(cols, "m4d_int_src_em_spatial_mixed_abs")
     int_src_em_timelike_abs = maybe_col(cols, "m4d_int_src_em_timelike_abs")
+    int_div_mode0_plasma_abs = maybe_col(cols, "m4d_int_div_mode0_plasma_abs")
+    int_div_mode0_em_abs = maybe_col(cols, "m4d_int_div_mode0_em_abs")
+    int_div_mode0_total_abs = maybe_col(cols, "m4d_int_div_mode0_total_abs")
+    int_src_mode0_plasma_abs = maybe_col(cols, "m4d_int_src_mode0_plasma_abs")
+    int_src_mode0_em_abs = maybe_col(cols, "m4d_int_src_mode0_em_abs")
+    int_src_mode0_timelike_abs = maybe_col(cols, "m4d_int_src_mode0_timelike_abs")
+    int_src_mode0_total_abs = maybe_col(cols, "m4d_int_src_mode0_total_abs")
     cont_local_mode0_max_abs = maybe_col(cols, "m4d_cont_mode0_max_abs")
     cont_local_mode0_l1 = maybe_col(cols, "m4d_cont_mode0_l1")
     cont_local_mode0_l2 = maybe_col(cols, "m4d_cont_mode0_l2")
+
+    psi_w0_minus_psi_proj = [w - p for w, p in zip(psi_w0, psi_proj)]
+    psi_w0_minus_psi0 = [w - p0 for w, p0 in zip(psi_w0, psi0)]
+    psi_w0_over_psi_proj = [
+        (w / p) if math.isfinite(w) and math.isfinite(p) and abs(p) > 0.0 else math.nan
+        for w, p in zip(psi_w0, psi_proj)
+    ]
+    psi_proj_over_psi0 = [
+        (p / p0) if math.isfinite(p) and math.isfinite(p0) and abs(p0) > 0.0 else math.nan
+        for p, p0 in zip(psi_proj, psi0)
+    ]
+    psi_w0_over_psi0 = [
+        (w / p0) if math.isfinite(w) and math.isfinite(p0) and abs(p0) > 0.0 else math.nan
+        for w, p0 in zip(psi_w0, psi0)
+    ]
+
+    if int_div_mode0_plasma_abs is None:
+        int_div_mode0_plasma_abs = combine_abs_series(
+            [
+                int_divmomx_mode0,
+                int_divmomy_mode0,
+                int_divmomz_mode0,
+                int_divmomw_mode0,
+                int_divenergy_mode0,
+            ]
+        )
+    if int_div_mode0_em_abs is None:
+        int_div_mode0_em_abs = combine_abs_series(
+            [
+                int_divpi0_mode0,
+                int_divpix_mode0,
+                int_divpiy_mode0,
+                int_divpiz_mode0,
+                int_divpiw_mode0,
+            ]
+        )
+    if int_div_mode0_total_abs is None:
+        int_div_mode0_total_abs = combine_abs_series(
+            [
+                int_divj_mode0,
+                int_divmomx_mode0,
+                int_divmomy_mode0,
+                int_divmomz_mode0,
+                int_divmomw_mode0,
+                int_divenergy_mode0,
+                int_divpi0_mode0,
+                int_divpix_mode0,
+                int_divpiy_mode0,
+                int_divpiz_mode0,
+                int_divpiw_mode0,
+            ]
+        )
+    if int_src_mode0_plasma_abs is None:
+        int_src_mode0_plasma_abs = combine_abs_series(
+            [
+                int_srcmomx_mode0,
+                int_srcmomy_mode0,
+                int_srcmomz_mode0,
+                int_srcmomw_mode0,
+                int_srcenergy_mode0,
+            ]
+        )
+    if int_src_mode0_em_abs is None:
+        int_src_mode0_em_abs = combine_abs_series(
+            [
+                int_srcpi0_mode0,
+                int_srcpix_mode0,
+                int_srcpiy_mode0,
+                int_srcpiz_mode0,
+                int_srcpiw_mode0,
+            ]
+        )
+    if int_src_mode0_timelike_abs is None:
+        int_src_mode0_timelike_abs = combine_abs_series(
+            [maybe_col(cols, "m4d_int_src_timelike_a0_from_piw"), maybe_col(cols, "m4d_int_src_timelike_aw_from_pi0")]
+        )
+    if int_src_mode0_total_abs is None:
+        int_src_mode0_total_abs = combine_abs_series(
+            [
+                int_srcmomx_mode0,
+                int_srcmomy_mode0,
+                int_srcmomz_mode0,
+                int_srcmomw_mode0,
+                int_srcenergy_mode0,
+                int_srcpi0_mode0,
+                int_srcpix_mode0,
+                int_srcpiy_mode0,
+                int_srcpiz_mode0,
+                int_srcpiw_mode0,
+                maybe_col(cols, "m4d_int_src_timelike_a0_from_piw"),
+                maybe_col(cols, "m4d_int_src_timelike_aw_from_pi0"),
+            ]
+        )
+
     em_u_sub = None
     if (
         em_u_bulk is not None
@@ -547,6 +675,15 @@ def analyze_case(
         "final_psi0_span": psi0[-1],
         "final_psi_proj_span": psi_proj[-1],
         "final_psi_w0_span": psi_w0[-1],
+        "final_psi_w0_minus_psi_proj_span": psi_w0_minus_psi_proj[-1],
+        "final_psi_w0_minus_psi0_span": psi_w0_minus_psi0[-1],
+        "final_psi_w0_over_psi_proj_span": psi_w0_over_psi_proj[-1],
+        "final_psi_proj_over_psi0_span": psi_proj_over_psi0[-1],
+        "final_psi_w0_over_psi0_span": psi_w0_over_psi0[-1],
+        "max_abs_psi_w0_minus_psi_proj_span": max(
+            (abs(v) for v in psi_w0_minus_psi_proj if math.isfinite(v)),
+            default=math.nan,
+        ),
         "final_s_leak": leak[-1],
         "final_s_leak_abs": leak_abs[-1],
         "final_jw_ew": jw_ew[-1],
@@ -675,8 +812,41 @@ def analyze_case(
         "final_int_src_em_timelike_abs": int_src_em_timelike_abs[-1]
         if int_src_em_timelike_abs is not None
         else math.nan,
+        "final_int_div_mode0_plasma_abs": int_div_mode0_plasma_abs[-1]
+        if int_div_mode0_plasma_abs is not None
+        else math.nan,
+        "final_int_div_mode0_em_abs": int_div_mode0_em_abs[-1]
+        if int_div_mode0_em_abs is not None
+        else math.nan,
+        "final_int_div_mode0_total_abs": int_div_mode0_total_abs[-1]
+        if int_div_mode0_total_abs is not None
+        else math.nan,
+        "final_int_src_mode0_plasma_abs": int_src_mode0_plasma_abs[-1]
+        if int_src_mode0_plasma_abs is not None
+        else math.nan,
+        "final_int_src_mode0_em_abs": int_src_mode0_em_abs[-1]
+        if int_src_mode0_em_abs is not None
+        else math.nan,
+        "final_int_src_mode0_timelike_abs": int_src_mode0_timelike_abs[-1]
+        if int_src_mode0_timelike_abs is not None
+        else math.nan,
+        "final_int_src_mode0_total_abs": int_src_mode0_total_abs[-1]
+        if int_src_mode0_total_abs is not None
+        else math.nan,
         "corr_psi0_jw_mode_l2_1": pearson(psi0, jw_mode1_l2)
         if jw_mode1_l2 is not None
+        else math.nan,
+        "corr_psiw0_minus_psiproj_mixed_ew2": pearson(psi_w0_minus_psi_proj, mixed_ew2),
+        "corr_psiw0_minus_psiproj_src_mode0_total_abs": pearson(
+            psi_w0_minus_psi_proj, int_src_mode0_total_abs
+        )
+        if int_src_mode0_total_abs is not None
+        else math.nan,
+        "corr_psiw0_src_mode0_total_abs": pearson(psi_w0, int_src_mode0_total_abs)
+        if int_src_mode0_total_abs is not None
+        else math.nan,
+        "corr_psiw0_div_mode0_total_abs": pearson(psi_w0, int_div_mode0_total_abs)
+        if int_div_mode0_total_abs is not None
         else math.nan,
         "closure_max_norm": closure_max_norm,
         "closure_rms_norm": closure_rms_norm,
@@ -799,6 +969,12 @@ def print_table(results):
         "final_psi0_span",
         "final_psi_proj_span",
         "final_psi_w0_span",
+        "final_psi_w0_minus_psi_proj_span",
+        "final_psi_w0_minus_psi0_span",
+        "final_psi_w0_over_psi_proj_span",
+        "final_psi_proj_over_psi0_span",
+        "final_psi_w0_over_psi0_span",
+        "max_abs_psi_w0_minus_psi_proj_span",
         "final_s_leak",
         "final_s_leak_abs",
         "final_jw_ew",
@@ -850,6 +1026,13 @@ def print_table(results):
         "final_int_src_em_damping_abs",
         "final_int_src_em_spatial_mixed_abs",
         "final_int_src_em_timelike_abs",
+        "final_int_div_mode0_plasma_abs",
+        "final_int_div_mode0_em_abs",
+        "final_int_div_mode0_total_abs",
+        "final_int_src_mode0_plasma_abs",
+        "final_int_src_mode0_em_abs",
+        "final_int_src_mode0_timelike_abs",
+        "final_int_src_mode0_total_abs",
         "corr_psi0_s_leak",
         "corr_psi0_s_leak_abs",
         "corr_psi0_jw_ew",
@@ -868,6 +1051,10 @@ def print_table(results):
         "corr_psiw0_s_leak_abs",
         "corr_psiw0_jw_ew",
         "corr_psiw0_mixed_ew2",
+        "corr_psiw0_minus_psiproj_mixed_ew2",
+        "corr_psiw0_minus_psiproj_src_mode0_total_abs",
+        "corr_psiw0_src_mode0_total_abs",
+        "corr_psiw0_div_mode0_total_abs",
         "closure_max_norm",
         "closure_rms_norm",
         "closure_max_abs_rate",

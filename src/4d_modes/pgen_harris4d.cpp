@@ -27,6 +27,24 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
       pin->GetOrAddReal("problem/harris_4d", "drift_current_scale", 0.0);
   const Real aw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "aw_mode1_amp", 0.0);
   const Real piw_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "piw_mode1_amp", 0.0);
+  const Real ay_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "ay_mode1_amp", 0.0);
+  const Real piy_mode1_amp = pin->GetOrAddReal("problem/harris_4d", "piy_mode1_amp", 0.0);
+  const Real aw_mode1_phase_x =
+      pin->GetOrAddReal("problem/harris_4d", "aw_mode1_phase_x", 0.0);
+  const Real aw_mode1_phase_z =
+      pin->GetOrAddReal("problem/harris_4d", "aw_mode1_phase_z", 0.0);
+  const Real piw_mode1_phase_x =
+      pin->GetOrAddReal("problem/harris_4d", "piw_mode1_phase_x", 0.0);
+  const Real piw_mode1_phase_z =
+      pin->GetOrAddReal("problem/harris_4d", "piw_mode1_phase_z", 0.0);
+  const Real ay_mode1_phase_x =
+      pin->GetOrAddReal("problem/harris_4d", "ay_mode1_phase_x", 0.0);
+  const Real ay_mode1_phase_z =
+      pin->GetOrAddReal("problem/harris_4d", "ay_mode1_phase_z", 0.0);
+  const Real piy_mode1_phase_x =
+      pin->GetOrAddReal("problem/harris_4d", "piy_mode1_phase_x", 0.0);
+  const Real piy_mode1_phase_z =
+      pin->GetOrAddReal("problem/harris_4d", "piy_mode1_phase_z", 0.0);
   const Real ay_mode2_amp = pin->GetOrAddReal("problem/harris_4d", "ay_mode2_amp", 0.0);
   const Real a0_mode2_amp = pin->GetOrAddReal("problem/harris_4d", "a0_mode2_amp", 0.0);
   const Real aw_mode2_amp = pin->GetOrAddReal("problem/harris_4d", "aw_mode2_amp", 0.0);
@@ -125,8 +143,19 @@ void InitializeHarrisModes(parthenon::MeshBlock *pmb, parthenon::ParameterInput 
         const Real phase = std::cos(phase_x) * std::cos(phase_z);
         if (n_modes > 1) {
           const int aw_mode1_idx = 5 + 4;
-          em_a(aw_mode1_idx, k, j, i) = aw_mode1_amp * phase;
-          em_pi(aw_mode1_idx, k, j, i) = piw_mode1_amp * phase;
+          const int ay_mode1_idx = 5 + 2;
+          const Real phase_aw =
+              std::cos(phase_x + aw_mode1_phase_x) * std::cos(phase_z + aw_mode1_phase_z);
+          const Real phase_piw =
+              std::cos(phase_x + piw_mode1_phase_x) * std::cos(phase_z + piw_mode1_phase_z);
+          const Real phase_ay =
+              std::cos(phase_x + ay_mode1_phase_x) * std::cos(phase_z + ay_mode1_phase_z);
+          const Real phase_piy =
+              std::cos(phase_x + piy_mode1_phase_x) * std::cos(phase_z + piy_mode1_phase_z);
+          em_a(aw_mode1_idx, k, j, i) = aw_mode1_amp * phase_aw;
+          em_pi(aw_mode1_idx, k, j, i) = piw_mode1_amp * phase_piw;
+          em_a(ay_mode1_idx, k, j, i) = ay_mode1_amp * phase_ay;
+          em_pi(ay_mode1_idx, k, j, i) = piy_mode1_amp * phase_piy;
         }
         if (n_modes > 2) {
           const int mode2_off = 10;

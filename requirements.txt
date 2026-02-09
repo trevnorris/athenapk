@@ -4,3 +4,4 @@ scipy
 matplotlib
 h5py
 unyt
+cupy-cuda12x

@@ -254,6 +254,79 @@ Real SrcEMTimelikeAbsAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_src_em_timelike_abs");
 }
 
+Real DivMode0PlasmaAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return std::abs(pkg->Param<double>("diag/int_divmomx_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divmomy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divmomz_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divmomw_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divenergy_mode0"));
+}
+
+Real DivMode0EMAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return std::abs(pkg->Param<double>("diag/int_divpi0_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divpix_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divpiy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divpiz_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divpiw_mode0"));
+}
+
+Real DivMode0TotalAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return std::abs(pkg->Param<double>("diag/int_divj_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divmomx_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divmomy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divmomz_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divmomw_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divenergy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divpi0_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divpix_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divpiy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divpiz_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_divpiw_mode0"));
+}
+
+Real SrcMode0PlasmaAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return std::abs(pkg->Param<double>("diag/int_srcmomx_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcmomy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcmomz_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcmomw_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcenergy_mode0"));
+}
+
+Real SrcMode0EMAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return std::abs(pkg->Param<double>("diag/int_srcpi0_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcpix_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcpiy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcpiz_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcpiw_mode0"));
+}
+
+Real SrcMode0TimelikeAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return std::abs(pkg->Param<double>("diag/int_src_timelike_a0_from_piw")) +
+         std::abs(pkg->Param<double>("diag/int_src_timelike_aw_from_pi0"));
+}
+
+Real SrcMode0TotalAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return std::abs(pkg->Param<double>("diag/int_srcmomx_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcmomy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcmomz_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcmomw_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcenergy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcpi0_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcpix_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcpiy_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcpiz_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_srcpiw_mode0")) +
+         std::abs(pkg->Param<double>("diag/int_src_timelike_a0_from_piw")) +
+         std::abs(pkg->Param<double>("diag/int_src_timelike_aw_from_pi0"));
+}
+
 Real ContinuityLocalL1Hst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/continuity_local_l1");
@@ -1680,6 +1753,27 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, SrcEMTimelikeAbsAccumulatorHst,
       "m4d_int_src_em_timelike_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, DivMode0PlasmaAbsAccumulatorHst,
+      "m4d_int_div_mode0_plasma_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, DivMode0EMAbsAccumulatorHst,
+      "m4d_int_div_mode0_em_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, DivMode0TotalAbsAccumulatorHst,
+      "m4d_int_div_mode0_total_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcMode0PlasmaAbsAccumulatorHst,
+      "m4d_int_src_mode0_plasma_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcMode0EMAbsAccumulatorHst,
+      "m4d_int_src_mode0_em_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcMode0TimelikeAbsAccumulatorHst,
+      "m4d_int_src_mode0_timelike_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcMode0TotalAbsAccumulatorHst,
+      "m4d_int_src_mode0_total_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ContinuityLocalL1Hst, "m4d_cont_local_l1"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(

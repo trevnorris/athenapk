@@ -43,3 +43,6 @@ Testing
 # generate_cluster_input.ipynb files
 inputs/cluster/generate_cluster_input.ipynb
 inputs/cluster/my_cluster.input
+
+# local ad-hoc run captures
+latest-run*.out
