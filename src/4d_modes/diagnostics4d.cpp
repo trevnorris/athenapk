@@ -40,6 +40,17 @@ enum class BraneMixedQuantity {
   MixedC2
 };
 
+enum class SpillbackEMFQuantity {
+  VWCMagnitude,
+  VWCParallelMagnitude,
+  CovVxBMagnitude,
+  CovVxBParallelMagnitude,
+  JwL1,
+  JwL2,
+  EwL1,
+  EwL2
+};
+
 enum class HelicitySubscaleQuantity {
   HSub,
   EdotBSub
@@ -49,6 +60,8 @@ enum class TransverseEnergyQuantity {
   PoyntingW,
   LeakageW
 };
+
+std::vector<Real> BranePointCoefficients(const ModeTables &tables, const int n_modes);
 
 Real FieldL2Integral(MeshData<Real> *md, const std::string &field_name) {
   auto *pmb = md->GetBlockData(0)->GetBlockPointer();
@@ -252,6 +265,41 @@ Real SrcEMSpatialMixedAbsAccumulatorHst(MeshData<Real> *md) {
 Real SrcEMTimelikeAbsAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_src_em_timelike_abs");
+}
+
+Real SrcEMGaugeAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_gauge_abs");
+}
+
+Real GaugeL1Hst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/gauge_l1");
+}
+
+Real GaugeL2Hst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/gauge_l2");
+}
+
+Real GaugeMaxAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/gauge_max_abs");
+}
+
+Real GaugeMode0L1Hst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/gauge_mode0_l1");
+}
+
+Real GaugeMode0L2Hst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/gauge_mode0_l2");
+}
+
+Real GaugeMode0MaxAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/gauge_mode0_max_abs");
 }
 
 Real DivMode0PlasmaAbsAccumulatorHst(MeshData<Real> *md) {
@@ -547,6 +595,351 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
     }
   }
   return integral;
+}
+
+Real SpillbackEMFIntegral(MeshData<Real> *md, SpillbackEMFQuantity quantity) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
+  const int n_quad = tables.NumQuadrature();
+  const auto &weights = tables.Weights();
+  const Real z_int = tables.Lambda() * std::sqrt(std::acos(-1.0));
+  const Real inv_z_int = 1.0 / z_int;
+  const Real rho_floor = modes_pkg->Param<double>("plasma4d/rho_floor");
+  const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
+  const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
+
+  Real integral = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto *pmb = bd->GetBlockPointer();
+    auto &coords = pmb->coords;
+
+    auto a = bd->Get("em4d_a").data.GetHostMirrorAndCopy();
+    auto pi = bd->Get("em4d_pi").data.GetHostMirrorAndCopy();
+    auto plasma = bd->Get("plasma4d_cons").data.GetHostMirrorAndCopy();
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+    const bool has_x = (ib.e > ib.s);
+    const bool has_y = (jb.e > jb.s);
+    const bool has_z = (kb.e > kb.s);
+
+    std::vector<Real> a0_modes(n_modes, 0.0);
+    std::vector<Real> ax_modes(n_modes, 0.0);
+    std::vector<Real> ay_modes(n_modes, 0.0);
+    std::vector<Real> az_modes(n_modes, 0.0);
+    std::vector<Real> piw_modes(n_modes, 0.0);
+    std::vector<Real> pix_modes(n_modes, 0.0);
+    std::vector<Real> piy_modes(n_modes, 0.0);
+    std::vector<Real> piz_modes(n_modes, 0.0);
+    std::vector<Real> da0_dx_modes(n_modes, 0.0);
+    std::vector<Real> da0_dy_modes(n_modes, 0.0);
+    std::vector<Real> da0_dz_modes(n_modes, 0.0);
+    std::vector<Real> dax_dy_modes(n_modes, 0.0);
+    std::vector<Real> dax_dz_modes(n_modes, 0.0);
+    std::vector<Real> day_dx_modes(n_modes, 0.0);
+    std::vector<Real> day_dz_modes(n_modes, 0.0);
+    std::vector<Real> daz_dx_modes(n_modes, 0.0);
+    std::vector<Real> daz_dy_modes(n_modes, 0.0);
+    std::vector<Real> daw_dx_modes(n_modes, 0.0);
+    std::vector<Real> daw_dy_modes(n_modes, 0.0);
+    std::vector<Real> daw_dz_modes(n_modes, 0.0);
+
+    std::vector<Real> rho_e_modes(n_modes, 0.0);
+    std::vector<Real> momx_e_modes(n_modes, 0.0);
+    std::vector<Real> momy_e_modes(n_modes, 0.0);
+    std::vector<Real> momz_e_modes(n_modes, 0.0);
+    std::vector<Real> momw_e_modes(n_modes, 0.0);
+    std::vector<Real> momw_i_modes(n_modes, 0.0);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          const Real dx = has_x ? coords.Dxc<1>(i) : 1.0;
+          const Real dy = has_y ? coords.Dxc<2>(j) : 1.0;
+          const Real dz = has_z ? coords.Dxc<3>(k) : 1.0;
+
+          for (int n = 0; n < n_modes; ++n) {
+            const int off = 5 * n;
+            const int ion_base = PlasmaIndex(0, n, 0, n_modes);
+            const int ele_base = PlasmaIndex(1, n, 0, n_modes);
+
+            a0_modes[n] = a(off + kCompA0, k, j, i);
+            ax_modes[n] = a(off + kCompAX, k, j, i);
+            ay_modes[n] = a(off + kCompAY, k, j, i);
+            az_modes[n] = a(off + kCompAZ, k, j, i);
+            piw_modes[n] = pi(off + kCompAW, k, j, i);
+            pix_modes[n] = pi(off + kCompAX, k, j, i);
+            piy_modes[n] = pi(off + kCompAY, k, j, i);
+            piz_modes[n] = pi(off + kCompAZ, k, j, i);
+
+            rho_e_modes[n] = plasma(ele_base + kPlasmaRho, k, j, i);
+            momx_e_modes[n] = plasma(ele_base + kPlasmaMomX, k, j, i);
+            momy_e_modes[n] = plasma(ele_base + kPlasmaMomY, k, j, i);
+            momz_e_modes[n] = plasma(ele_base + kPlasmaMomZ, k, j, i);
+            momw_e_modes[n] = plasma(ele_base + kPlasmaMomW, k, j, i);
+            momw_i_modes[n] = plasma(ion_base + kPlasmaMomW, k, j, i);
+
+            if (has_x) {
+              da0_dx_modes[n] =
+                  (a(off + kCompA0, k, j, i + 1) - a(off + kCompA0, k, j, i - 1)) /
+                  (2.0 * dx);
+              day_dx_modes[n] =
+                  (a(off + kCompAY, k, j, i + 1) - a(off + kCompAY, k, j, i - 1)) /
+                  (2.0 * dx);
+              daz_dx_modes[n] =
+                  (a(off + kCompAZ, k, j, i + 1) - a(off + kCompAZ, k, j, i - 1)) /
+                  (2.0 * dx);
+              daw_dx_modes[n] =
+                  (a(off + kCompAW, k, j, i + 1) - a(off + kCompAW, k, j, i - 1)) /
+                  (2.0 * dx);
+            }
+            if (has_y) {
+              da0_dy_modes[n] =
+                  (a(off + kCompA0, k, j + 1, i) - a(off + kCompA0, k, j - 1, i)) /
+                  (2.0 * dy);
+              dax_dy_modes[n] =
+                  (a(off + kCompAX, k, j + 1, i) - a(off + kCompAX, k, j - 1, i)) /
+                  (2.0 * dy);
+              daz_dy_modes[n] =
+                  (a(off + kCompAZ, k, j + 1, i) - a(off + kCompAZ, k, j - 1, i)) /
+                  (2.0 * dy);
+              daw_dy_modes[n] =
+                  (a(off + kCompAW, k, j + 1, i) - a(off + kCompAW, k, j - 1, i)) /
+                  (2.0 * dy);
+            }
+            if (has_z) {
+              da0_dz_modes[n] =
+                  (a(off + kCompA0, k + 1, j, i) - a(off + kCompA0, k - 1, j, i)) /
+                  (2.0 * dz);
+              dax_dz_modes[n] =
+                  (a(off + kCompAX, k + 1, j, i) - a(off + kCompAX, k - 1, j, i)) /
+                  (2.0 * dz);
+              day_dz_modes[n] =
+                  (a(off + kCompAY, k + 1, j, i) - a(off + kCompAY, k - 1, j, i)) /
+                  (2.0 * dz);
+              daw_dz_modes[n] =
+                  (a(off + kCompAW, k + 1, j, i) - a(off + kCompAW, k - 1, j, i)) /
+                  (2.0 * dz);
+            }
+          }
+
+          Real vx_bar = 0.0;
+          Real vy_bar = 0.0;
+          Real vz_bar = 0.0;
+          Real bx_bar = 0.0;
+          Real by_bar = 0.0;
+          Real bz_bar = 0.0;
+          Real vxb_x_bar = 0.0;
+          Real vxb_y_bar = 0.0;
+          Real vxb_z_bar = 0.0;
+          Real vwc_x_bar = 0.0;
+          Real vwc_y_bar = 0.0;
+          Real vwc_z_bar = 0.0;
+          Real jw_l1 = 0.0;
+          Real jw_l2_sq = 0.0;
+          Real ew_l1 = 0.0;
+          Real ew_l2_sq = 0.0;
+
+          for (int q = 0; q < n_quad; ++q) {
+            Real d_w_a0 = 0.0;
+            Real d_w_ax = 0.0;
+            Real d_w_ay = 0.0;
+            Real d_w_az = 0.0;
+            Real piw_node = 0.0;
+            Real pix_node = 0.0;
+            Real piy_node = 0.0;
+            Real piz_node = 0.0;
+            Real da0_dx_node = 0.0;
+            Real da0_dy_node = 0.0;
+            Real da0_dz_node = 0.0;
+            Real dax_dy_node = 0.0;
+            Real dax_dz_node = 0.0;
+            Real day_dx_node = 0.0;
+            Real day_dz_node = 0.0;
+            Real daz_dx_node = 0.0;
+            Real daz_dy_node = 0.0;
+            Real daw_dx_node = 0.0;
+            Real daw_dy_node = 0.0;
+            Real daw_dz_node = 0.0;
+            Real rho_e_node = 0.0;
+            Real momx_e_node = 0.0;
+            Real momy_e_node = 0.0;
+            Real momz_e_node = 0.0;
+            Real momw_e_node = 0.0;
+            Real momw_i_node = 0.0;
+
+            for (int n = 0; n < n_modes; ++n) {
+              const Real phi_nq = tables.Phi(n, q);
+              const Real dphi_nq = tables.DPhi(n, q);
+              d_w_a0 += a0_modes[n] * dphi_nq;
+              d_w_ax += ax_modes[n] * dphi_nq;
+              d_w_ay += ay_modes[n] * dphi_nq;
+              d_w_az += az_modes[n] * dphi_nq;
+              piw_node += piw_modes[n] * phi_nq;
+              pix_node += pix_modes[n] * phi_nq;
+              piy_node += piy_modes[n] * phi_nq;
+              piz_node += piz_modes[n] * phi_nq;
+              da0_dx_node += da0_dx_modes[n] * phi_nq;
+              da0_dy_node += da0_dy_modes[n] * phi_nq;
+              da0_dz_node += da0_dz_modes[n] * phi_nq;
+              dax_dy_node += dax_dy_modes[n] * phi_nq;
+              dax_dz_node += dax_dz_modes[n] * phi_nq;
+              day_dx_node += day_dx_modes[n] * phi_nq;
+              day_dz_node += day_dz_modes[n] * phi_nq;
+              daz_dx_node += daz_dx_modes[n] * phi_nq;
+              daz_dy_node += daz_dy_modes[n] * phi_nq;
+              daw_dx_node += daw_dx_modes[n] * phi_nq;
+              daw_dy_node += daw_dy_modes[n] * phi_nq;
+              daw_dz_node += daw_dz_modes[n] * phi_nq;
+              rho_e_node += rho_e_modes[n] * phi_nq;
+              momx_e_node += momx_e_modes[n] * phi_nq;
+              momy_e_node += momy_e_modes[n] * phi_nq;
+              momz_e_node += momz_e_modes[n] * phi_nq;
+              momw_e_node += momw_e_modes[n] * phi_nq;
+              momw_i_node += momw_i_modes[n] * phi_nq;
+            }
+
+            const Real ex = -pix_node - da0_dx_node;
+            const Real ey = -piy_node - da0_dy_node;
+            const Real ez = -piz_node - da0_dz_node;
+            const Real bx = daz_dy_node - day_dz_node;
+            const Real by = dax_dz_node - daz_dx_node;
+            const Real bz = day_dx_node - dax_dy_node;
+            const Real ew = -piw_node - d_w_a0;
+            const Real cx = daw_dx_node - d_w_ax;
+            const Real cy = daw_dy_node - d_w_ay;
+            const Real cz = daw_dz_node - d_w_az;
+
+            const Real rho_e_safe = std::max(rho_e_node, rho_floor);
+            const Real vx = momx_e_node / rho_e_safe;
+            const Real vy = momy_e_node / rho_e_safe;
+            const Real vz = momz_e_node / rho_e_safe;
+            const Real vw = momw_e_node / rho_e_safe;
+            const Real vxb_x = (vy * bz) - (vz * by);
+            const Real vxb_y = (vz * bx) - (vx * bz);
+            const Real vxb_z = (vx * by) - (vy * bx);
+            const Real vwc_x = -vw * cx;
+            const Real vwc_y = -vw * cy;
+            const Real vwc_z = -vw * cz;
+            const Real jw_node = (qom_ion * momw_i_node) + (qom_electron * momw_e_node);
+
+            vx_bar += weights[q] * vx;
+            vy_bar += weights[q] * vy;
+            vz_bar += weights[q] * vz;
+            bx_bar += weights[q] * bx;
+            by_bar += weights[q] * by;
+            bz_bar += weights[q] * bz;
+            vxb_x_bar += weights[q] * vxb_x;
+            vxb_y_bar += weights[q] * vxb_y;
+            vxb_z_bar += weights[q] * vxb_z;
+            vwc_x_bar += weights[q] * vwc_x;
+            vwc_y_bar += weights[q] * vwc_y;
+            vwc_z_bar += weights[q] * vwc_z;
+            jw_l1 += weights[q] * std::abs(jw_node);
+            jw_l2_sq += weights[q] * jw_node * jw_node;
+            ew_l1 += weights[q] * std::abs(ew);
+            ew_l2_sq += weights[q] * ew * ew;
+          }
+
+          vx_bar *= inv_z_int;
+          vy_bar *= inv_z_int;
+          vz_bar *= inv_z_int;
+          bx_bar *= inv_z_int;
+          by_bar *= inv_z_int;
+          bz_bar *= inv_z_int;
+          vxb_x_bar *= inv_z_int;
+          vxb_y_bar *= inv_z_int;
+          vxb_z_bar *= inv_z_int;
+          vwc_x_bar *= inv_z_int;
+          vwc_y_bar *= inv_z_int;
+          vwc_z_bar *= inv_z_int;
+          jw_l1 *= inv_z_int;
+          jw_l2_sq *= inv_z_int;
+          ew_l1 *= inv_z_int;
+          ew_l2_sq *= inv_z_int;
+
+          const Real bbar2 = (bx_bar * bx_bar) + (by_bar * by_bar) + (bz_bar * bz_bar);
+          const Real bbar_mag = std::sqrt(bbar2) + 1.0e-30;
+          const Real vbar_x_b_x = (vy_bar * bz_bar) - (vz_bar * by_bar);
+          const Real vbar_x_b_y = (vz_bar * bx_bar) - (vx_bar * bz_bar);
+          const Real vbar_x_b_z = (vx_bar * by_bar) - (vy_bar * bx_bar);
+          const Real cov_x = vxb_x_bar - vbar_x_b_x;
+          const Real cov_y = vxb_y_bar - vbar_x_b_y;
+          const Real cov_z = vxb_z_bar - vbar_x_b_z;
+
+          const Real vwc_mag =
+              std::sqrt((vwc_x_bar * vwc_x_bar) + (vwc_y_bar * vwc_y_bar) +
+                        (vwc_z_bar * vwc_z_bar));
+          const Real vwc_par_mag =
+              std::abs((vwc_x_bar * bx_bar) + (vwc_y_bar * by_bar) + (vwc_z_bar * bz_bar)) /
+              bbar_mag;
+          const Real cov_mag =
+              std::sqrt((cov_x * cov_x) + (cov_y * cov_y) + (cov_z * cov_z));
+          const Real cov_par_mag =
+              std::abs((cov_x * bx_bar) + (cov_y * by_bar) + (cov_z * bz_bar)) / bbar_mag;
+          const Real jw_l2 = std::sqrt(std::max(jw_l2_sq, 0.0));
+          const Real ew_l2 = std::sqrt(std::max(ew_l2_sq, 0.0));
+
+          Real val = 0.0;
+          if (quantity == SpillbackEMFQuantity::VWCMagnitude) {
+            val = vwc_mag;
+          } else if (quantity == SpillbackEMFQuantity::VWCParallelMagnitude) {
+            val = vwc_par_mag;
+          } else if (quantity == SpillbackEMFQuantity::CovVxBMagnitude) {
+            val = cov_mag;
+          } else if (quantity == SpillbackEMFQuantity::CovVxBParallelMagnitude) {
+            val = cov_par_mag;
+          } else if (quantity == SpillbackEMFQuantity::JwL1) {
+            val = jw_l1;
+          } else if (quantity == SpillbackEMFQuantity::JwL2) {
+            val = jw_l2;
+          } else if (quantity == SpillbackEMFQuantity::EwL1) {
+            val = ew_l1;
+          } else {
+            val = ew_l2;
+          }
+
+          integral += val * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return integral;
+}
+
+Real EMFVwCAbsHst(MeshData<Real> *md) {
+  return SpillbackEMFIntegral(md, SpillbackEMFQuantity::VWCMagnitude);
+}
+
+Real EMFVwCParallelAbsHst(MeshData<Real> *md) {
+  return SpillbackEMFIntegral(md, SpillbackEMFQuantity::VWCParallelMagnitude);
+}
+
+Real EMFCovVxBAbsHst(MeshData<Real> *md) {
+  return SpillbackEMFIntegral(md, SpillbackEMFQuantity::CovVxBMagnitude);
+}
+
+Real EMFCovVxBParallelAbsHst(MeshData<Real> *md) {
+  return SpillbackEMFIntegral(md, SpillbackEMFQuantity::CovVxBParallelMagnitude);
+}
+
+Real JwL1Hst(MeshData<Real> *md) {
+  return SpillbackEMFIntegral(md, SpillbackEMFQuantity::JwL1);
+}
+
+Real JwL2Hst(MeshData<Real> *md) {
+  return SpillbackEMFIntegral(md, SpillbackEMFQuantity::JwL2);
+}
+
+Real EwL1Hst(MeshData<Real> *md) {
+  return SpillbackEMFIntegral(md, SpillbackEMFQuantity::EwL1);
+}
+
+Real EwL2Hst(MeshData<Real> *md) {
+  return SpillbackEMFIntegral(md, SpillbackEMFQuantity::EwL2);
 }
 
 Real BulkEMEnergyIntegral(MeshData<Real> *md) {
@@ -1291,22 +1684,57 @@ Real Ay0SpanHst(MeshData<Real> *md) {
   return (ay0_max > ay0_min) ? (ay0_max - ay0_min) : 0.0;
 }
 
-Real AyProjectedSpanHst(MeshData<Real> *md) {
+std::vector<Real> ProjectionCoefficients(const ModeTables &tables, const int n_modes,
+                                         const std::string &kernel,
+                                         const Real sigma_factor) {
+  if (kernel == "point") {
+    return BranePointCoefficients(tables, n_modes);
+  }
+
+  const int n_quad = tables.NumQuadrature();
+  const auto &weights = tables.Weights();
+  const Real lambda = tables.Lambda();
+  const Real z_int = lambda * std::sqrt(std::acos(-1.0));
+  std::vector<Real> coeff(static_cast<size_t>(n_modes), 0.0);
+
+  if (kernel == "gaussian") {
+    const auto &nodes = tables.Nodes();
+    const Real lambda_sq = lambda * lambda;
+    const Real sigma_sq = sigma_factor * sigma_factor;
+    const Real w_norm = sigma_factor * z_int;
+    for (int n = 0; n < n_modes; ++n) {
+      Real mode_coeff = 0.0;
+      for (int q = 0; q < n_quad; ++q) {
+        const Real w = nodes[q];
+        const Real z = std::exp(-(w * w) / lambda_sq);
+        if (z <= 0.0) {
+          continue;
+        }
+        const Real w_kernel = std::exp(-(w * w) / (sigma_sq * lambda_sq)) / w_norm;
+        mode_coeff += weights[q] * (w_kernel / z) * tables.Phi(n, q);
+      }
+      coeff[static_cast<size_t>(n)] = mode_coeff;
+    }
+    return coeff;
+  }
+
+  // Default: matched kernel W = Z / Z_int.
+  for (int n = 0; n < n_modes; ++n) {
+    Real mode_coeff = 0.0;
+    for (int q = 0; q < n_quad; ++q) {
+      mode_coeff += weights[q] * tables.Phi(n, q);
+    }
+    coeff[static_cast<size_t>(n)] = mode_coeff / z_int;
+  }
+  return coeff;
+}
+
+Real ProjectionSpanWithKernelHst(MeshData<Real> *md, const std::string &kernel,
+                                 const Real sigma_factor) {
   auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   const int n_modes = modes_pkg->Param<int>("n_modes");
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
-  const int n_quad = tables.NumQuadrature();
-  const auto &weights = tables.Weights();
-  const Real z_int = tables.Lambda() * std::sqrt(std::acos(-1.0));
-
-  std::vector<Real> proj_coeff(static_cast<size_t>(n_modes), 0.0);
-  for (int n = 0; n < n_modes; ++n) {
-    Real coeff = 0.0;
-    for (int q = 0; q < n_quad; ++q) {
-      coeff += weights[q] * tables.Phi(n, q);
-    }
-    proj_coeff[static_cast<size_t>(n)] = coeff / z_int;
-  }
+  const auto proj_coeff = ProjectionCoefficients(tables, n_modes, kernel, sigma_factor);
 
   Real ay_proj_min = std::numeric_limits<Real>::max();
   Real ay_proj_max = std::numeric_limits<Real>::lowest();
@@ -1335,6 +1763,29 @@ Real AyProjectedSpanHst(MeshData<Real> *md) {
   }
 
   return (ay_proj_max > ay_proj_min) ? (ay_proj_max - ay_proj_min) : 0.0;
+}
+
+Real AyProjectedSpanHst(MeshData<Real> *md) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const auto &projection_kernel = modes_pkg->Param<std::string>("diag/projection_kernel");
+  const Real projection_sigma_factor =
+      modes_pkg->Param<double>("diag/projection_sigma_factor");
+  return ProjectionSpanWithKernelHst(md, projection_kernel, projection_sigma_factor);
+}
+
+Real AyProjectedMatchedSpanHst(MeshData<Real> *md) {
+  return ProjectionSpanWithKernelHst(md, "matched", 1.0);
+}
+
+Real AyProjectedPointSpanHst(MeshData<Real> *md) {
+  return ProjectionSpanWithKernelHst(md, "point", 1.0);
+}
+
+Real AyProjectedGaussianSpanHst(MeshData<Real> *md) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const Real projection_sigma_factor =
+      modes_pkg->Param<double>("diag/projection_sigma_factor");
+  return ProjectionSpanWithKernelHst(md, "gaussian", projection_sigma_factor);
 }
 
 std::vector<Real> BranePointCoefficients(const ModeTables &tables, const int n_modes) {
@@ -1633,12 +2084,19 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_src_em_damping_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_src_em_spatial_mixed_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_src_em_timelike_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_gauge_abs", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l1", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l2", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_max_abs", 0.0, true);
   pkg->AddParam<double>("diag/continuity_mode0_l1", 0.0, true);
   pkg->AddParam<double>("diag/continuity_mode0_l2", 0.0, true);
   pkg->AddParam<double>("diag/continuity_mode0_max_abs", 0.0, true);
+  pkg->AddParam<double>("diag/gauge_l1", 0.0, true);
+  pkg->AddParam<double>("diag/gauge_l2", 0.0, true);
+  pkg->AddParam<double>("diag/gauge_max_abs", 0.0, true);
+  pkg->AddParam<double>("diag/gauge_mode0_l1", 0.0, true);
+  pkg->AddParam<double>("diag/gauge_mode0_l2", 0.0, true);
+  pkg->AddParam<double>("diag/gauge_mode0_max_abs", 0.0, true);
 
   parthenon::HstVar_list hst_vars = {};
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
@@ -1754,6 +2212,9 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum, SrcEMTimelikeAbsAccumulatorHst,
       "m4d_int_src_em_timelike_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMGaugeAbsAccumulatorHst,
+      "m4d_int_src_em_gauge_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, DivMode0PlasmaAbsAccumulatorHst,
       "m4d_int_div_mode0_plasma_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
@@ -1788,6 +2249,22 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(
       parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::max,
                                   ContinuityMode0MaxAbsHst, "m4d_cont_mode0_max_abs"));
+  hst_vars.emplace_back(
+      parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum, GaugeL1Hst,
+                                  "m4d_gauge_l1"));
+  hst_vars.emplace_back(
+      parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum, GaugeL2Hst,
+                                  "m4d_gauge_l2"));
+  hst_vars.emplace_back(
+      parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::max, GaugeMaxAbsHst,
+                                  "m4d_gauge_max_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, GaugeMode0L1Hst, "m4d_gauge_mode0_l1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, GaugeMode0L2Hst, "m4d_gauge_mode0_l2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::max, GaugeMode0MaxAbsHst,
+      "m4d_gauge_mode0_max_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     BraneE2Hst, "m4d_brane_e2"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
@@ -1817,10 +2294,39 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
                                                     EMLeakageWHst,
                                                     "m4d_em_leak_w"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMFVwCAbsHst,
+                                                    "m4d_emf_vw_c_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMFVwCParallelAbsHst,
+                                                    "m4d_emf_vw_c_par_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMFCovVxBAbsHst,
+                                                    "m4d_emf_cov_vxb_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMFCovVxBParallelAbsHst,
+                                                    "m4d_emf_cov_vxb_par_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    JwL1Hst, "m4d_jw_l1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    JwL2Hst, "m4d_jw_l2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EwL1Hst, "m4d_ew_l1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EwL2Hst, "m4d_ew_l2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     Ay0SpanHst, "m4d_psi0_span"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     AyProjectedSpanHst,
                                                     "m4d_psi_proj_span"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    AyProjectedMatchedSpanHst,
+                                                    "m4d_psi_proj_matched_span"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    AyProjectedPointSpanHst,
+                                                    "m4d_psi_proj_point_span"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    AyProjectedGaussianSpanHst,
+                                                    "m4d_psi_proj_gaussian_span"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     AyBranePointSpanHst,
                                                     "m4d_psi_w0_span"));

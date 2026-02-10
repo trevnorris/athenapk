@@ -253,6 +253,36 @@ def main():
                 "full_final_mixed_ew2": parse_float(full, "final_mixed_ew2"),
                 "full_corr_psi0_mixed_ew2": parse_float(full, "corr_psi0_mixed_ew2"),
                 "full_corr_psiw0_mixed_ew2": parse_float(full, "corr_psiw0_mixed_ew2"),
+                "controlled_time_first_abs_psi0_onset": parse_float(
+                    controlled, "time_first_abs_psi0_onset"
+                ),
+                "full_time_first_abs_psi0_onset": parse_float(
+                    full, "time_first_abs_psi0_onset"
+                ),
+                "controlled_psi_w0_peak_count_pre_onset": parse_float(
+                    controlled, "psi_w0_peak_count_pre_onset"
+                ),
+                "full_psi_w0_peak_count_pre_onset": parse_float(
+                    full, "psi_w0_peak_count_pre_onset"
+                ),
+                "controlled_psi_w0_peak_count_post_onset": parse_float(
+                    controlled, "psi_w0_peak_count_post_onset"
+                ),
+                "full_psi_w0_peak_count_post_onset": parse_float(
+                    full, "psi_w0_peak_count_post_onset"
+                ),
+                "controlled_src_mode0_peak_count_pre_onset": parse_float(
+                    controlled, "src_mode0_total_peak_count_pre_onset"
+                ),
+                "full_src_mode0_peak_count_pre_onset": parse_float(
+                    full, "src_mode0_total_peak_count_pre_onset"
+                ),
+                "controlled_src_mode0_peak_count_post_onset": parse_float(
+                    controlled, "src_mode0_total_peak_count_post_onset"
+                ),
+                "full_src_mode0_peak_count_post_onset": parse_float(
+                    full, "src_mode0_total_peak_count_post_onset"
+                ),
                 "full_closure_status": full.get("closure_status", "N/A"),
                 "full_transport_status": full.get("transport_closure_status", "N/A"),
                 "full_activity_status": full.get("activity_status", "N/A"),
@@ -275,6 +305,16 @@ def main():
                 "full_final_mixed_ew2": math.nan,
                 "full_corr_psi0_mixed_ew2": math.nan,
                 "full_corr_psiw0_mixed_ew2": math.nan,
+                "controlled_time_first_abs_psi0_onset": math.nan,
+                "full_time_first_abs_psi0_onset": math.nan,
+                "controlled_psi_w0_peak_count_pre_onset": math.nan,
+                "full_psi_w0_peak_count_pre_onset": math.nan,
+                "controlled_psi_w0_peak_count_post_onset": math.nan,
+                "full_psi_w0_peak_count_post_onset": math.nan,
+                "controlled_src_mode0_peak_count_pre_onset": math.nan,
+                "full_src_mode0_peak_count_pre_onset": math.nan,
+                "controlled_src_mode0_peak_count_post_onset": math.nan,
+                "full_src_mode0_peak_count_post_onset": math.nan,
                 "full_closure_status": "N/A",
                 "full_transport_status": "N/A",
                 "full_activity_status": "N/A",
@@ -305,6 +345,16 @@ def main():
         "full_final_mixed_ew2",
         "full_corr_psi0_mixed_ew2",
         "full_corr_psiw0_mixed_ew2",
+        "controlled_time_first_abs_psi0_onset",
+        "full_time_first_abs_psi0_onset",
+        "controlled_psi_w0_peak_count_pre_onset",
+        "full_psi_w0_peak_count_pre_onset",
+        "controlled_psi_w0_peak_count_post_onset",
+        "full_psi_w0_peak_count_post_onset",
+        "controlled_src_mode0_peak_count_pre_onset",
+        "full_src_mode0_peak_count_pre_onset",
+        "controlled_src_mode0_peak_count_post_onset",
+        "full_src_mode0_peak_count_post_onset",
         "full_closure_status",
         "full_transport_status",
         "full_activity_status",

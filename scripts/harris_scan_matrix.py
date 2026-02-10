@@ -13,9 +13,11 @@ from pathlib import Path
 def parse_hst(path):
     lines = path.read_text(encoding="utf-8").splitlines()
     header = None
-    for line in lines:
+    header_index = -1
+    for idx, line in enumerate(lines):
         if line.startswith("# [1]="):
             header = line
+            header_index = idx
             break
     if header is None:
         raise RuntimeError(f"Could not find history header in {path}")
@@ -26,10 +28,13 @@ def parse_hst(path):
             labels.append(token.split("]=", 1)[1])
 
     rows = []
-    for line in lines:
+    for line in lines[header_index + 1 :]:
         if not line or line.startswith("#"):
             continue
-        rows.append([float(x) for x in line.split()])
+        parts = line.split()
+        if len(parts) != len(labels):
+            continue
+        rows.append([float(x) for x in parts])
 
     if not rows:
         raise RuntimeError(f"No history data rows in {path}")
@@ -274,6 +279,53 @@ def reconnection_rate_metrics(times, psi, skip_initial_interval=True):
     )
 
 
+def max_abs_finite(series):
+    values = [abs(v) for v in series if math.isfinite(v)]
+    if not values:
+        return math.nan
+    return max(values)
+
+
+def first_crossing_time(times, series, abs_threshold):
+    if abs_threshold <= 0.0 or len(times) != len(series):
+        return math.nan
+    for t, value in zip(times, series):
+        if math.isfinite(value) and abs(value) >= abs_threshold:
+            return t
+    return math.nan
+
+
+def local_peak_count(
+    times,
+    series,
+    min_abs_value,
+    min_prominence,
+    t_min=-math.inf,
+    t_max=math.inf,
+):
+    if len(times) < 3 or len(series) != len(times):
+        return 0
+    count = 0
+    for i in range(1, len(series) - 1):
+        t = times[i]
+        if t < t_min or t > t_max:
+            continue
+        left = series[i - 1]
+        center = series[i]
+        right = series[i + 1]
+        if (
+            not math.isfinite(left)
+            or not math.isfinite(center)
+            or not math.isfinite(right)
+        ):
+            continue
+        if center > left and center >= right:
+            prominence = center - max(left, right)
+            if abs(center) >= min_abs_value and prominence >= min_prominence:
+                count += 1
+    return count
+
+
 def analyze_case(
     case_name,
     cols,
@@ -281,12 +333,26 @@ def analyze_case(
     closure_abs_rate_tol,
     local_mode0_abs_rate_tol,
     em_bulk_ledger_abs_rate_tol,
+    cycle_onset_psi0_abs_threshold,
+    cycle_peak_min_amplitude_rel,
+    cycle_peak_min_amplitude_abs,
+    cycle_peak_min_prominence_rel,
+    cycle_peak_min_prominence_abs,
 ):
     times = cols["time"]
     psi0 = cols["m4d_psi0_span"]
     psi_proj = maybe_col(cols, "m4d_psi_proj_span")
     if psi_proj is None or len(psi_proj) != len(psi0):
         psi_proj = psi0
+    psi_proj_matched = maybe_col(cols, "m4d_psi_proj_matched_span")
+    if psi_proj_matched is None or len(psi_proj_matched) != len(psi0):
+        psi_proj_matched = psi_proj
+    psi_proj_point = maybe_col(cols, "m4d_psi_proj_point_span")
+    if psi_proj_point is None or len(psi_proj_point) != len(psi0):
+        psi_proj_point = psi_proj
+    psi_proj_gaussian = maybe_col(cols, "m4d_psi_proj_gaussian_span")
+    if psi_proj_gaussian is None or len(psi_proj_gaussian) != len(psi0):
+        psi_proj_gaussian = psi_proj
     psi_w0 = maybe_col(cols, "m4d_psi_w0_span")
     if psi_w0 is None or len(psi_w0) != len(psi0):
         psi_w0 = psi_proj
@@ -301,6 +367,14 @@ def analyze_case(
     em_u_resolved = maybe_col(cols, "m4d_em_u_resolved")
     em_sw = maybe_col(cols, "m4d_em_sw")
     em_leak_w = maybe_col(cols, "m4d_em_leak_w")
+    emf_vw_c_abs = maybe_col(cols, "m4d_emf_vw_c_abs")
+    emf_vw_c_par_abs = maybe_col(cols, "m4d_emf_vw_c_par_abs")
+    emf_cov_vxb_abs = maybe_col(cols, "m4d_emf_cov_vxb_abs")
+    emf_cov_vxb_par_abs = maybe_col(cols, "m4d_emf_cov_vxb_par_abs")
+    jw_l1 = maybe_col(cols, "m4d_jw_l1")
+    jw_l2 = maybe_col(cols, "m4d_jw_l2")
+    ew_l1 = maybe_col(cols, "m4d_ew_l1")
+    ew_l2 = maybe_col(cols, "m4d_ew_l2")
     helicity_sub = maybe_col(cols, "m4d_helicity_sub")
     edotb_sub = maybe_col(cols, "m4d_edotb_sub")
     em_a2_mode1 = maybe_col(cols, "m4d_em_a2_mode_1")
@@ -345,6 +419,7 @@ def analyze_case(
     int_src_em_damping_abs = maybe_col(cols, "m4d_int_src_em_damping_abs")
     int_src_em_spatial_mixed_abs = maybe_col(cols, "m4d_int_src_em_spatial_mixed_abs")
     int_src_em_timelike_abs = maybe_col(cols, "m4d_int_src_em_timelike_abs")
+    int_src_em_gauge_abs = maybe_col(cols, "m4d_int_src_em_gauge_abs")
     int_div_mode0_plasma_abs = maybe_col(cols, "m4d_int_div_mode0_plasma_abs")
     int_div_mode0_em_abs = maybe_col(cols, "m4d_int_div_mode0_em_abs")
     int_div_mode0_total_abs = maybe_col(cols, "m4d_int_div_mode0_total_abs")
@@ -355,6 +430,12 @@ def analyze_case(
     cont_local_mode0_max_abs = maybe_col(cols, "m4d_cont_mode0_max_abs")
     cont_local_mode0_l1 = maybe_col(cols, "m4d_cont_mode0_l1")
     cont_local_mode0_l2 = maybe_col(cols, "m4d_cont_mode0_l2")
+    gauge_l1 = maybe_col(cols, "m4d_gauge_l1")
+    gauge_l2 = maybe_col(cols, "m4d_gauge_l2")
+    gauge_max_abs = maybe_col(cols, "m4d_gauge_max_abs")
+    gauge_mode0_l1 = maybe_col(cols, "m4d_gauge_mode0_l1")
+    gauge_mode0_l2 = maybe_col(cols, "m4d_gauge_mode0_l2")
+    gauge_mode0_max_abs = maybe_col(cols, "m4d_gauge_mode0_max_abs")
 
     psi_w0_minus_psi_proj = [w - p for w, p in zip(psi_w0, psi_proj)]
     psi_w0_minus_psi0 = [w - p0 for w, p0 in zip(psi_w0, psi0)]
@@ -525,6 +606,87 @@ def analyze_case(
         time_at_max_dpsi_w0_dt,
         time_at_max_abs_dpsi_w0_dt,
     ) = reconnection_rate_metrics(times, psi_w0)
+    time_first_abs_psi0_onset = first_crossing_time(
+        times, psi0, cycle_onset_psi0_abs_threshold
+    )
+    psi_w0_peak_scale = max_abs_finite(psi_w0)
+    psi_w0_peak_min_abs = cycle_peak_min_amplitude_abs
+    psi_w0_peak_min_prom = cycle_peak_min_prominence_abs
+    if math.isfinite(psi_w0_peak_scale):
+        psi_w0_peak_min_abs = max(
+            psi_w0_peak_min_abs, cycle_peak_min_amplitude_rel * psi_w0_peak_scale
+        )
+        psi_w0_peak_min_prom = max(
+            psi_w0_peak_min_prom, cycle_peak_min_prominence_rel * psi_w0_peak_scale
+        )
+    src_mode0_total_peak_scale = max_abs_finite(int_src_mode0_total_abs or [])
+    src_mode0_total_peak_min_abs = cycle_peak_min_amplitude_abs
+    src_mode0_total_peak_min_prom = cycle_peak_min_prominence_abs
+    if math.isfinite(src_mode0_total_peak_scale):
+        src_mode0_total_peak_min_abs = max(
+            src_mode0_total_peak_min_abs,
+            cycle_peak_min_amplitude_rel * src_mode0_total_peak_scale,
+        )
+        src_mode0_total_peak_min_prom = max(
+            src_mode0_total_peak_min_prom,
+            cycle_peak_min_prominence_rel * src_mode0_total_peak_scale,
+        )
+    psi_w0_peak_count_total = local_peak_count(
+        times, psi_w0, psi_w0_peak_min_abs, psi_w0_peak_min_prom
+    )
+    src_mode0_total_peak_count_total = (
+        local_peak_count(
+            times,
+            int_src_mode0_total_abs,
+            src_mode0_total_peak_min_abs,
+            src_mode0_total_peak_min_prom,
+        )
+        if int_src_mode0_total_abs is not None
+        else math.nan
+    )
+    if math.isfinite(time_first_abs_psi0_onset):
+        pre_t_max = math.nextafter(time_first_abs_psi0_onset, -math.inf)
+        psi_w0_peak_count_pre_onset = local_peak_count(
+            times,
+            psi_w0,
+            psi_w0_peak_min_abs,
+            psi_w0_peak_min_prom,
+            t_max=pre_t_max,
+        )
+        psi_w0_peak_count_post_onset = local_peak_count(
+            times,
+            psi_w0,
+            psi_w0_peak_min_abs,
+            psi_w0_peak_min_prom,
+            t_min=time_first_abs_psi0_onset,
+        )
+        if int_src_mode0_total_abs is not None:
+            src_mode0_total_peak_count_pre_onset = local_peak_count(
+                times,
+                int_src_mode0_total_abs,
+                src_mode0_total_peak_min_abs,
+                src_mode0_total_peak_min_prom,
+                t_max=pre_t_max,
+            )
+            src_mode0_total_peak_count_post_onset = local_peak_count(
+                times,
+                int_src_mode0_total_abs,
+                src_mode0_total_peak_min_abs,
+                src_mode0_total_peak_min_prom,
+                t_min=time_first_abs_psi0_onset,
+            )
+        else:
+            src_mode0_total_peak_count_pre_onset = math.nan
+            src_mode0_total_peak_count_post_onset = math.nan
+    else:
+        psi_w0_peak_count_pre_onset = psi_w0_peak_count_total
+        psi_w0_peak_count_post_onset = 0
+        if int_src_mode0_total_abs is not None:
+            src_mode0_total_peak_count_pre_onset = src_mode0_total_peak_count_total
+            src_mode0_total_peak_count_post_onset = 0
+        else:
+            src_mode0_total_peak_count_pre_onset = math.nan
+            src_mode0_total_peak_count_post_onset = math.nan
 
     (
         momx_transport_max_norm,
@@ -674,6 +836,9 @@ def analyze_case(
         "case": case_name,
         "final_psi0_span": psi0[-1],
         "final_psi_proj_span": psi_proj[-1],
+        "final_psi_proj_matched_span": psi_proj_matched[-1],
+        "final_psi_proj_point_span": psi_proj_point[-1],
+        "final_psi_proj_gaussian_span": psi_proj_gaussian[-1],
         "final_psi_w0_span": psi_w0[-1],
         "final_psi_w0_minus_psi_proj_span": psi_w0_minus_psi_proj[-1],
         "final_psi_w0_minus_psi0_span": psi_w0_minus_psi0[-1],
@@ -698,6 +863,20 @@ def analyze_case(
         "final_em_u_sub": em_u_sub[-1] if em_u_sub is not None else math.nan,
         "final_em_sw": em_sw[-1] if em_sw is not None else math.nan,
         "final_em_leak_w": em_leak_w[-1] if em_leak_w is not None else math.nan,
+        "final_emf_vw_c_abs": emf_vw_c_abs[-1] if emf_vw_c_abs is not None else math.nan,
+        "final_emf_vw_c_par_abs": emf_vw_c_par_abs[-1]
+        if emf_vw_c_par_abs is not None
+        else math.nan,
+        "final_emf_cov_vxb_abs": emf_cov_vxb_abs[-1]
+        if emf_cov_vxb_abs is not None
+        else math.nan,
+        "final_emf_cov_vxb_par_abs": emf_cov_vxb_par_abs[-1]
+        if emf_cov_vxb_par_abs is not None
+        else math.nan,
+        "final_jw_l1": jw_l1[-1] if jw_l1 is not None else math.nan,
+        "final_jw_l2": jw_l2[-1] if jw_l2 is not None else math.nan,
+        "final_ew_l1": ew_l1[-1] if ew_l1 is not None else math.nan,
+        "final_ew_l2": ew_l2[-1] if ew_l2 is not None else math.nan,
         "final_helicity_sub": helicity_sub[-1] if helicity_sub is not None else math.nan,
         "final_edotb_sub": edotb_sub[-1] if edotb_sub is not None else math.nan,
         "corr_psi0_s_leak": pearson(psi0, leak),
@@ -711,6 +890,12 @@ def analyze_case(
         "corr_psi0_em_leak_w": pearson(psi0, em_leak_w)
         if em_leak_w is not None
         else math.nan,
+        "corr_psi0_emf_vw_c_abs": pearson(psi0, emf_vw_c_abs)
+        if emf_vw_c_abs is not None
+        else math.nan,
+        "corr_psi0_emf_cov_vxb_abs": pearson(psi0, emf_cov_vxb_abs)
+        if emf_cov_vxb_abs is not None
+        else math.nan,
         "corr_psi0_helicity_sub": pearson(psi0, helicity_sub)
         if helicity_sub is not None
         else math.nan,
@@ -723,6 +908,12 @@ def analyze_case(
         "corr_psiw0_s_leak_abs": pearson(psi_w0, leak_abs),
         "corr_psiw0_jw_ew": pearson(psi_w0, jw_ew),
         "corr_psiw0_mixed_ew2": pearson(psi_w0, mixed_ew2),
+        "corr_psiw0_emf_vw_c_abs": pearson(psi_w0, emf_vw_c_abs)
+        if emf_vw_c_abs is not None
+        else math.nan,
+        "corr_psiw0_emf_cov_vxb_abs": pearson(psi_w0, emf_cov_vxb_abs)
+        if emf_cov_vxb_abs is not None
+        else math.nan,
         "final_em_a2_mode_1": em_a2_mode1[-1] if em_a2_mode1 is not None else math.nan,
         "final_em_pi2_mode_1": em_pi2_mode1[-1] if em_pi2_mode1 is not None else math.nan,
         "final_jw_mode_l2_1": jw_mode1_l2[-1] if jw_mode1_l2 is not None else math.nan,
@@ -812,6 +1003,9 @@ def analyze_case(
         "final_int_src_em_timelike_abs": int_src_em_timelike_abs[-1]
         if int_src_em_timelike_abs is not None
         else math.nan,
+        "final_int_src_em_gauge_abs": int_src_em_gauge_abs[-1]
+        if int_src_em_gauge_abs is not None
+        else math.nan,
         "final_int_div_mode0_plasma_abs": int_div_mode0_plasma_abs[-1]
         if int_div_mode0_plasma_abs is not None
         else math.nan,
@@ -833,10 +1027,32 @@ def analyze_case(
         "final_int_src_mode0_total_abs": int_src_mode0_total_abs[-1]
         if int_src_mode0_total_abs is not None
         else math.nan,
+        "final_gauge_l1": gauge_l1[-1] if gauge_l1 is not None else math.nan,
+        "final_gauge_l2": gauge_l2[-1] if gauge_l2 is not None else math.nan,
+        "final_gauge_max_abs": gauge_max_abs[-1] if gauge_max_abs is not None else math.nan,
+        "final_gauge_mode0_l1": gauge_mode0_l1[-1]
+        if gauge_mode0_l1 is not None
+        else math.nan,
+        "final_gauge_mode0_l2": gauge_mode0_l2[-1]
+        if gauge_mode0_l2 is not None
+        else math.nan,
+        "final_gauge_mode0_max_abs": gauge_mode0_max_abs[-1]
+        if gauge_mode0_max_abs is not None
+        else math.nan,
         "corr_psi0_jw_mode_l2_1": pearson(psi0, jw_mode1_l2)
         if jw_mode1_l2 is not None
         else math.nan,
         "corr_psiw0_minus_psiproj_mixed_ew2": pearson(psi_w0_minus_psi_proj, mixed_ew2),
+        "corr_psiw0_minus_psiproj_emf_vw_c_abs": pearson(
+            psi_w0_minus_psi_proj, emf_vw_c_abs
+        )
+        if emf_vw_c_abs is not None
+        else math.nan,
+        "corr_psiw0_minus_psiproj_emf_cov_vxb_abs": pearson(
+            psi_w0_minus_psi_proj, emf_cov_vxb_abs
+        )
+        if emf_cov_vxb_abs is not None
+        else math.nan,
         "corr_psiw0_minus_psiproj_src_mode0_total_abs": pearson(
             psi_w0_minus_psi_proj, int_src_mode0_total_abs
         )
@@ -884,6 +1100,17 @@ def analyze_case(
         "final_dpsi_w0_dt": final_dpsi_w0_dt,
         "time_at_max_dpsi_w0_dt": time_at_max_dpsi_w0_dt,
         "time_at_max_abs_dpsi_w0_dt": time_at_max_abs_dpsi_w0_dt,
+        "time_first_abs_psi0_onset": time_first_abs_psi0_onset,
+        "psi_w0_peak_min_abs": psi_w0_peak_min_abs,
+        "psi_w0_peak_min_prominence": psi_w0_peak_min_prom,
+        "psi_w0_peak_count_total": psi_w0_peak_count_total,
+        "psi_w0_peak_count_pre_onset": psi_w0_peak_count_pre_onset,
+        "psi_w0_peak_count_post_onset": psi_w0_peak_count_post_onset,
+        "src_mode0_total_peak_min_abs": src_mode0_total_peak_min_abs,
+        "src_mode0_total_peak_min_prominence": src_mode0_total_peak_min_prom,
+        "src_mode0_total_peak_count_total": src_mode0_total_peak_count_total,
+        "src_mode0_total_peak_count_pre_onset": src_mode0_total_peak_count_pre_onset,
+        "src_mode0_total_peak_count_post_onset": src_mode0_total_peak_count_post_onset,
         "em_bulk_ledger_max_abs_rate": em_bulk_ledger_max_abs_rate,
         "em_bulk_ledger_rms_abs_rate": em_bulk_ledger_rms_abs_rate,
         "em_bulk_ledger_final_rate": em_bulk_ledger_final_rate,
@@ -968,6 +1195,9 @@ def print_table(results):
         "case",
         "final_psi0_span",
         "final_psi_proj_span",
+        "final_psi_proj_matched_span",
+        "final_psi_proj_point_span",
+        "final_psi_proj_gaussian_span",
         "final_psi_w0_span",
         "final_psi_w0_minus_psi_proj_span",
         "final_psi_w0_minus_psi0_span",
@@ -987,6 +1217,14 @@ def print_table(results):
         "final_em_u_sub",
         "final_em_sw",
         "final_em_leak_w",
+        "final_emf_vw_c_abs",
+        "final_emf_vw_c_par_abs",
+        "final_emf_cov_vxb_abs",
+        "final_emf_cov_vxb_par_abs",
+        "final_jw_l1",
+        "final_jw_l2",
+        "final_ew_l1",
+        "final_ew_l2",
         "final_helicity_sub",
         "final_edotb_sub",
         "final_em_a2_mode_1",
@@ -1026,6 +1264,7 @@ def print_table(results):
         "final_int_src_em_damping_abs",
         "final_int_src_em_spatial_mixed_abs",
         "final_int_src_em_timelike_abs",
+        "final_int_src_em_gauge_abs",
         "final_int_div_mode0_plasma_abs",
         "final_int_div_mode0_em_abs",
         "final_int_div_mode0_total_abs",
@@ -1033,6 +1272,12 @@ def print_table(results):
         "final_int_src_mode0_em_abs",
         "final_int_src_mode0_timelike_abs",
         "final_int_src_mode0_total_abs",
+        "final_gauge_l1",
+        "final_gauge_l2",
+        "final_gauge_max_abs",
+        "final_gauge_mode0_l1",
+        "final_gauge_mode0_l2",
+        "final_gauge_mode0_max_abs",
         "corr_psi0_s_leak",
         "corr_psi0_s_leak_abs",
         "corr_psi0_jw_ew",
@@ -1042,6 +1287,8 @@ def print_table(results):
         "corr_psi0_em_u_sub",
         "corr_psi0_em_sw",
         "corr_psi0_em_leak_w",
+        "corr_psi0_emf_vw_c_abs",
+        "corr_psi0_emf_cov_vxb_abs",
         "corr_psi0_helicity_sub",
         "corr_psi0_edotb_sub",
         "corr_psi0_jw_mode_l2_1",
@@ -1051,7 +1298,11 @@ def print_table(results):
         "corr_psiw0_s_leak_abs",
         "corr_psiw0_jw_ew",
         "corr_psiw0_mixed_ew2",
+        "corr_psiw0_emf_vw_c_abs",
+        "corr_psiw0_emf_cov_vxb_abs",
         "corr_psiw0_minus_psiproj_mixed_ew2",
+        "corr_psiw0_minus_psiproj_emf_vw_c_abs",
+        "corr_psiw0_minus_psiproj_emf_cov_vxb_abs",
         "corr_psiw0_minus_psiproj_src_mode0_total_abs",
         "corr_psiw0_src_mode0_total_abs",
         "corr_psiw0_div_mode0_total_abs",
@@ -1083,6 +1334,17 @@ def print_table(results):
         "final_dpsi_w0_dt",
         "time_at_max_dpsi_w0_dt",
         "time_at_max_abs_dpsi_w0_dt",
+        "time_first_abs_psi0_onset",
+        "psi_w0_peak_min_abs",
+        "psi_w0_peak_min_prominence",
+        "psi_w0_peak_count_total",
+        "psi_w0_peak_count_pre_onset",
+        "psi_w0_peak_count_post_onset",
+        "src_mode0_total_peak_min_abs",
+        "src_mode0_total_peak_min_prominence",
+        "src_mode0_total_peak_count_total",
+        "src_mode0_total_peak_count_pre_onset",
+        "src_mode0_total_peak_count_post_onset",
         "em_bulk_ledger_max_abs_rate",
         "em_bulk_ledger_rms_abs_rate",
         "em_bulk_ledger_final_rate",
@@ -1166,6 +1428,10 @@ def evaluate_full_activity(
     min_src_em_current_abs,
     min_src_em_spatial_mixed_abs,
     min_src_em_timelike_abs,
+    min_emf_vw_c_abs,
+    min_emf_cov_vxb_abs,
+    min_jw_l1,
+    min_ew_l1,
 ):
     failures = []
     if min_jw_ew_abs > 0.0 and abs(row["final_jw_ew"]) < min_jw_ew_abs:
@@ -1216,6 +1482,17 @@ def evaluate_full_activity(
         and abs(row["final_int_src_em_timelike_abs"]) < min_src_em_timelike_abs
     ):
         failures.append("src_em_timelike_abs")
+    if min_emf_vw_c_abs > 0.0 and abs(row["final_emf_vw_c_abs"]) < min_emf_vw_c_abs:
+        failures.append("emf_vw_c_abs")
+    if (
+        min_emf_cov_vxb_abs > 0.0
+        and abs(row["final_emf_cov_vxb_abs"]) < min_emf_cov_vxb_abs
+    ):
+        failures.append("emf_cov_vxb_abs")
+    if min_jw_l1 > 0.0 and abs(row["final_jw_l1"]) < min_jw_l1:
+        failures.append("jw_l1")
+    if min_ew_l1 > 0.0 and abs(row["final_ew_l1"]) < min_ew_l1:
+        failures.append("ew_l1")
 
     if failures:
         return ("FAIL", "|".join(failures))
@@ -1230,6 +1507,8 @@ def evaluate_full_correlation(
     min_abs_corr_psi0_mixed_c2,
     min_abs_corr_psi0_jw_mode_l2_1,
     min_abs_corr_psi0_em_leak_w,
+    min_abs_corr_psi0_emf_vw_c_abs,
+    min_abs_corr_psi0_emf_cov_vxb_abs,
     min_abs_corr_psi0_helicity_sub,
     min_abs_corr_psi0_edotb_sub,
 ):
@@ -1252,6 +1531,16 @@ def evaluate_full_correlation(
         "corr_psi0_jw_mode_l2_1",
     )
     check("corr_psi0_em_leak_w", min_abs_corr_psi0_em_leak_w, "corr_psi0_em_leak_w")
+    check(
+        "corr_psi0_emf_vw_c_abs",
+        min_abs_corr_psi0_emf_vw_c_abs,
+        "corr_psi0_emf_vw_c_abs",
+    )
+    check(
+        "corr_psi0_emf_cov_vxb_abs",
+        min_abs_corr_psi0_emf_cov_vxb_abs,
+        "corr_psi0_emf_cov_vxb_abs",
+    )
     check(
         "corr_psi0_helicity_sub",
         min_abs_corr_psi0_helicity_sub,
@@ -1425,6 +1714,30 @@ def main():
         help="Minimum |final_int_src_em_timelike_abs| required for full-case activity PASS (disabled when 0)",
     )
     parser.add_argument(
+        "--full-min-emf-vw-c-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_emf_vw_c_abs| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-emf-cov-vxb-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_emf_cov_vxb_abs| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-jw-l1",
+        type=float,
+        default=0.0,
+        help="Minimum |final_jw_l1| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-ew-l1",
+        type=float,
+        default=0.0,
+        help="Minimum |final_ew_l1| required for full-case activity PASS (disabled when 0)",
+    )
+    parser.add_argument(
         "--full-min-abs-corr-psi0-s-leak-abs",
         type=float,
         default=0.0,
@@ -1461,6 +1774,18 @@ def main():
         help="Minimum |corr(psi0_span, em_leak_w)| for full-case correlation PASS (disabled when 0)",
     )
     parser.add_argument(
+        "--full-min-abs-corr-psi0-emf-vw-c-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, emf_vw_c_abs)| for full-case correlation PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psi0-emf-cov-vxb-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi0_span, emf_cov_vxb_abs)| for full-case correlation PASS (disabled when 0)",
+    )
+    parser.add_argument(
         "--full-min-abs-corr-psi0-helicity-sub",
         type=float,
         default=0.0,
@@ -1477,6 +1802,36 @@ def main():
         type=float,
         default=1.0,
         help="Maximum absolute EM bulk-ledger residual rate for PASS",
+    )
+    parser.add_argument(
+        "--cycle-onset-psi0-abs-threshold",
+        type=float,
+        default=1.0,
+        help="Absolute psi0 threshold defining onset time for pre/post peak diagnostics",
+    )
+    parser.add_argument(
+        "--cycle-peak-min-amplitude-rel",
+        type=float,
+        default=1.0e-6,
+        help="Minimum local-peak absolute amplitude as a fraction of series max|value|",
+    )
+    parser.add_argument(
+        "--cycle-peak-min-amplitude-abs",
+        type=float,
+        default=1.0e-12,
+        help="Minimum local-peak absolute amplitude floor",
+    )
+    parser.add_argument(
+        "--cycle-peak-min-prominence-rel",
+        type=float,
+        default=1.0e-3,
+        help="Minimum local-peak prominence as a fraction of series max|value|",
+    )
+    parser.add_argument(
+        "--cycle-peak-min-prominence-abs",
+        type=float,
+        default=1.0e-12,
+        help="Minimum local-peak prominence floor",
     )
     args = parser.parse_args()
 
@@ -1518,6 +1873,11 @@ def main():
             args.closure_abs_rate_tol,
             args.closure_local_mode0_abs_rate_tol,
             args.em_bulk_ledger_abs_rate_tol,
+            args.cycle_onset_psi0_abs_threshold,
+            args.cycle_peak_min_amplitude_rel,
+            args.cycle_peak_min_amplitude_abs,
+            args.cycle_peak_min_prominence_rel,
+            args.cycle_peak_min_prominence_abs,
         ),
         analyze_case(
             "full",
@@ -1526,6 +1886,11 @@ def main():
             args.closure_abs_rate_tol,
             args.closure_local_mode0_abs_rate_tol,
             args.em_bulk_ledger_abs_rate_tol,
+            args.cycle_onset_psi0_abs_threshold,
+            args.cycle_peak_min_amplitude_rel,
+            args.cycle_peak_min_amplitude_abs,
+            args.cycle_peak_min_prominence_rel,
+            args.cycle_peak_min_prominence_abs,
         ),
     ]
     for row in results:
@@ -1542,6 +1907,8 @@ def main():
                 args.full_min_abs_corr_psi0_mixed_c2,
                 args.full_min_abs_corr_psi0_jw_mode_l2_1,
                 args.full_min_abs_corr_psi0_em_leak_w,
+                args.full_min_abs_corr_psi0_emf_vw_c_abs,
+                args.full_min_abs_corr_psi0_emf_cov_vxb_abs,
                 args.full_min_abs_corr_psi0_helicity_sub,
                 args.full_min_abs_corr_psi0_edotb_sub,
             )
@@ -1564,6 +1931,10 @@ def main():
                 args.full_min_src_em_current_abs,
                 args.full_min_src_em_spatial_mixed_abs,
                 args.full_min_src_em_timelike_abs,
+                args.full_min_emf_vw_c_abs,
+                args.full_min_emf_cov_vxb_abs,
+                args.full_min_jw_l1,
+                args.full_min_ew_l1,
             )
             row["activity_status"] = status
             row["activity_failures"] = failures

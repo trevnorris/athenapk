@@ -1,6 +1,7 @@
 #include "package4d_modes.hpp"
 
 #include <algorithm>
+#include <string>
 
 #include "diagnostics4d.hpp"
 #include "em4d_modes.hpp"
@@ -34,8 +35,14 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "em_source_damping_gain", 1.0);
   const double em_source_timelike_gain =
       pin->GetOrAddReal("modes4d", "em_source_timelike_gain", 1.0);
+  const double em_source_gauge_gain =
+      pin->GetOrAddReal("modes4d", "em_source_gauge_gain", 0.0);
   const bool em_conservative_transport =
       pin->GetOrAddBoolean("modes4d", "em_conservative_transport", false);
+  const std::string diag_projection_kernel =
+      pin->GetOrAddString("modes4d", "diag_projection_kernel", "matched");
+  const double diag_projection_sigma_factor =
+      pin->GetOrAddReal("modes4d", "diag_projection_sigma_factor", 1.0);
   const double plasma_qom_ion = pin->GetOrAddReal("modes4d", "plasma_qom_ion", 1.0);
   const double plasma_qom_electron =
       pin->GetOrAddReal("modes4d", "plasma_qom_electron", -1.0);
@@ -89,6 +96,12 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                     "modes4d/plasma_pressure_flux_relative_cap must be > 0");
   PARTHENON_REQUIRE(plasma_pressure_transport_max_mode >= 0,
                     "modes4d/plasma_pressure_transport_max_mode must be >= 0");
+  PARTHENON_REQUIRE(diag_projection_sigma_factor > 0.0,
+                    "modes4d/diag_projection_sigma_factor must be > 0");
+  PARTHENON_REQUIRE((diag_projection_kernel == "matched") ||
+                        (diag_projection_kernel == "point") ||
+                        (diag_projection_kernel == "gaussian"),
+                    "modes4d/diag_projection_kernel must be one of: matched, point, gaussian");
 
   ModeConfig config;
   config.n_modes = n_modes;
@@ -105,7 +118,10 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/source_current_gain", em_source_current_gain);
   pkg->AddParam<double>("em4d/source_damping_gain", em_source_damping_gain);
   pkg->AddParam<double>("em4d/source_timelike_gain", em_source_timelike_gain);
+  pkg->AddParam<double>("em4d/source_gauge_gain", em_source_gauge_gain);
   pkg->AddParam<bool>("em4d/use_conservative_transport", em_conservative_transport);
+  pkg->AddParam<std::string>("diag/projection_kernel", diag_projection_kernel);
+  pkg->AddParam<double>("diag/projection_sigma_factor", diag_projection_sigma_factor);
   pkg->AddParam<double>("plasma4d/qom_ion", plasma_qom_ion);
   pkg->AddParam<double>("plasma4d/qom_electron", plasma_qom_electron);
   pkg->AddParam<double>("plasma4d/gamma", plasma_gamma);

@@ -296,6 +296,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real em_source_current_gain = modes_pkg->Param<double>("em4d/source_current_gain");
   const Real em_source_damping_gain = modes_pkg->Param<double>("em4d/source_damping_gain");
   const Real em_source_timelike_gain = modes_pkg->Param<double>("em4d/source_timelike_gain");
+  const Real em_source_gauge_gain = modes_pkg->Param<double>("em4d/source_gauge_gain");
   const bool use_conservative_transport =
       modes_pkg->Param<bool>("em4d/use_conservative_transport");
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
@@ -348,6 +349,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_src_em_damping_abs_step = 0.0;
   Real diag_src_em_spatial_mixed_abs_step = 0.0;
   Real diag_src_em_timelike_abs_step = 0.0;
+  Real diag_src_em_gauge_abs_step = 0.0;
+  Real diag_gauge_l1_step = 0.0;
+  Real diag_gauge_l2_step = 0.0;
+  Real diag_gauge_max_abs_step = 0.0;
+  Real diag_gauge_mode0_l1_step = 0.0;
+  Real diag_gauge_mode0_l2_step = 0.0;
+  Real diag_gauge_mode0_max_abs_step = 0.0;
 
   const int num_blocks = md->NumBlocks();
   for (int b = 0; b < num_blocks; ++b) {
@@ -934,6 +942,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 (n + 1 < n_modes)
                     ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda)
                     : 0.0;
+            const int idx_aw_next = (n + 1 < n_modes) ? EMIndex(n + 1, kCompAW) : -1;
             if ((n + 1 < n_modes) && !use_conservative_transport) {
               const int idx_ax_next = EMIndex(n + 1, kCompAX);
               const int idx_ay_next = EMIndex(n + 1, kCompAY);
@@ -948,6 +957,27 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               const int idx_a0_next = EMIndex(n + 1, kCompA0);
               // Time-like piece of -sqrt(2(n+1))/lambda * d_mu a^{mu,(n+1)}.
               mixed_dt_a0_next = pi_old(idx_a0_next, k, j, i);
+            }
+
+            // Mode-projected Lorenz-like gauge residual:
+            // G^(n) = d_t a0^(n) + div a^(n) + sqrt(2(n+1))/lambda * a_w^(n+1).
+            const Real gauge_div_spatial = gradient_x(a_old, idx_ax, k, j, i) +
+                                           gradient_y(a_old, idx_ay, k, j, i) +
+                                           gradient_z(a_old, idx_az, k, j, i);
+            const Real aw_next =
+                (idx_aw_next >= 0) ? a_old(idx_aw_next, k, j, i) : 0.0;
+            const Real gauge_residual =
+                pi_old(idx_a0, k, j, i) + gauge_div_spatial + (coupling_raise * aw_next);
+            const Real abs_gauge_residual = std::abs(gauge_residual);
+            diag_gauge_l1_step += cell_volume * abs_gauge_residual;
+            diag_gauge_l2_step += cell_volume * gauge_residual * gauge_residual;
+            diag_gauge_max_abs_step =
+                std::max(diag_gauge_max_abs_step, abs_gauge_residual);
+            if (n == 0) {
+              diag_gauge_mode0_l1_step += cell_volume * abs_gauge_residual;
+              diag_gauge_mode0_l2_step += cell_volume * gauge_residual * gauge_residual;
+              diag_gauge_mode0_max_abs_step =
+                  std::max(diag_gauge_mode0_max_abs_step, abs_gauge_residual);
             }
 
             const Real lap_a0 = use_conservative_transport
@@ -996,6 +1026,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 -em_source_damping_gain * (damping * pi_old(idx_az, k, j, i));
             const Real src_aw_damping =
                 -em_source_damping_gain * (damping * pi_old(idx_aw, k, j, i));
+            const Real src_a0_gauge =
+                -em_source_gauge_gain * (c2 * gauge_residual);
 
             const Real src_ax_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_x;
             const Real src_ay_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_y;
@@ -1008,7 +1040,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 -em_source_timelike_gain * (c2 * coupling_raise * mixed_dt_a0_next);
 
             const Real rhs_a0 = src_a0_lap + src_a0_mass + src_a0_current +
-                                src_a0_damping + rhs_a0_timelike_from_piw;
+                                src_a0_damping + rhs_a0_timelike_from_piw +
+                                src_a0_gauge;
             const Real rhs_ax = src_ax_lap + src_ax_mass + src_ax_spatial_mixed +
                                 src_ax_current + src_ax_damping;
             const Real rhs_ay = src_ay_lap + src_ay_mass + src_ay_spatial_mixed +
@@ -1046,6 +1079,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 (std::abs(src_a0_damping) + std::abs(src_ax_damping) +
                  std::abs(src_ay_damping) + std::abs(src_az_damping) +
                  std::abs(src_aw_damping));
+            diag_src_em_gauge_abs_step +=
+                dt * cell_volume * std::abs(src_a0_gauge);
             diag_src_em_spatial_mixed_abs_step +=
                 dt * cell_volume *
                 (std::abs(src_ax_spatial_mixed) + std::abs(src_ay_spatial_mixed) +
@@ -1168,6 +1203,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/int_src_em_spatial_mixed_abs");
   auto *diag_src_em_timelike_abs =
       modes_pkg->MutableParam<double>("diag/int_src_em_timelike_abs");
+  auto *diag_src_em_gauge_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_em_gauge_abs");
+  auto *diag_gauge_l1 = modes_pkg->MutableParam<double>("diag/gauge_l1");
+  auto *diag_gauge_l2 = modes_pkg->MutableParam<double>("diag/gauge_l2");
+  auto *diag_gauge_max_abs =
+      modes_pkg->MutableParam<double>("diag/gauge_max_abs");
+  auto *diag_gauge_mode0_l1 = modes_pkg->MutableParam<double>("diag/gauge_mode0_l1");
+  auto *diag_gauge_mode0_l2 = modes_pkg->MutableParam<double>("diag/gauge_mode0_l2");
+  auto *diag_gauge_mode0_max_abs =
+      modes_pkg->MutableParam<double>("diag/gauge_mode0_max_abs");
   *diag_ja_ea += diag_ja_ea_step;
   *diag_jw_ew += diag_jw_ew_step;
   *diag_s_leak += diag_s_leak_step;
@@ -1198,6 +1243,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_src_em_damping_abs += diag_src_em_damping_abs_step;
   *diag_src_em_spatial_mixed_abs += diag_src_em_spatial_mixed_abs_step;
   *diag_src_em_timelike_abs += diag_src_em_timelike_abs_step;
+  *diag_src_em_gauge_abs += diag_src_em_gauge_abs_step;
+  *diag_gauge_l1 = diag_gauge_l1_step;
+  *diag_gauge_l2 = diag_gauge_l2_step;
+  *diag_gauge_max_abs = diag_gauge_max_abs_step;
+  *diag_gauge_mode0_l1 = diag_gauge_mode0_l1_step;
+  *diag_gauge_mode0_l2 = diag_gauge_mode0_l2_step;
+  *diag_gauge_mode0_max_abs = diag_gauge_mode0_max_abs_step;
 }
 
 } // namespace Modes4D
