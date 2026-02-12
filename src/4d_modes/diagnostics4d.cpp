@@ -61,6 +61,22 @@ enum class TransverseEnergyQuantity {
   LeakageW
 };
 
+enum class ProjectionParity {
+  All,
+  EvenOnly,
+  OddOnly
+};
+
+bool ProjectionParityAcceptsMode(const ProjectionParity parity, const int mode_idx) {
+  if (parity == ProjectionParity::All) {
+    return true;
+  }
+  if (parity == ProjectionParity::EvenOnly) {
+    return (mode_idx % 2) == 0;
+  }
+  return (mode_idx % 2) != 0;
+}
+
 std::vector<Real> BranePointCoefficients(const ModeTables &tables, const int n_modes);
 
 Real FieldL2Integral(MeshData<Real> *md, const std::string &field_name) {
@@ -270,6 +286,166 @@ Real SrcEMTimelikeAbsAccumulatorHst(MeshData<Real> *md) {
 Real SrcEMGaugeAbsAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_src_em_gauge_abs");
+}
+
+Real SrcEMGaugeAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_gauge");
+}
+
+Real SrcEMGaugeMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_gauge_mode0");
+}
+
+Real SrcEMGaugeMode0AbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_src_em_gauge_mode0_abs");
+}
+
+Real RHSA0Mode0LapAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_a0_mode0_lap");
+}
+
+Real RHSA0Mode0MassAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_a0_mode0_mass");
+}
+
+Real RHSA0Mode0CurrentAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_a0_mode0_current");
+}
+
+Real RHSA0Mode0DampingAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_a0_mode0_damping");
+}
+
+Real RHSA0Mode0TimelikeAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_a0_mode0_timelike");
+}
+
+Real RHSA0Mode0GaugeAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_a0_mode0_gauge");
+}
+
+Real RHSA0Mode0TotalAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_a0_mode0_total");
+}
+
+Real RHSAyMode0LapAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_ay_mode0_lap");
+}
+
+Real RHSAyMode0MassAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_ay_mode0_mass");
+}
+
+Real RHSAyMode0CurrentAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_ay_mode0_current");
+}
+
+Real RHSAyMode0DampingAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_ay_mode0_damping");
+}
+
+Real RHSAyMode0SpatialMixedAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_ay_mode0_spatial_mixed");
+}
+
+Real RHSAyMode0EvenBridgeAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_ay_mode0_even_bridge");
+}
+
+Real RHSAyMode0EvenBridgeAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_ay_mode0_even_bridge_abs");
+}
+
+Real BridgePowerMode0AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_bridge_power_mode0");
+}
+
+Real BridgePowerMode0AbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_bridge_power_mode0_abs");
+}
+
+Real RHSAwMode2EvenBridgeAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_aw_mode2_even_bridge");
+}
+
+Real RHSAwMode2EvenBridgeAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_aw_mode2_even_bridge_abs");
+}
+
+Real BridgePowerMode2AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_bridge_power_mode2");
+}
+
+Real BridgePowerMode2AbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_bridge_power_mode2_abs");
+}
+
+Real BridgePowerSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_bridge_power_sum");
+}
+
+Real BridgePowerSumAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_bridge_power_sum_abs");
+}
+
+Real RHSAyMode0TotalAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_ay_mode0_total");
+}
+
+Real RHSAwMode0LapAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_aw_mode0_lap");
+}
+
+Real RHSAwMode0CurrentAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_aw_mode0_current");
+}
+
+Real RHSAwMode0DampingAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_aw_mode0_damping");
+}
+
+Real RHSAwMode0SpatialMixedAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_aw_mode0_spatial_mixed");
+}
+
+Real RHSAwMode0TimelikeAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_aw_mode0_timelike");
+}
+
+Real RHSAwMode0TotalAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_rhs_aw_mode0_total");
 }
 
 Real GaugeL1Hst(MeshData<Real> *md) {
@@ -1730,7 +1906,8 @@ std::vector<Real> ProjectionCoefficients(const ModeTables &tables, const int n_m
 }
 
 Real ProjectionSpanWithKernelHst(MeshData<Real> *md, const std::string &kernel,
-                                 const Real sigma_factor) {
+                                 const Real sigma_factor,
+                                 const ProjectionParity parity) {
   auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   const int n_modes = modes_pkg->Param<int>("n_modes");
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
@@ -1752,6 +1929,9 @@ Real ProjectionSpanWithKernelHst(MeshData<Real> *md, const std::string &kernel,
         for (int i = ib.s; i <= ib.e; ++i) {
           Real ay_proj = 0.0;
           for (int n = 0; n < n_modes; ++n) {
+            if (!ProjectionParityAcceptsMode(parity, n)) {
+              continue;
+            }
             const int off = 5 * n;
             ay_proj += proj_coeff[static_cast<size_t>(n)] * a(off + kCompAY, k, j, i);
           }
@@ -1770,22 +1950,42 @@ Real AyProjectedSpanHst(MeshData<Real> *md) {
   const auto &projection_kernel = modes_pkg->Param<std::string>("diag/projection_kernel");
   const Real projection_sigma_factor =
       modes_pkg->Param<double>("diag/projection_sigma_factor");
-  return ProjectionSpanWithKernelHst(md, projection_kernel, projection_sigma_factor);
+  return ProjectionSpanWithKernelHst(md, projection_kernel, projection_sigma_factor,
+                                     ProjectionParity::All);
+}
+
+Real AyProjectedEvenSpanHst(MeshData<Real> *md) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const auto &projection_kernel = modes_pkg->Param<std::string>("diag/projection_kernel");
+  const Real projection_sigma_factor =
+      modes_pkg->Param<double>("diag/projection_sigma_factor");
+  return ProjectionSpanWithKernelHst(md, projection_kernel, projection_sigma_factor,
+                                     ProjectionParity::EvenOnly);
+}
+
+Real AyProjectedOddSpanHst(MeshData<Real> *md) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const auto &projection_kernel = modes_pkg->Param<std::string>("diag/projection_kernel");
+  const Real projection_sigma_factor =
+      modes_pkg->Param<double>("diag/projection_sigma_factor");
+  return ProjectionSpanWithKernelHst(md, projection_kernel, projection_sigma_factor,
+                                     ProjectionParity::OddOnly);
 }
 
 Real AyProjectedMatchedSpanHst(MeshData<Real> *md) {
-  return ProjectionSpanWithKernelHst(md, "matched", 1.0);
+  return ProjectionSpanWithKernelHst(md, "matched", 1.0, ProjectionParity::All);
 }
 
 Real AyProjectedPointSpanHst(MeshData<Real> *md) {
-  return ProjectionSpanWithKernelHst(md, "point", 1.0);
+  return ProjectionSpanWithKernelHst(md, "point", 1.0, ProjectionParity::All);
 }
 
 Real AyProjectedGaussianSpanHst(MeshData<Real> *md) {
   auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   const Real projection_sigma_factor =
       modes_pkg->Param<double>("diag/projection_sigma_factor");
-  return ProjectionSpanWithKernelHst(md, "gaussian", projection_sigma_factor);
+  return ProjectionSpanWithKernelHst(md, "gaussian", projection_sigma_factor,
+                                     ProjectionParity::All);
 }
 
 std::vector<Real> BranePointCoefficients(const ModeTables &tables, const int n_modes) {
@@ -1816,7 +2016,7 @@ std::vector<Real> BranePointCoefficients(const ModeTables &tables, const int n_m
   return coeff;
 }
 
-Real AyBranePointSpanHst(MeshData<Real> *md) {
+Real AyBranePointSpanWithParityHst(MeshData<Real> *md, const ProjectionParity parity) {
   auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   const int n_modes = modes_pkg->Param<int>("n_modes");
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
@@ -1838,6 +2038,9 @@ Real AyBranePointSpanHst(MeshData<Real> *md) {
         for (int i = ib.s; i <= ib.e; ++i) {
           Real ay_w0 = 0.0;
           for (int n = 0; n < n_modes; ++n) {
+            if (!ProjectionParityAcceptsMode(parity, n)) {
+              continue;
+            }
             const int off = 5 * n;
             ay_w0 += brane_coeff[static_cast<size_t>(n)] * a(off + kCompAY, k, j, i);
           }
@@ -1849,6 +2052,18 @@ Real AyBranePointSpanHst(MeshData<Real> *md) {
   }
 
   return (ay_w0_max > ay_w0_min) ? (ay_w0_max - ay_w0_min) : 0.0;
+}
+
+Real AyBranePointSpanHst(MeshData<Real> *md) {
+  return AyBranePointSpanWithParityHst(md, ProjectionParity::All);
+}
+
+Real AyBranePointEvenSpanHst(MeshData<Real> *md) {
+  return AyBranePointSpanWithParityHst(md, ProjectionParity::EvenOnly);
+}
+
+Real AyBranePointOddSpanHst(MeshData<Real> *md) {
+  return AyBranePointSpanWithParityHst(md, ProjectionParity::OddOnly);
 }
 
 Real JwModeL2Integral(MeshData<Real> *md, const int mode_idx) {
@@ -2045,6 +2260,100 @@ Real FieldModeL2Integral(MeshData<Real> *md, const std::string &field_name,
   return sum;
 }
 
+Real FieldParityL2Integral(MeshData<Real> *md, const std::string &field_name,
+                           const bool even_modes) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+
+  Real sum = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto field = bd->Get(field_name).data.GetHostMirrorAndCopy();
+    auto &coords = bd->GetBlockPointer()->coords;
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          Real val2 = 0.0;
+          for (int n = even_modes ? 0 : 1; n < n_modes; n += 2) {
+            const int off = 5 * n;
+            for (int c = 0; c < 5; ++c) {
+              const Real val = field(off + c, k, j, i);
+              val2 += val * val;
+            }
+          }
+          sum += 0.5 * val2 * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return sum;
+}
+
+Real JwParityL2Integral(MeshData<Real> *md, const bool even_modes) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
+  const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
+
+  Real sum = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto plasma = bd->Get("plasma4d_cons").data.GetHostMirrorAndCopy();
+    auto &coords = bd->GetBlockPointer()->coords;
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          Real jw2 = 0.0;
+          for (int n = even_modes ? 0 : 1; n < n_modes; n += 2) {
+            const int ion_base = PlasmaIndex(0, n, 0, n_modes);
+            const int ele_base = PlasmaIndex(1, n, 0, n_modes);
+            const Real ion_momw = plasma(ion_base + kPlasmaMomW, k, j, i);
+            const Real ele_momw = plasma(ele_base + kPlasmaMomW, k, j, i);
+            const Real jw = (qom_ion * ion_momw) + (qom_electron * ele_momw);
+            jw2 += jw * jw;
+          }
+          sum += 0.5 * jw2 * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return sum;
+}
+
+Real EMA2EvenHst(MeshData<Real> *md) {
+  return FieldParityL2Integral(md, "em4d_a", true);
+}
+
+Real EMA2OddHst(MeshData<Real> *md) {
+  return FieldParityL2Integral(md, "em4d_a", false);
+}
+
+Real EMPi2EvenHst(MeshData<Real> *md) {
+  return FieldParityL2Integral(md, "em4d_pi", true);
+}
+
+Real EMPi2OddHst(MeshData<Real> *md) {
+  return FieldParityL2Integral(md, "em4d_pi", false);
+}
+
+Real JwL2EvenHst(MeshData<Real> *md) {
+  return JwParityL2Integral(md, true);
+}
+
+Real JwL2OddHst(MeshData<Real> *md) {
+  return JwParityL2Integral(md, false);
+}
+
 } // namespace
 
 void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
@@ -2084,7 +2393,39 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_src_em_damping_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_src_em_spatial_mixed_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_src_em_timelike_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_gauge", 0.0, true);
   pkg->AddParam<double>("diag/int_src_em_gauge_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_gauge_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_src_em_gauge_mode0_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_a0_mode0_lap", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_a0_mode0_mass", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_a0_mode0_current", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_a0_mode0_damping", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_a0_mode0_timelike", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_a0_mode0_gauge", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_a0_mode0_total", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_ay_mode0_lap", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_ay_mode0_mass", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_ay_mode0_current", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_ay_mode0_damping", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_ay_mode0_spatial_mixed", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_ay_mode0_even_bridge", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_ay_mode0_even_bridge_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_bridge_power_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_bridge_power_mode0_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_aw_mode2_even_bridge", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_aw_mode2_even_bridge_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_bridge_power_mode2", 0.0, true);
+  pkg->AddParam<double>("diag/int_bridge_power_mode2_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_bridge_power_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_bridge_power_sum_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_ay_mode0_total", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_aw_mode0_lap", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_aw_mode0_current", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_aw_mode0_damping", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_aw_mode0_spatial_mixed", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_aw_mode0_timelike", 0.0, true);
+  pkg->AddParam<double>("diag/int_rhs_aw_mode0_total", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l1", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_l2", 0.0, true);
   pkg->AddParam<double>("diag/continuity_local_max_abs", 0.0, true);
@@ -2212,8 +2553,104 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum, SrcEMTimelikeAbsAccumulatorHst,
       "m4d_int_src_em_timelike_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMGaugeAccumulatorHst,
+      "m4d_int_src_em_gauge"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, SrcEMGaugeAbsAccumulatorHst,
       "m4d_int_src_em_gauge_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMGaugeMode0AccumulatorHst,
+      "m4d_int_src_em_gauge_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcEMGaugeMode0AbsAccumulatorHst,
+      "m4d_int_src_em_gauge_mode0_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSA0Mode0LapAccumulatorHst,
+      "m4d_int_rhs_a0_mode0_lap"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSA0Mode0MassAccumulatorHst,
+      "m4d_int_rhs_a0_mode0_mass"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSA0Mode0CurrentAccumulatorHst,
+      "m4d_int_rhs_a0_mode0_current"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSA0Mode0DampingAccumulatorHst,
+      "m4d_int_rhs_a0_mode0_damping"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSA0Mode0TimelikeAccumulatorHst,
+      "m4d_int_rhs_a0_mode0_timelike"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSA0Mode0GaugeAccumulatorHst,
+      "m4d_int_rhs_a0_mode0_gauge"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSA0Mode0TotalAccumulatorHst,
+      "m4d_int_rhs_a0_mode0_total"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAyMode0LapAccumulatorHst,
+      "m4d_int_rhs_ay_mode0_lap"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAyMode0MassAccumulatorHst,
+      "m4d_int_rhs_ay_mode0_mass"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAyMode0CurrentAccumulatorHst,
+      "m4d_int_rhs_ay_mode0_current"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAyMode0DampingAccumulatorHst,
+      "m4d_int_rhs_ay_mode0_damping"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAyMode0SpatialMixedAccumulatorHst,
+      "m4d_int_rhs_ay_mode0_spatial_mixed"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAyMode0EvenBridgeAccumulatorHst,
+      "m4d_int_rhs_ay_mode0_even_bridge"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAyMode0EvenBridgeAbsAccumulatorHst,
+      "m4d_int_rhs_ay_mode0_even_bridge_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, BridgePowerMode0AccumulatorHst,
+      "m4d_int_bridge_power_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, BridgePowerMode0AbsAccumulatorHst,
+      "m4d_int_bridge_power_mode0_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAwMode2EvenBridgeAccumulatorHst,
+      "m4d_int_rhs_aw_mode2_even_bridge"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAwMode2EvenBridgeAbsAccumulatorHst,
+      "m4d_int_rhs_aw_mode2_even_bridge_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, BridgePowerMode2AccumulatorHst,
+      "m4d_int_bridge_power_mode2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, BridgePowerMode2AbsAccumulatorHst,
+      "m4d_int_bridge_power_mode2_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, BridgePowerSumAccumulatorHst,
+      "m4d_int_bridge_power_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, BridgePowerSumAbsAccumulatorHst,
+      "m4d_int_bridge_power_sum_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAyMode0TotalAccumulatorHst,
+      "m4d_int_rhs_ay_mode0_total"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAwMode0LapAccumulatorHst,
+      "m4d_int_rhs_aw_mode0_lap"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAwMode0CurrentAccumulatorHst,
+      "m4d_int_rhs_aw_mode0_current"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAwMode0DampingAccumulatorHst,
+      "m4d_int_rhs_aw_mode0_damping"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAwMode0SpatialMixedAccumulatorHst,
+      "m4d_int_rhs_aw_mode0_spatial_mixed"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAwMode0TimelikeAccumulatorHst,
+      "m4d_int_rhs_aw_mode0_timelike"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, RHSAwMode0TotalAccumulatorHst,
+      "m4d_int_rhs_aw_mode0_total"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, DivMode0PlasmaAbsAccumulatorHst,
       "m4d_int_div_mode0_plasma_abs"));
@@ -2314,10 +2751,28 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     EwL2Hst, "m4d_ew_l2"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMA2EvenHst, "m4d_em_a2_even"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMA2OddHst, "m4d_em_a2_odd"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMPi2EvenHst, "m4d_em_pi2_even"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    EMPi2OddHst, "m4d_em_pi2_odd"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    JwL2EvenHst, "m4d_jw_l2_even"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    JwL2OddHst, "m4d_jw_l2_odd"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     Ay0SpanHst, "m4d_psi0_span"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     AyProjectedSpanHst,
                                                     "m4d_psi_proj_span"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    AyProjectedEvenSpanHst,
+                                                    "m4d_psi_proj_even_span"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    AyProjectedOddSpanHst,
+                                                    "m4d_psi_proj_odd_span"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     AyProjectedMatchedSpanHst,
                                                     "m4d_psi_proj_matched_span"));
@@ -2330,6 +2785,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     AyBranePointSpanHst,
                                                     "m4d_psi_w0_span"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    AyBranePointEvenSpanHst,
+                                                    "m4d_psi_w0_even_span"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    AyBranePointOddSpanHst,
+                                                    "m4d_psi_w0_odd_span"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     PulseCentroidXHst,
                                                     "m4d_pulse_xc"));

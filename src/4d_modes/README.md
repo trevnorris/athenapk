@@ -15,6 +15,16 @@ Implemented now:
     and `J^nu` source deposition
   - scalar component includes Laplacian and `J^w` source deposition
   - scalar-photon work (`J^w E_w`) and leakage (`S_leak`) accumulators are updated
+  - optional explicit mode-0/mode-2 bridge coupling (default disabled):
+    - runtime gain: `modes4d/em_source_mode0_even_bridge_gain` (default `0.0`)
+    - paired source terms:
+      - `S_{A_y^(0)} += gain * c_wave^2 * (sqrt(8)/lambda^2) * d_y A_w^(2)`
+      - `S_{A_w^(2)} += -gain * c_wave^2 * (sqrt(8)/lambda^2) * d_y A_y^(0)`
+    - bridge transfer diagnostics:
+      - `m4d_int_bridge_power_mode0`, `m4d_int_bridge_power_mode0_abs`
+      - `m4d_int_bridge_power_mode2`, `m4d_int_bridge_power_mode2_abs`
+      - `m4d_int_bridge_power_sum`, `m4d_int_bridge_power_sum_abs`
+    - used for conservative spillback probes without changing baseline runs
 - optional conservative EM transport path in the hydro flux pipeline:
   - `modes4d/em_conservative_transport = true` registers `em4d_pi` with `WithFluxes`
   - stage fluxes add `-c_wave^2 * grad(em4d_a)` transport for `em4d_pi`
@@ -910,12 +920,22 @@ cmake --build /projects/fluid-engine/athenapk/build-baseline \
 
 This target runs `scripts/modes4d_em_conservative_source_channels_regression.py`
 and checks the term-resolved conservative EM source diagnostics:
-- `m4d_int_src_em_laplacian_abs`
-- `m4d_int_src_em_mass_abs`
-- `m4d_int_src_em_current_abs`
-- `m4d_int_src_em_damping_abs`
-- `m4d_int_src_em_spatial_mixed_abs`
-- `m4d_int_src_em_timelike_abs`
+  - `m4d_int_src_em_laplacian_abs`
+  - `m4d_int_src_em_mass_abs`
+  - `m4d_int_src_em_current_abs`
+  - `m4d_int_src_em_damping_abs`
+  - `m4d_int_src_em_spatial_mixed_abs`
+  - `m4d_int_src_em_timelike_abs`
+  - `m4d_int_rhs_ay_mode0_even_bridge`
+  - `m4d_int_rhs_ay_mode0_even_bridge_abs`
+  - `m4d_int_rhs_aw_mode2_even_bridge`
+  - `m4d_int_rhs_aw_mode2_even_bridge_abs`
+  - `m4d_int_bridge_power_mode0`
+  - `m4d_int_bridge_power_mode0_abs`
+  - `m4d_int_bridge_power_mode2`
+  - `m4d_int_bridge_power_mode2_abs`
+  - `m4d_int_bridge_power_sum`
+  - `m4d_int_bridge_power_sum_abs`
 
 It enforces, in short Harris runs:
 - conservative path suppresses Laplacian and spatial-mixed source channels

@@ -297,6 +297,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real em_source_damping_gain = modes_pkg->Param<double>("em4d/source_damping_gain");
   const Real em_source_timelike_gain = modes_pkg->Param<double>("em4d/source_timelike_gain");
   const Real em_source_gauge_gain = modes_pkg->Param<double>("em4d/source_gauge_gain");
+  const Real em_source_mode0_even_bridge_gain =
+      modes_pkg->Param<double>("em4d/source_mode0_even_bridge_gain");
   const bool use_conservative_transport =
       modes_pkg->Param<bool>("em4d/use_conservative_transport");
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
@@ -349,7 +351,39 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_src_em_damping_abs_step = 0.0;
   Real diag_src_em_spatial_mixed_abs_step = 0.0;
   Real diag_src_em_timelike_abs_step = 0.0;
+  Real diag_src_em_gauge_step = 0.0;
   Real diag_src_em_gauge_abs_step = 0.0;
+  Real diag_src_em_gauge_mode0_step = 0.0;
+  Real diag_src_em_gauge_mode0_abs_step = 0.0;
+  Real diag_rhs_a0_mode0_lap_step = 0.0;
+  Real diag_rhs_a0_mode0_mass_step = 0.0;
+  Real diag_rhs_a0_mode0_current_step = 0.0;
+  Real diag_rhs_a0_mode0_damping_step = 0.0;
+  Real diag_rhs_a0_mode0_timelike_step = 0.0;
+  Real diag_rhs_a0_mode0_gauge_step = 0.0;
+  Real diag_rhs_a0_mode0_total_step = 0.0;
+  Real diag_rhs_ay_mode0_lap_step = 0.0;
+  Real diag_rhs_ay_mode0_mass_step = 0.0;
+  Real diag_rhs_ay_mode0_current_step = 0.0;
+  Real diag_rhs_ay_mode0_damping_step = 0.0;
+  Real diag_rhs_ay_mode0_spatial_mixed_step = 0.0;
+  Real diag_rhs_ay_mode0_even_bridge_step = 0.0;
+  Real diag_rhs_ay_mode0_even_bridge_abs_step = 0.0;
+  Real diag_bridge_power_mode0_step = 0.0;
+  Real diag_bridge_power_mode0_abs_step = 0.0;
+  Real diag_rhs_aw_mode2_even_bridge_step = 0.0;
+  Real diag_rhs_aw_mode2_even_bridge_abs_step = 0.0;
+  Real diag_bridge_power_mode2_step = 0.0;
+  Real diag_bridge_power_mode2_abs_step = 0.0;
+  Real diag_bridge_power_sum_step = 0.0;
+  Real diag_bridge_power_sum_abs_step = 0.0;
+  Real diag_rhs_ay_mode0_total_step = 0.0;
+  Real diag_rhs_aw_mode0_lap_step = 0.0;
+  Real diag_rhs_aw_mode0_current_step = 0.0;
+  Real diag_rhs_aw_mode0_damping_step = 0.0;
+  Real diag_rhs_aw_mode0_spatial_mixed_step = 0.0;
+  Real diag_rhs_aw_mode0_timelike_step = 0.0;
+  Real diag_rhs_aw_mode0_total_step = 0.0;
   Real diag_gauge_l1_step = 0.0;
   Real diag_gauge_l2_step = 0.0;
   Real diag_gauge_max_abs_step = 0.0;
@@ -912,6 +946,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             }
           }
 
+          Real bridge_power_mode0_cell = 0.0;
           for (int n = 0; n < n_modes; ++n) {
             const int idx_a0 = EMIndex(n, kCompA0);
             const int idx_ax = EMIndex(n, kCompAX);
@@ -1033,6 +1068,25 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             const Real src_ay_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_y;
             const Real src_az_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_z;
             const Real src_aw_spatial_mixed = -(c2 * mixed_div_a_next);
+            Real src_ay_mode0_even_bridge = 0.0;
+            if ((n == 0) && (n_modes > 2) && (em_source_mode0_even_bridge_gain != 0.0)) {
+              // Optional explicit even-parity bridge: mode-2 A_w gradient into mode-0 A_y RHS.
+              // Disabled by default (gain=0) so baseline behavior is unchanged.
+              const int idx_aw_mode2 = EMIndex(2, kCompAW);
+              const Real mode0_even_bridge_coeff = std::sqrt(8.0) / (lambda * lambda);
+              src_ay_mode0_even_bridge =
+                  em_source_mode0_even_bridge_gain * c2 * mode0_even_bridge_coeff *
+                  gradient_y(a_old, idx_aw_mode2, k, j, i);
+            }
+            Real src_aw_mode2_even_bridge = 0.0;
+            if ((n == 2) && (em_source_mode0_even_bridge_gain != 0.0)) {
+              // Paired antisymmetric companion term so bridge transfer is internal (0 <-> 2).
+              const int idx_ay_mode0 = EMIndex(0, kCompAY);
+              const Real mode0_even_bridge_coeff = std::sqrt(8.0) / (lambda * lambda);
+              src_aw_mode2_even_bridge =
+                  -em_source_mode0_even_bridge_gain * c2 * mode0_even_bridge_coeff *
+                  gradient_y(a_old, idx_ay_mode0, k, j, i);
+            }
 
             const Real rhs_a0_timelike_from_piw =
                 -em_source_timelike_gain * (c2 * coupling_coeff * mixed_dt_aw_prev);
@@ -1045,11 +1099,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             const Real rhs_ax = src_ax_lap + src_ax_mass + src_ax_spatial_mixed +
                                 src_ax_current + src_ax_damping;
             const Real rhs_ay = src_ay_lap + src_ay_mass + src_ay_spatial_mixed +
-                                src_ay_current + src_ay_damping;
+                                src_ay_current + src_ay_damping +
+                                src_ay_mode0_even_bridge;
             const Real rhs_az = src_az_lap + src_az_mass + src_az_spatial_mixed +
                                 src_az_current + src_az_damping;
             const Real rhs_aw = src_aw_lap + src_aw_spatial_mixed + src_aw_current +
-                                src_aw_damping + rhs_aw_timelike_from_pi0;
+                                src_aw_damping + rhs_aw_timelike_from_pi0 +
+                                src_aw_mode2_even_bridge;
 
             // Track the time-like mixed couplings explicitly so conservative-path runs
             // can be diagnosed before tightening behavioral gates.
@@ -1079,6 +1135,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 (std::abs(src_a0_damping) + std::abs(src_ax_damping) +
                  std::abs(src_ay_damping) + std::abs(src_az_damping) +
                  std::abs(src_aw_damping));
+            diag_src_em_gauge_step +=
+                dt * cell_volume * src_a0_gauge;
             diag_src_em_gauge_abs_step +=
                 dt * cell_volume * std::abs(src_a0_gauge);
             diag_src_em_spatial_mixed_abs_step +=
@@ -1088,6 +1146,59 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             diag_src_em_timelike_abs_step +=
                 dt * cell_volume *
                 (std::abs(rhs_a0_timelike_from_piw) + std::abs(rhs_aw_timelike_from_pi0));
+            if (n == 0) {
+              diag_src_em_gauge_mode0_step += dt * cell_volume * src_a0_gauge;
+              diag_src_em_gauge_mode0_abs_step += dt * cell_volume * std::abs(src_a0_gauge);
+              diag_rhs_a0_mode0_lap_step += dt * cell_volume * src_a0_lap;
+              diag_rhs_a0_mode0_mass_step += dt * cell_volume * src_a0_mass;
+              diag_rhs_a0_mode0_current_step += dt * cell_volume * src_a0_current;
+              diag_rhs_a0_mode0_damping_step += dt * cell_volume * src_a0_damping;
+              diag_rhs_a0_mode0_timelike_step +=
+                  dt * cell_volume * rhs_a0_timelike_from_piw;
+              diag_rhs_a0_mode0_gauge_step += dt * cell_volume * src_a0_gauge;
+              diag_rhs_a0_mode0_total_step += dt * cell_volume * rhs_a0;
+              diag_rhs_ay_mode0_lap_step += dt * cell_volume * src_ay_lap;
+              diag_rhs_ay_mode0_mass_step += dt * cell_volume * src_ay_mass;
+              diag_rhs_ay_mode0_current_step += dt * cell_volume * src_ay_current;
+              diag_rhs_ay_mode0_damping_step += dt * cell_volume * src_ay_damping;
+              diag_rhs_ay_mode0_spatial_mixed_step +=
+                  dt * cell_volume * src_ay_spatial_mixed;
+              diag_rhs_ay_mode0_even_bridge_step +=
+                  dt * cell_volume * src_ay_mode0_even_bridge;
+              diag_rhs_ay_mode0_even_bridge_abs_step +=
+                  dt * cell_volume * std::abs(src_ay_mode0_even_bridge);
+              const Real ey_mode0 =
+                  -pi_old(idx_ay, k, j, i) - gradient_y(a_old, idx_a0, k, j, i);
+              const Real bridge_power_mode0 = -src_ay_mode0_even_bridge * ey_mode0;
+              bridge_power_mode0_cell = bridge_power_mode0;
+              diag_bridge_power_mode0_step += dt * cell_volume * bridge_power_mode0;
+              diag_bridge_power_mode0_abs_step +=
+                  dt * cell_volume * std::abs(bridge_power_mode0);
+              diag_rhs_ay_mode0_total_step += dt * cell_volume * rhs_ay;
+              diag_rhs_aw_mode0_lap_step += dt * cell_volume * src_aw_lap;
+              diag_rhs_aw_mode0_current_step += dt * cell_volume * src_aw_current;
+              diag_rhs_aw_mode0_damping_step += dt * cell_volume * src_aw_damping;
+              diag_rhs_aw_mode0_spatial_mixed_step +=
+                  dt * cell_volume * src_aw_spatial_mixed;
+              diag_rhs_aw_mode0_timelike_step +=
+                  dt * cell_volume * rhs_aw_timelike_from_pi0;
+              diag_rhs_aw_mode0_total_step += dt * cell_volume * rhs_aw;
+            }
+            if (n == 2) {
+              diag_rhs_aw_mode2_even_bridge_step +=
+                  dt * cell_volume * src_aw_mode2_even_bridge;
+              diag_rhs_aw_mode2_even_bridge_abs_step +=
+                  dt * cell_volume * std::abs(src_aw_mode2_even_bridge);
+              const Real ew_mode2 = -pi_old(idx_aw, k, j, i) - tables.ApplyID3Raising(a0_modes, n);
+              const Real bridge_power_mode2 = -src_aw_mode2_even_bridge * ew_mode2;
+              const Real bridge_power_sum = bridge_power_mode0_cell + bridge_power_mode2;
+              diag_bridge_power_mode2_step += dt * cell_volume * bridge_power_mode2;
+              diag_bridge_power_mode2_abs_step +=
+                  dt * cell_volume * std::abs(bridge_power_mode2);
+              diag_bridge_power_sum_step += dt * cell_volume * bridge_power_sum;
+              diag_bridge_power_sum_abs_step +=
+                  dt * cell_volume * std::abs(bridge_power_sum);
+            }
 
             pi_new(idx_a0, k, j, i) = pi_old(idx_a0, k, j, i) + (dt * rhs_a0);
             pi_new(idx_ax, k, j, i) = pi_old(idx_ax, k, j, i) + (dt * rhs_ax);
@@ -1203,8 +1314,71 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/int_src_em_spatial_mixed_abs");
   auto *diag_src_em_timelike_abs =
       modes_pkg->MutableParam<double>("diag/int_src_em_timelike_abs");
+  auto *diag_src_em_gauge = modes_pkg->MutableParam<double>("diag/int_src_em_gauge");
   auto *diag_src_em_gauge_abs =
       modes_pkg->MutableParam<double>("diag/int_src_em_gauge_abs");
+  auto *diag_src_em_gauge_mode0 =
+      modes_pkg->MutableParam<double>("diag/int_src_em_gauge_mode0");
+  auto *diag_src_em_gauge_mode0_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_em_gauge_mode0_abs");
+  auto *diag_rhs_a0_mode0_lap =
+      modes_pkg->MutableParam<double>("diag/int_rhs_a0_mode0_lap");
+  auto *diag_rhs_a0_mode0_mass =
+      modes_pkg->MutableParam<double>("diag/int_rhs_a0_mode0_mass");
+  auto *diag_rhs_a0_mode0_current =
+      modes_pkg->MutableParam<double>("diag/int_rhs_a0_mode0_current");
+  auto *diag_rhs_a0_mode0_damping =
+      modes_pkg->MutableParam<double>("diag/int_rhs_a0_mode0_damping");
+  auto *diag_rhs_a0_mode0_timelike =
+      modes_pkg->MutableParam<double>("diag/int_rhs_a0_mode0_timelike");
+  auto *diag_rhs_a0_mode0_gauge =
+      modes_pkg->MutableParam<double>("diag/int_rhs_a0_mode0_gauge");
+  auto *diag_rhs_a0_mode0_total =
+      modes_pkg->MutableParam<double>("diag/int_rhs_a0_mode0_total");
+  auto *diag_rhs_ay_mode0_lap =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_lap");
+  auto *diag_rhs_ay_mode0_mass =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_mass");
+  auto *diag_rhs_ay_mode0_current =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_current");
+  auto *diag_rhs_ay_mode0_damping =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_damping");
+  auto *diag_rhs_ay_mode0_spatial_mixed =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_spatial_mixed");
+  auto *diag_rhs_ay_mode0_even_bridge =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_even_bridge");
+  auto *diag_rhs_ay_mode0_even_bridge_abs =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_even_bridge_abs");
+  auto *diag_bridge_power_mode0 =
+      modes_pkg->MutableParam<double>("diag/int_bridge_power_mode0");
+  auto *diag_bridge_power_mode0_abs =
+      modes_pkg->MutableParam<double>("diag/int_bridge_power_mode0_abs");
+  auto *diag_rhs_aw_mode2_even_bridge =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode2_even_bridge");
+  auto *diag_rhs_aw_mode2_even_bridge_abs =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode2_even_bridge_abs");
+  auto *diag_bridge_power_mode2 =
+      modes_pkg->MutableParam<double>("diag/int_bridge_power_mode2");
+  auto *diag_bridge_power_mode2_abs =
+      modes_pkg->MutableParam<double>("diag/int_bridge_power_mode2_abs");
+  auto *diag_bridge_power_sum =
+      modes_pkg->MutableParam<double>("diag/int_bridge_power_sum");
+  auto *diag_bridge_power_sum_abs =
+      modes_pkg->MutableParam<double>("diag/int_bridge_power_sum_abs");
+  auto *diag_rhs_ay_mode0_total =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_total");
+  auto *diag_rhs_aw_mode0_lap =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode0_lap");
+  auto *diag_rhs_aw_mode0_current =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode0_current");
+  auto *diag_rhs_aw_mode0_damping =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode0_damping");
+  auto *diag_rhs_aw_mode0_spatial_mixed =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode0_spatial_mixed");
+  auto *diag_rhs_aw_mode0_timelike =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode0_timelike");
+  auto *diag_rhs_aw_mode0_total =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode0_total");
   auto *diag_gauge_l1 = modes_pkg->MutableParam<double>("diag/gauge_l1");
   auto *diag_gauge_l2 = modes_pkg->MutableParam<double>("diag/gauge_l2");
   auto *diag_gauge_max_abs =
@@ -1243,7 +1417,39 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_src_em_damping_abs += diag_src_em_damping_abs_step;
   *diag_src_em_spatial_mixed_abs += diag_src_em_spatial_mixed_abs_step;
   *diag_src_em_timelike_abs += diag_src_em_timelike_abs_step;
+  *diag_src_em_gauge += diag_src_em_gauge_step;
   *diag_src_em_gauge_abs += diag_src_em_gauge_abs_step;
+  *diag_src_em_gauge_mode0 += diag_src_em_gauge_mode0_step;
+  *diag_src_em_gauge_mode0_abs += diag_src_em_gauge_mode0_abs_step;
+  *diag_rhs_a0_mode0_lap += diag_rhs_a0_mode0_lap_step;
+  *diag_rhs_a0_mode0_mass += diag_rhs_a0_mode0_mass_step;
+  *diag_rhs_a0_mode0_current += diag_rhs_a0_mode0_current_step;
+  *diag_rhs_a0_mode0_damping += diag_rhs_a0_mode0_damping_step;
+  *diag_rhs_a0_mode0_timelike += diag_rhs_a0_mode0_timelike_step;
+  *diag_rhs_a0_mode0_gauge += diag_rhs_a0_mode0_gauge_step;
+  *diag_rhs_a0_mode0_total += diag_rhs_a0_mode0_total_step;
+  *diag_rhs_ay_mode0_lap += diag_rhs_ay_mode0_lap_step;
+  *diag_rhs_ay_mode0_mass += diag_rhs_ay_mode0_mass_step;
+  *diag_rhs_ay_mode0_current += diag_rhs_ay_mode0_current_step;
+  *diag_rhs_ay_mode0_damping += diag_rhs_ay_mode0_damping_step;
+  *diag_rhs_ay_mode0_spatial_mixed += diag_rhs_ay_mode0_spatial_mixed_step;
+  *diag_rhs_ay_mode0_even_bridge += diag_rhs_ay_mode0_even_bridge_step;
+  *diag_rhs_ay_mode0_even_bridge_abs += diag_rhs_ay_mode0_even_bridge_abs_step;
+  *diag_bridge_power_mode0 += diag_bridge_power_mode0_step;
+  *diag_bridge_power_mode0_abs += diag_bridge_power_mode0_abs_step;
+  *diag_rhs_aw_mode2_even_bridge += diag_rhs_aw_mode2_even_bridge_step;
+  *diag_rhs_aw_mode2_even_bridge_abs += diag_rhs_aw_mode2_even_bridge_abs_step;
+  *diag_bridge_power_mode2 += diag_bridge_power_mode2_step;
+  *diag_bridge_power_mode2_abs += diag_bridge_power_mode2_abs_step;
+  *diag_bridge_power_sum += diag_bridge_power_sum_step;
+  *diag_bridge_power_sum_abs += diag_bridge_power_sum_abs_step;
+  *diag_rhs_ay_mode0_total += diag_rhs_ay_mode0_total_step;
+  *diag_rhs_aw_mode0_lap += diag_rhs_aw_mode0_lap_step;
+  *diag_rhs_aw_mode0_current += diag_rhs_aw_mode0_current_step;
+  *diag_rhs_aw_mode0_damping += diag_rhs_aw_mode0_damping_step;
+  *diag_rhs_aw_mode0_spatial_mixed += diag_rhs_aw_mode0_spatial_mixed_step;
+  *diag_rhs_aw_mode0_timelike += diag_rhs_aw_mode0_timelike_step;
+  *diag_rhs_aw_mode0_total += diag_rhs_aw_mode0_total_step;
   *diag_gauge_l1 = diag_gauge_l1_step;
   *diag_gauge_l2 = diag_gauge_l2_step;
   *diag_gauge_max_abs = diag_gauge_max_abs_step;

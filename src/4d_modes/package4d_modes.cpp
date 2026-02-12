@@ -37,6 +37,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "em_source_timelike_gain", 1.0);
   const double em_source_gauge_gain =
       pin->GetOrAddReal("modes4d", "em_source_gauge_gain", 0.0);
+  const double em_source_mode0_even_bridge_gain =
+      pin->GetOrAddReal("modes4d", "em_source_mode0_even_bridge_gain", 0.0);
   const bool em_conservative_transport =
       pin->GetOrAddBoolean("modes4d", "em_conservative_transport", false);
   const std::string diag_projection_kernel =
@@ -119,6 +121,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/source_damping_gain", em_source_damping_gain);
   pkg->AddParam<double>("em4d/source_timelike_gain", em_source_timelike_gain);
   pkg->AddParam<double>("em4d/source_gauge_gain", em_source_gauge_gain);
+  pkg->AddParam<double>("em4d/source_mode0_even_bridge_gain",
+                        em_source_mode0_even_bridge_gain);
   pkg->AddParam<bool>("em4d/use_conservative_transport", em_conservative_transport);
   pkg->AddParam<std::string>("diag/projection_kernel", diag_projection_kernel);
   pkg->AddParam<double>("diag/projection_sigma_factor", diag_projection_sigma_factor);

@@ -202,7 +202,13 @@ def transport_balance_metrics(
 
 
 def em_bulk_ledger_abs_rate_metrics(
-    times, em_u_bulk, int_ja_ea, int_jw_ew, skip_initial_interval=True
+    times,
+    em_u_bulk,
+    int_ja_ea,
+    int_jw_ew,
+    int_bridge_power=None,
+    bridge_sign=1.0,
+    skip_initial_interval=True,
 ):
     if (
         len(times) < 2
@@ -213,6 +219,8 @@ def em_bulk_ledger_abs_rate_metrics(
         or len(int_ja_ea) != len(times)
         or len(int_jw_ew) != len(times)
     ):
+        return (math.nan, math.nan, math.nan)
+    if int_bridge_power is not None and len(int_bridge_power) != len(times):
         return (math.nan, math.nan, math.nan)
 
     abs_rates = []
@@ -226,7 +234,10 @@ def em_bulk_ledger_abs_rate_metrics(
         du_dt = (em_u_bulk[i] - em_u_bulk[i - 1]) / dt
         dja_dt = (int_ja_ea[i] - int_ja_ea[i - 1]) / dt
         djw_dt = (int_jw_ew[i] - int_jw_ew[i - 1]) / dt
-        rate = du_dt + dja_dt + djw_dt
+        dbridge_dt = 0.0
+        if int_bridge_power is not None:
+            dbridge_dt = (int_bridge_power[i] - int_bridge_power[i - 1]) / dt
+        rate = du_dt + dja_dt + djw_dt + (bridge_sign * dbridge_dt)
         abs_rates.append(abs(rate))
         final_rate = rate
 
@@ -353,9 +364,21 @@ def analyze_case(
     psi_proj_gaussian = maybe_col(cols, "m4d_psi_proj_gaussian_span")
     if psi_proj_gaussian is None or len(psi_proj_gaussian) != len(psi0):
         psi_proj_gaussian = psi_proj
+    psi_proj_even = maybe_col(cols, "m4d_psi_proj_even_span")
+    if psi_proj_even is None or len(psi_proj_even) != len(psi0):
+        psi_proj_even = psi_proj
+    psi_proj_odd = maybe_col(cols, "m4d_psi_proj_odd_span")
+    if psi_proj_odd is None or len(psi_proj_odd) != len(psi0):
+        psi_proj_odd = [math.nan for _ in psi0]
     psi_w0 = maybe_col(cols, "m4d_psi_w0_span")
     if psi_w0 is None or len(psi_w0) != len(psi0):
         psi_w0 = psi_proj
+    psi_w0_even = maybe_col(cols, "m4d_psi_w0_even_span")
+    if psi_w0_even is None or len(psi_w0_even) != len(psi0):
+        psi_w0_even = psi_w0
+    psi_w0_odd = maybe_col(cols, "m4d_psi_w0_odd_span")
+    if psi_w0_odd is None or len(psi_w0_odd) != len(psi0):
+        psi_w0_odd = [math.nan for _ in psi0]
     leak = cols["m4d_int_s_leak"]
     leak_abs = cols.get("m4d_int_s_leak_abs", leak)
     jw_ew = cols["m4d_int_jw_ew"]
@@ -379,6 +402,12 @@ def analyze_case(
     edotb_sub = maybe_col(cols, "m4d_edotb_sub")
     em_a2_mode1 = maybe_col(cols, "m4d_em_a2_mode_1")
     em_pi2_mode1 = maybe_col(cols, "m4d_em_pi2_mode_1")
+    em_a2_even = maybe_col(cols, "m4d_em_a2_even")
+    em_a2_odd = maybe_col(cols, "m4d_em_a2_odd")
+    em_pi2_even = maybe_col(cols, "m4d_em_pi2_even")
+    em_pi2_odd = maybe_col(cols, "m4d_em_pi2_odd")
+    jw_l2_even = maybe_col(cols, "m4d_jw_l2_even")
+    jw_l2_odd = maybe_col(cols, "m4d_jw_l2_odd")
     jw_mode1_l2 = maybe_col(cols, "m4d_jw_mode_l2_1")
     jw_mode1 = maybe_col(cols, "m4d_jw_mode_1")
     charge_mode0 = maybe_col(cols, "m4d_charge_mode_0")
@@ -419,7 +448,43 @@ def analyze_case(
     int_src_em_damping_abs = maybe_col(cols, "m4d_int_src_em_damping_abs")
     int_src_em_spatial_mixed_abs = maybe_col(cols, "m4d_int_src_em_spatial_mixed_abs")
     int_src_em_timelike_abs = maybe_col(cols, "m4d_int_src_em_timelike_abs")
+    int_src_em_gauge = maybe_col(cols, "m4d_int_src_em_gauge")
     int_src_em_gauge_abs = maybe_col(cols, "m4d_int_src_em_gauge_abs")
+    int_src_em_gauge_mode0 = maybe_col(cols, "m4d_int_src_em_gauge_mode0")
+    int_src_em_gauge_mode0_abs = maybe_col(cols, "m4d_int_src_em_gauge_mode0_abs")
+    int_rhs_a0_mode0_lap = maybe_col(cols, "m4d_int_rhs_a0_mode0_lap")
+    int_rhs_a0_mode0_mass = maybe_col(cols, "m4d_int_rhs_a0_mode0_mass")
+    int_rhs_a0_mode0_current = maybe_col(cols, "m4d_int_rhs_a0_mode0_current")
+    int_rhs_a0_mode0_damping = maybe_col(cols, "m4d_int_rhs_a0_mode0_damping")
+    int_rhs_a0_mode0_timelike = maybe_col(cols, "m4d_int_rhs_a0_mode0_timelike")
+    int_rhs_a0_mode0_gauge = maybe_col(cols, "m4d_int_rhs_a0_mode0_gauge")
+    int_rhs_a0_mode0_total = maybe_col(cols, "m4d_int_rhs_a0_mode0_total")
+    int_rhs_ay_mode0_lap = maybe_col(cols, "m4d_int_rhs_ay_mode0_lap")
+    int_rhs_ay_mode0_mass = maybe_col(cols, "m4d_int_rhs_ay_mode0_mass")
+    int_rhs_ay_mode0_current = maybe_col(cols, "m4d_int_rhs_ay_mode0_current")
+    int_rhs_ay_mode0_damping = maybe_col(cols, "m4d_int_rhs_ay_mode0_damping")
+    int_rhs_ay_mode0_spatial_mixed = maybe_col(cols, "m4d_int_rhs_ay_mode0_spatial_mixed")
+    int_rhs_ay_mode0_even_bridge = maybe_col(cols, "m4d_int_rhs_ay_mode0_even_bridge")
+    int_rhs_ay_mode0_even_bridge_abs = maybe_col(
+        cols, "m4d_int_rhs_ay_mode0_even_bridge_abs"
+    )
+    int_bridge_power_mode0 = maybe_col(cols, "m4d_int_bridge_power_mode0")
+    int_bridge_power_mode0_abs = maybe_col(cols, "m4d_int_bridge_power_mode0_abs")
+    int_rhs_aw_mode2_even_bridge = maybe_col(cols, "m4d_int_rhs_aw_mode2_even_bridge")
+    int_rhs_aw_mode2_even_bridge_abs = maybe_col(
+        cols, "m4d_int_rhs_aw_mode2_even_bridge_abs"
+    )
+    int_bridge_power_mode2 = maybe_col(cols, "m4d_int_bridge_power_mode2")
+    int_bridge_power_mode2_abs = maybe_col(cols, "m4d_int_bridge_power_mode2_abs")
+    int_bridge_power_sum = maybe_col(cols, "m4d_int_bridge_power_sum")
+    int_bridge_power_sum_abs = maybe_col(cols, "m4d_int_bridge_power_sum_abs")
+    int_rhs_ay_mode0_total = maybe_col(cols, "m4d_int_rhs_ay_mode0_total")
+    int_rhs_aw_mode0_lap = maybe_col(cols, "m4d_int_rhs_aw_mode0_lap")
+    int_rhs_aw_mode0_current = maybe_col(cols, "m4d_int_rhs_aw_mode0_current")
+    int_rhs_aw_mode0_damping = maybe_col(cols, "m4d_int_rhs_aw_mode0_damping")
+    int_rhs_aw_mode0_spatial_mixed = maybe_col(cols, "m4d_int_rhs_aw_mode0_spatial_mixed")
+    int_rhs_aw_mode0_timelike = maybe_col(cols, "m4d_int_rhs_aw_mode0_timelike")
+    int_rhs_aw_mode0_total = maybe_col(cols, "m4d_int_rhs_aw_mode0_total")
     int_div_mode0_plasma_abs = maybe_col(cols, "m4d_int_div_mode0_plasma_abs")
     int_div_mode0_em_abs = maybe_col(cols, "m4d_int_div_mode0_em_abs")
     int_div_mode0_total_abs = maybe_col(cols, "m4d_int_div_mode0_total_abs")
@@ -451,6 +516,60 @@ def analyze_case(
         (w / p0) if math.isfinite(w) and math.isfinite(p0) and abs(p0) > 0.0 else math.nan
         for w, p0 in zip(psi_w0, psi0)
     ]
+    psi_proj_odd_over_even = [
+        (odd / even)
+        if math.isfinite(odd) and math.isfinite(even) and abs(even) > 0.0
+        else math.nan
+        for odd, even in zip(psi_proj_odd, psi_proj_even)
+    ]
+    psi_w0_odd_over_even = [
+        (odd / even)
+        if math.isfinite(odd) and math.isfinite(even) and abs(even) > 0.0
+        else math.nan
+        for odd, even in zip(psi_w0_odd, psi_w0_even)
+    ]
+
+    em_a2_odd_fraction = None
+    if (
+        em_a2_even is not None
+        and em_a2_odd is not None
+        and len(em_a2_even) == len(psi0)
+        and len(em_a2_odd) == len(psi0)
+    ):
+        em_a2_odd_fraction = [
+            (odd / (odd + even))
+            if math.isfinite(odd) and math.isfinite(even) and abs(odd + even) > 0.0
+            else math.nan
+            for odd, even in zip(em_a2_odd, em_a2_even)
+        ]
+
+    em_pi2_odd_fraction = None
+    if (
+        em_pi2_even is not None
+        and em_pi2_odd is not None
+        and len(em_pi2_even) == len(psi0)
+        and len(em_pi2_odd) == len(psi0)
+    ):
+        em_pi2_odd_fraction = [
+            (odd / (odd + even))
+            if math.isfinite(odd) and math.isfinite(even) and abs(odd + even) > 0.0
+            else math.nan
+            for odd, even in zip(em_pi2_odd, em_pi2_even)
+        ]
+
+    jw_l2_odd_fraction = None
+    if (
+        jw_l2_even is not None
+        and jw_l2_odd is not None
+        and len(jw_l2_even) == len(psi0)
+        and len(jw_l2_odd) == len(psi0)
+    ):
+        jw_l2_odd_fraction = [
+            (odd / (odd + even))
+            if math.isfinite(odd) and math.isfinite(even) and abs(odd + even) > 0.0
+            else math.nan
+            for odd, even in zip(jw_l2_odd, jw_l2_even)
+        ]
 
     if int_div_mode0_plasma_abs is None:
         int_div_mode0_plasma_abs = combine_abs_series(
@@ -529,6 +648,21 @@ def analyze_case(
                 maybe_col(cols, "m4d_int_src_timelike_aw_from_pi0"),
             ]
         )
+    if (
+        int_bridge_power_sum is None
+        and int_bridge_power_mode0 is not None
+        and int_bridge_power_mode2 is not None
+        and len(int_bridge_power_mode0) == len(int_bridge_power_mode2)
+    ):
+        int_bridge_power_sum = [
+            t0 + t2 for t0, t2 in zip(int_bridge_power_mode0, int_bridge_power_mode2)
+        ]
+    if (
+        int_bridge_power_sum_abs is None
+        and int_bridge_power_sum is not None
+        and len(int_bridge_power_sum) == len(psi0)
+    ):
+        int_bridge_power_sum_abs = [abs(v) for v in int_bridge_power_sum]
 
     em_u_sub = None
     if (
@@ -582,6 +716,149 @@ def analyze_case(
         )
         else ("N/A" if math.isnan(em_bulk_ledger_max_abs_rate) else "FAIL")
     )
+    (
+        em_bulk_ledger_with_bridge_plus_max_abs_rate,
+        em_bulk_ledger_with_bridge_plus_rms_abs_rate,
+        em_bulk_ledger_with_bridge_plus_final_rate,
+    ) = em_bulk_ledger_abs_rate_metrics(
+        times,
+        em_u_bulk,
+        ja_ea,
+        jw_ew,
+        int_bridge_power=int_bridge_power_mode0,
+        bridge_sign=1.0,
+    )
+    em_bulk_ledger_with_bridge_plus_status = (
+        "PASS"
+        if (
+            not math.isnan(em_bulk_ledger_with_bridge_plus_max_abs_rate)
+            and em_bulk_ledger_with_bridge_plus_max_abs_rate
+            <= em_bulk_ledger_abs_rate_tol
+        )
+        else (
+            "N/A"
+            if math.isnan(em_bulk_ledger_with_bridge_plus_max_abs_rate)
+            else "FAIL"
+        )
+    )
+    (
+        em_bulk_ledger_with_bridge_minus_max_abs_rate,
+        em_bulk_ledger_with_bridge_minus_rms_abs_rate,
+        em_bulk_ledger_with_bridge_minus_final_rate,
+    ) = em_bulk_ledger_abs_rate_metrics(
+        times,
+        em_u_bulk,
+        ja_ea,
+        jw_ew,
+        int_bridge_power=int_bridge_power_mode0,
+        bridge_sign=-1.0,
+    )
+    em_bulk_ledger_with_bridge_minus_status = (
+        "PASS"
+        if (
+            not math.isnan(em_bulk_ledger_with_bridge_minus_max_abs_rate)
+            and em_bulk_ledger_with_bridge_minus_max_abs_rate
+            <= em_bulk_ledger_abs_rate_tol
+        )
+        else (
+            "N/A"
+            if math.isnan(em_bulk_ledger_with_bridge_minus_max_abs_rate)
+            else "FAIL"
+        )
+    )
+    (
+        em_bulk_ledger_with_bridge_sum_max_abs_rate,
+        em_bulk_ledger_with_bridge_sum_rms_abs_rate,
+        em_bulk_ledger_with_bridge_sum_final_rate,
+    ) = em_bulk_ledger_abs_rate_metrics(
+        times,
+        em_u_bulk,
+        ja_ea,
+        jw_ew,
+        int_bridge_power=int_bridge_power_sum,
+        bridge_sign=1.0,
+    )
+    em_bulk_ledger_with_bridge_sum_status = (
+        "PASS"
+        if (
+            not math.isnan(em_bulk_ledger_with_bridge_sum_max_abs_rate)
+            and em_bulk_ledger_with_bridge_sum_max_abs_rate <= em_bulk_ledger_abs_rate_tol
+        )
+        else (
+            "N/A"
+            if math.isnan(em_bulk_ledger_with_bridge_sum_max_abs_rate)
+            else "FAIL"
+        )
+    )
+    bridge_ledger_candidates = [
+        (
+            "baseline",
+            em_bulk_ledger_max_abs_rate,
+            em_bulk_ledger_rms_abs_rate,
+            em_bulk_ledger_final_rate,
+            em_bulk_ledger_status,
+        ),
+        (
+            "plus",
+            em_bulk_ledger_with_bridge_plus_max_abs_rate,
+            em_bulk_ledger_with_bridge_plus_rms_abs_rate,
+            em_bulk_ledger_with_bridge_plus_final_rate,
+            em_bulk_ledger_with_bridge_plus_status,
+        ),
+        (
+            "minus",
+            em_bulk_ledger_with_bridge_minus_max_abs_rate,
+            em_bulk_ledger_with_bridge_minus_rms_abs_rate,
+            em_bulk_ledger_with_bridge_minus_final_rate,
+            em_bulk_ledger_with_bridge_minus_status,
+        ),
+        (
+            "sum",
+            em_bulk_ledger_with_bridge_sum_max_abs_rate,
+            em_bulk_ledger_with_bridge_sum_rms_abs_rate,
+            em_bulk_ledger_with_bridge_sum_final_rate,
+            em_bulk_ledger_with_bridge_sum_status,
+        ),
+    ]
+    bridge_ledger_finite = [c for c in bridge_ledger_candidates if math.isfinite(c[1])]
+    if bridge_ledger_finite:
+        bridge_ledger_best = min(bridge_ledger_finite, key=lambda c: c[1])
+        em_bulk_ledger_bridge_best_label = bridge_ledger_best[0]
+        em_bulk_ledger_bridge_best_max_abs_rate = bridge_ledger_best[1]
+        em_bulk_ledger_bridge_best_rms_abs_rate = bridge_ledger_best[2]
+        em_bulk_ledger_bridge_best_final_rate = bridge_ledger_best[3]
+        em_bulk_ledger_bridge_best_status = bridge_ledger_best[4]
+    else:
+        em_bulk_ledger_bridge_best_label = "N/A"
+        em_bulk_ledger_bridge_best_max_abs_rate = math.nan
+        em_bulk_ledger_bridge_best_rms_abs_rate = math.nan
+        em_bulk_ledger_bridge_best_final_rate = math.nan
+        em_bulk_ledger_bridge_best_status = "N/A"
+
+    bridge_transfer_cancellation_final = math.nan
+    bridge_transfer_cancellation_max_abs = math.nan
+    bridge_transfer_cancellation_rms = math.nan
+    if (
+        int_bridge_power_mode0 is not None
+        and int_bridge_power_mode2 is not None
+        and len(int_bridge_power_mode0) == len(int_bridge_power_mode2)
+    ):
+        numer_final = abs(int_bridge_power_mode0[-1] + int_bridge_power_mode2[-1])
+        denom_final = abs(int_bridge_power_mode0[-1]) + abs(int_bridge_power_mode2[-1])
+        bridge_transfer_cancellation_final = (
+            numer_final / denom_final if denom_final > 0.0 else math.nan
+        )
+        numer_series = [abs(t0 + t2) for t0, t2 in zip(int_bridge_power_mode0, int_bridge_power_mode2)]
+        denom_series = [abs(t0) + abs(t2) for t0, t2 in zip(int_bridge_power_mode0, int_bridge_power_mode2)]
+        ratio_series = [
+            (n / d) if d > 0.0 else math.nan for n, d in zip(numer_series, denom_series)
+        ]
+        finite_ratio = [v for v in ratio_series if math.isfinite(v)]
+        if finite_ratio:
+            bridge_transfer_cancellation_max_abs = max(finite_ratio)
+            bridge_transfer_cancellation_rms = math.sqrt(
+                sum(v * v for v in finite_ratio) / len(finite_ratio)
+            )
     (
         max_dpsi0_dt,
         min_dpsi0_dt,
@@ -836,12 +1113,18 @@ def analyze_case(
         "case": case_name,
         "final_psi0_span": psi0[-1],
         "final_psi_proj_span": psi_proj[-1],
+        "final_psi_proj_even_span": psi_proj_even[-1],
+        "final_psi_proj_odd_span": psi_proj_odd[-1],
         "final_psi_proj_matched_span": psi_proj_matched[-1],
         "final_psi_proj_point_span": psi_proj_point[-1],
         "final_psi_proj_gaussian_span": psi_proj_gaussian[-1],
         "final_psi_w0_span": psi_w0[-1],
+        "final_psi_w0_even_span": psi_w0_even[-1],
+        "final_psi_w0_odd_span": psi_w0_odd[-1],
         "final_psi_w0_minus_psi_proj_span": psi_w0_minus_psi_proj[-1],
         "final_psi_w0_minus_psi0_span": psi_w0_minus_psi0[-1],
+        "final_psi_proj_odd_over_even_span": psi_proj_odd_over_even[-1],
+        "final_psi_w0_odd_over_even_span": psi_w0_odd_over_even[-1],
         "final_psi_w0_over_psi_proj_span": psi_w0_over_psi_proj[-1],
         "final_psi_proj_over_psi0_span": psi_proj_over_psi0[-1],
         "final_psi_w0_over_psi0_span": psi_w0_over_psi0[-1],
@@ -877,6 +1160,21 @@ def analyze_case(
         "final_jw_l2": jw_l2[-1] if jw_l2 is not None else math.nan,
         "final_ew_l1": ew_l1[-1] if ew_l1 is not None else math.nan,
         "final_ew_l2": ew_l2[-1] if ew_l2 is not None else math.nan,
+        "final_em_a2_even": em_a2_even[-1] if em_a2_even is not None else math.nan,
+        "final_em_a2_odd": em_a2_odd[-1] if em_a2_odd is not None else math.nan,
+        "final_em_a2_odd_fraction": em_a2_odd_fraction[-1]
+        if em_a2_odd_fraction is not None
+        else math.nan,
+        "final_em_pi2_even": em_pi2_even[-1] if em_pi2_even is not None else math.nan,
+        "final_em_pi2_odd": em_pi2_odd[-1] if em_pi2_odd is not None else math.nan,
+        "final_em_pi2_odd_fraction": em_pi2_odd_fraction[-1]
+        if em_pi2_odd_fraction is not None
+        else math.nan,
+        "final_jw_l2_even": jw_l2_even[-1] if jw_l2_even is not None else math.nan,
+        "final_jw_l2_odd": jw_l2_odd[-1] if jw_l2_odd is not None else math.nan,
+        "final_jw_l2_odd_fraction": jw_l2_odd_fraction[-1]
+        if jw_l2_odd_fraction is not None
+        else math.nan,
         "final_helicity_sub": helicity_sub[-1] if helicity_sub is not None else math.nan,
         "final_edotb_sub": edotb_sub[-1] if edotb_sub is not None else math.nan,
         "corr_psi0_s_leak": pearson(psi0, leak),
@@ -895,6 +1193,24 @@ def analyze_case(
         else math.nan,
         "corr_psi0_emf_cov_vxb_abs": pearson(psi0, emf_cov_vxb_abs)
         if emf_cov_vxb_abs is not None
+        else math.nan,
+        "corr_psi0_em_a2_even": pearson(psi0, em_a2_even)
+        if em_a2_even is not None
+        else math.nan,
+        "corr_psi0_em_a2_odd": pearson(psi0, em_a2_odd)
+        if em_a2_odd is not None
+        else math.nan,
+        "corr_psi0_em_a2_odd_fraction": pearson(psi0, em_a2_odd_fraction)
+        if em_a2_odd_fraction is not None
+        else math.nan,
+        "corr_psi0_jw_l2_even": pearson(psi0, jw_l2_even)
+        if jw_l2_even is not None
+        else math.nan,
+        "corr_psi0_jw_l2_odd": pearson(psi0, jw_l2_odd)
+        if jw_l2_odd is not None
+        else math.nan,
+        "corr_psi0_jw_l2_odd_fraction": pearson(psi0, jw_l2_odd_fraction)
+        if jw_l2_odd_fraction is not None
         else math.nan,
         "corr_psi0_helicity_sub": pearson(psi0, helicity_sub)
         if helicity_sub is not None
@@ -1003,8 +1319,107 @@ def analyze_case(
         "final_int_src_em_timelike_abs": int_src_em_timelike_abs[-1]
         if int_src_em_timelike_abs is not None
         else math.nan,
+        "final_int_src_em_gauge": int_src_em_gauge[-1]
+        if int_src_em_gauge is not None
+        else math.nan,
         "final_int_src_em_gauge_abs": int_src_em_gauge_abs[-1]
         if int_src_em_gauge_abs is not None
+        else math.nan,
+        "final_int_src_em_gauge_mode0": int_src_em_gauge_mode0[-1]
+        if int_src_em_gauge_mode0 is not None
+        else math.nan,
+        "final_int_src_em_gauge_mode0_abs": int_src_em_gauge_mode0_abs[-1]
+        if int_src_em_gauge_mode0_abs is not None
+        else math.nan,
+        "final_int_rhs_a0_mode0_lap": int_rhs_a0_mode0_lap[-1]
+        if int_rhs_a0_mode0_lap is not None
+        else math.nan,
+        "final_int_rhs_a0_mode0_mass": int_rhs_a0_mode0_mass[-1]
+        if int_rhs_a0_mode0_mass is not None
+        else math.nan,
+        "final_int_rhs_a0_mode0_current": int_rhs_a0_mode0_current[-1]
+        if int_rhs_a0_mode0_current is not None
+        else math.nan,
+        "final_int_rhs_a0_mode0_damping": int_rhs_a0_mode0_damping[-1]
+        if int_rhs_a0_mode0_damping is not None
+        else math.nan,
+        "final_int_rhs_a0_mode0_timelike": int_rhs_a0_mode0_timelike[-1]
+        if int_rhs_a0_mode0_timelike is not None
+        else math.nan,
+        "final_int_rhs_a0_mode0_gauge": int_rhs_a0_mode0_gauge[-1]
+        if int_rhs_a0_mode0_gauge is not None
+        else math.nan,
+        "final_int_rhs_a0_mode0_total": int_rhs_a0_mode0_total[-1]
+        if int_rhs_a0_mode0_total is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_lap": int_rhs_ay_mode0_lap[-1]
+        if int_rhs_ay_mode0_lap is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_mass": int_rhs_ay_mode0_mass[-1]
+        if int_rhs_ay_mode0_mass is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_current": int_rhs_ay_mode0_current[-1]
+        if int_rhs_ay_mode0_current is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_damping": int_rhs_ay_mode0_damping[-1]
+        if int_rhs_ay_mode0_damping is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_spatial_mixed": int_rhs_ay_mode0_spatial_mixed[-1]
+        if int_rhs_ay_mode0_spatial_mixed is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_even_bridge": int_rhs_ay_mode0_even_bridge[-1]
+        if int_rhs_ay_mode0_even_bridge is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_even_bridge_abs": int_rhs_ay_mode0_even_bridge_abs[-1]
+        if int_rhs_ay_mode0_even_bridge_abs is not None
+        else math.nan,
+        "final_int_bridge_power_mode0": int_bridge_power_mode0[-1]
+        if int_bridge_power_mode0 is not None
+        else math.nan,
+        "final_int_bridge_power_mode0_abs": int_bridge_power_mode0_abs[-1]
+        if int_bridge_power_mode0_abs is not None
+        else math.nan,
+        "final_int_rhs_aw_mode2_even_bridge": int_rhs_aw_mode2_even_bridge[-1]
+        if int_rhs_aw_mode2_even_bridge is not None
+        else math.nan,
+        "final_int_rhs_aw_mode2_even_bridge_abs": int_rhs_aw_mode2_even_bridge_abs[-1]
+        if int_rhs_aw_mode2_even_bridge_abs is not None
+        else math.nan,
+        "final_int_bridge_power_mode2": int_bridge_power_mode2[-1]
+        if int_bridge_power_mode2 is not None
+        else math.nan,
+        "final_int_bridge_power_mode2_abs": int_bridge_power_mode2_abs[-1]
+        if int_bridge_power_mode2_abs is not None
+        else math.nan,
+        "final_int_bridge_power_sum": int_bridge_power_sum[-1]
+        if int_bridge_power_sum is not None
+        else math.nan,
+        "final_int_bridge_power_sum_abs": int_bridge_power_sum_abs[-1]
+        if int_bridge_power_sum_abs is not None
+        else math.nan,
+        "final_bridge_transfer_cancellation": bridge_transfer_cancellation_final,
+        "max_bridge_transfer_cancellation": bridge_transfer_cancellation_max_abs,
+        "rms_bridge_transfer_cancellation": bridge_transfer_cancellation_rms,
+        "final_int_rhs_ay_mode0_total": int_rhs_ay_mode0_total[-1]
+        if int_rhs_ay_mode0_total is not None
+        else math.nan,
+        "final_int_rhs_aw_mode0_lap": int_rhs_aw_mode0_lap[-1]
+        if int_rhs_aw_mode0_lap is not None
+        else math.nan,
+        "final_int_rhs_aw_mode0_current": int_rhs_aw_mode0_current[-1]
+        if int_rhs_aw_mode0_current is not None
+        else math.nan,
+        "final_int_rhs_aw_mode0_damping": int_rhs_aw_mode0_damping[-1]
+        if int_rhs_aw_mode0_damping is not None
+        else math.nan,
+        "final_int_rhs_aw_mode0_spatial_mixed": int_rhs_aw_mode0_spatial_mixed[-1]
+        if int_rhs_aw_mode0_spatial_mixed is not None
+        else math.nan,
+        "final_int_rhs_aw_mode0_timelike": int_rhs_aw_mode0_timelike[-1]
+        if int_rhs_aw_mode0_timelike is not None
+        else math.nan,
+        "final_int_rhs_aw_mode0_total": int_rhs_aw_mode0_total[-1]
+        if int_rhs_aw_mode0_total is not None
         else math.nan,
         "final_int_div_mode0_plasma_abs": int_div_mode0_plasma_abs[-1]
         if int_div_mode0_plasma_abs is not None
@@ -1057,6 +1472,24 @@ def analyze_case(
             psi_w0_minus_psi_proj, int_src_mode0_total_abs
         )
         if int_src_mode0_total_abs is not None
+        else math.nan,
+        "corr_psi0_bridge_power_mode0": pearson(psi0, int_bridge_power_mode0)
+        if int_bridge_power_mode0 is not None
+        else math.nan,
+        "corr_psi0_bridge_power_mode2": pearson(psi0, int_bridge_power_mode2)
+        if int_bridge_power_mode2 is not None
+        else math.nan,
+        "corr_psi0_bridge_power_sum": pearson(psi0, int_bridge_power_sum)
+        if int_bridge_power_sum is not None
+        else math.nan,
+        "corr_psiw0_bridge_power_mode0": pearson(psi_w0, int_bridge_power_mode0)
+        if int_bridge_power_mode0 is not None
+        else math.nan,
+        "corr_psiw0_bridge_power_mode2": pearson(psi_w0, int_bridge_power_mode2)
+        if int_bridge_power_mode2 is not None
+        else math.nan,
+        "corr_psiw0_bridge_power_sum": pearson(psi_w0, int_bridge_power_sum)
+        if int_bridge_power_sum is not None
         else math.nan,
         "corr_psiw0_src_mode0_total_abs": pearson(psi_w0, int_src_mode0_total_abs)
         if int_src_mode0_total_abs is not None
@@ -1115,6 +1548,23 @@ def analyze_case(
         "em_bulk_ledger_rms_abs_rate": em_bulk_ledger_rms_abs_rate,
         "em_bulk_ledger_final_rate": em_bulk_ledger_final_rate,
         "em_bulk_ledger_status": em_bulk_ledger_status,
+        "em_bulk_ledger_with_bridge_plus_max_abs_rate": em_bulk_ledger_with_bridge_plus_max_abs_rate,
+        "em_bulk_ledger_with_bridge_plus_rms_abs_rate": em_bulk_ledger_with_bridge_plus_rms_abs_rate,
+        "em_bulk_ledger_with_bridge_plus_final_rate": em_bulk_ledger_with_bridge_plus_final_rate,
+        "em_bulk_ledger_with_bridge_plus_status": em_bulk_ledger_with_bridge_plus_status,
+        "em_bulk_ledger_with_bridge_minus_max_abs_rate": em_bulk_ledger_with_bridge_minus_max_abs_rate,
+        "em_bulk_ledger_with_bridge_minus_rms_abs_rate": em_bulk_ledger_with_bridge_minus_rms_abs_rate,
+        "em_bulk_ledger_with_bridge_minus_final_rate": em_bulk_ledger_with_bridge_minus_final_rate,
+        "em_bulk_ledger_with_bridge_minus_status": em_bulk_ledger_with_bridge_minus_status,
+        "em_bulk_ledger_with_bridge_sum_max_abs_rate": em_bulk_ledger_with_bridge_sum_max_abs_rate,
+        "em_bulk_ledger_with_bridge_sum_rms_abs_rate": em_bulk_ledger_with_bridge_sum_rms_abs_rate,
+        "em_bulk_ledger_with_bridge_sum_final_rate": em_bulk_ledger_with_bridge_sum_final_rate,
+        "em_bulk_ledger_with_bridge_sum_status": em_bulk_ledger_with_bridge_sum_status,
+        "em_bulk_ledger_bridge_best_label": em_bulk_ledger_bridge_best_label,
+        "em_bulk_ledger_bridge_best_max_abs_rate": em_bulk_ledger_bridge_best_max_abs_rate,
+        "em_bulk_ledger_bridge_best_rms_abs_rate": em_bulk_ledger_bridge_best_rms_abs_rate,
+        "em_bulk_ledger_bridge_best_final_rate": em_bulk_ledger_bridge_best_final_rate,
+        "em_bulk_ledger_bridge_best_status": em_bulk_ledger_bridge_best_status,
         "momx_transport_max_norm": momx_transport_max_norm,
         "momx_transport_rms_norm": momx_transport_rms_norm,
         "momx_transport_max_abs_rate": momx_transport_max_abs_rate,
@@ -1195,12 +1645,18 @@ def print_table(results):
         "case",
         "final_psi0_span",
         "final_psi_proj_span",
+        "final_psi_proj_even_span",
+        "final_psi_proj_odd_span",
         "final_psi_proj_matched_span",
         "final_psi_proj_point_span",
         "final_psi_proj_gaussian_span",
         "final_psi_w0_span",
+        "final_psi_w0_even_span",
+        "final_psi_w0_odd_span",
         "final_psi_w0_minus_psi_proj_span",
         "final_psi_w0_minus_psi0_span",
+        "final_psi_proj_odd_over_even_span",
+        "final_psi_w0_odd_over_even_span",
         "final_psi_w0_over_psi_proj_span",
         "final_psi_proj_over_psi0_span",
         "final_psi_w0_over_psi0_span",
@@ -1225,6 +1681,15 @@ def print_table(results):
         "final_jw_l2",
         "final_ew_l1",
         "final_ew_l2",
+        "final_em_a2_even",
+        "final_em_a2_odd",
+        "final_em_a2_odd_fraction",
+        "final_em_pi2_even",
+        "final_em_pi2_odd",
+        "final_em_pi2_odd_fraction",
+        "final_jw_l2_even",
+        "final_jw_l2_odd",
+        "final_jw_l2_odd_fraction",
         "final_helicity_sub",
         "final_edotb_sub",
         "final_em_a2_mode_1",
@@ -1264,7 +1729,42 @@ def print_table(results):
         "final_int_src_em_damping_abs",
         "final_int_src_em_spatial_mixed_abs",
         "final_int_src_em_timelike_abs",
+        "final_int_src_em_gauge",
         "final_int_src_em_gauge_abs",
+        "final_int_src_em_gauge_mode0",
+        "final_int_src_em_gauge_mode0_abs",
+        "final_int_rhs_a0_mode0_lap",
+        "final_int_rhs_a0_mode0_mass",
+        "final_int_rhs_a0_mode0_current",
+        "final_int_rhs_a0_mode0_damping",
+        "final_int_rhs_a0_mode0_timelike",
+        "final_int_rhs_a0_mode0_gauge",
+        "final_int_rhs_a0_mode0_total",
+        "final_int_rhs_ay_mode0_lap",
+        "final_int_rhs_ay_mode0_mass",
+        "final_int_rhs_ay_mode0_current",
+        "final_int_rhs_ay_mode0_damping",
+        "final_int_rhs_ay_mode0_spatial_mixed",
+        "final_int_rhs_ay_mode0_even_bridge",
+        "final_int_rhs_ay_mode0_even_bridge_abs",
+        "final_int_bridge_power_mode0",
+        "final_int_bridge_power_mode0_abs",
+        "final_int_rhs_aw_mode2_even_bridge",
+        "final_int_rhs_aw_mode2_even_bridge_abs",
+        "final_int_bridge_power_mode2",
+        "final_int_bridge_power_mode2_abs",
+        "final_int_bridge_power_sum",
+        "final_int_bridge_power_sum_abs",
+        "final_bridge_transfer_cancellation",
+        "max_bridge_transfer_cancellation",
+        "rms_bridge_transfer_cancellation",
+        "final_int_rhs_ay_mode0_total",
+        "final_int_rhs_aw_mode0_lap",
+        "final_int_rhs_aw_mode0_current",
+        "final_int_rhs_aw_mode0_damping",
+        "final_int_rhs_aw_mode0_spatial_mixed",
+        "final_int_rhs_aw_mode0_timelike",
+        "final_int_rhs_aw_mode0_total",
         "final_int_div_mode0_plasma_abs",
         "final_int_div_mode0_em_abs",
         "final_int_div_mode0_total_abs",
@@ -1289,6 +1789,12 @@ def print_table(results):
         "corr_psi0_em_leak_w",
         "corr_psi0_emf_vw_c_abs",
         "corr_psi0_emf_cov_vxb_abs",
+        "corr_psi0_em_a2_even",
+        "corr_psi0_em_a2_odd",
+        "corr_psi0_em_a2_odd_fraction",
+        "corr_psi0_jw_l2_even",
+        "corr_psi0_jw_l2_odd",
+        "corr_psi0_jw_l2_odd_fraction",
         "corr_psi0_helicity_sub",
         "corr_psi0_edotb_sub",
         "corr_psi0_jw_mode_l2_1",
@@ -1304,6 +1810,12 @@ def print_table(results):
         "corr_psiw0_minus_psiproj_emf_vw_c_abs",
         "corr_psiw0_minus_psiproj_emf_cov_vxb_abs",
         "corr_psiw0_minus_psiproj_src_mode0_total_abs",
+        "corr_psi0_bridge_power_mode0",
+        "corr_psi0_bridge_power_mode2",
+        "corr_psi0_bridge_power_sum",
+        "corr_psiw0_bridge_power_mode0",
+        "corr_psiw0_bridge_power_mode2",
+        "corr_psiw0_bridge_power_sum",
         "corr_psiw0_src_mode0_total_abs",
         "corr_psiw0_div_mode0_total_abs",
         "closure_max_norm",
@@ -1349,6 +1861,23 @@ def print_table(results):
         "em_bulk_ledger_rms_abs_rate",
         "em_bulk_ledger_final_rate",
         "em_bulk_ledger_status",
+        "em_bulk_ledger_with_bridge_plus_max_abs_rate",
+        "em_bulk_ledger_with_bridge_plus_rms_abs_rate",
+        "em_bulk_ledger_with_bridge_plus_final_rate",
+        "em_bulk_ledger_with_bridge_plus_status",
+        "em_bulk_ledger_with_bridge_minus_max_abs_rate",
+        "em_bulk_ledger_with_bridge_minus_rms_abs_rate",
+        "em_bulk_ledger_with_bridge_minus_final_rate",
+        "em_bulk_ledger_with_bridge_minus_status",
+        "em_bulk_ledger_with_bridge_sum_max_abs_rate",
+        "em_bulk_ledger_with_bridge_sum_rms_abs_rate",
+        "em_bulk_ledger_with_bridge_sum_final_rate",
+        "em_bulk_ledger_with_bridge_sum_status",
+        "em_bulk_ledger_bridge_best_label",
+        "em_bulk_ledger_bridge_best_max_abs_rate",
+        "em_bulk_ledger_bridge_best_rms_abs_rate",
+        "em_bulk_ledger_bridge_best_final_rate",
+        "em_bulk_ledger_bridge_best_status",
         "momx_transport_max_norm",
         "momx_transport_rms_norm",
         "momx_transport_max_abs_rate",
