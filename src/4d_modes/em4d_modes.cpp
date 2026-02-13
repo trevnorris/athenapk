@@ -299,6 +299,27 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real em_source_gauge_gain = modes_pkg->Param<double>("em4d/source_gauge_gain");
   const Real em_source_mode0_even_bridge_gain =
       modes_pkg->Param<double>("em4d/source_mode0_even_bridge_gain");
+  const bool response_w0_enable = modes_pkg->Param<bool>("em4d/response_w0_enable");
+  const Real response_w0_drive_gain = modes_pkg->Param<double>("em4d/response_w0_drive_gain");
+  const Real response_w0_drive_from_bridge_gain =
+      modes_pkg->Param<double>("em4d/response_w0_drive_from_bridge_gain");
+  const Real response_w0_drive_from_parity_gain =
+      modes_pkg->Param<double>("em4d/response_w0_drive_from_parity_gain");
+  const Real response_w0_bias = modes_pkg->Param<double>("em4d/response_w0_bias");
+  const Real response_w0_init = modes_pkg->Param<double>("em4d/response_w0_init");
+  const Real response_w0_mass = modes_pkg->Param<double>("em4d/response_w0_mass");
+  const Real response_w0_stiffness = modes_pkg->Param<double>("em4d/response_w0_stiffness");
+  const Real response_w0_damping = modes_pkg->Param<double>("em4d/response_w0_damping");
+  const Real response_w0_bridge_gain = modes_pkg->Param<double>("em4d/response_w0_bridge_gain");
+  const Real response_w0_velocity_bridge_gain =
+      modes_pkg->Param<double>("em4d/response_w0_velocity_bridge_gain");
+  const Real response_w0_max_abs = modes_pkg->Param<double>("em4d/response_w0_max_abs");
+  const bool response_w0_projection_enable =
+      modes_pkg->Param<bool>("em4d/response_w0_projection_enable");
+  const Real response_w0_projection_gain =
+      modes_pkg->Param<double>("em4d/response_w0_projection_gain");
+  const Real response_w0_projection_max_abs =
+      modes_pkg->Param<double>("em4d/response_w0_projection_max_abs");
   const bool use_conservative_transport =
       modes_pkg->Param<bool>("em4d/use_conservative_transport");
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
@@ -320,6 +341,28 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
   const auto &weights = tables.Weights();
   const auto &mass_squared = tables.MassSquared();
+
+  Real response_w0 = modes_pkg->Param<double>("diag/response_w0");
+  Real response_w0_dot = modes_pkg->Param<double>("diag/response_w0_dot");
+  bool response_w0_initialized = modes_pkg->Param<bool>("diag/response_w0_initialized");
+  Real response_w0_drive = 0.0;
+  Real response_w0_drive_reservoir = 0.0;
+  Real response_w0_drive_bridge = 0.0;
+  Real response_w0_drive_parity = 0.0;
+  Real response_w0_force = 0.0;
+  Real response_w0_energy = 0.0;
+  Real response_w0_projection_center = 0.0;
+  if (response_w0_enable && !response_w0_initialized) {
+    response_w0 = response_w0_init;
+    response_w0_dot = 0.0;
+    response_w0_initialized = true;
+  } else if (!response_w0_enable) {
+    response_w0 = 0.0;
+    response_w0_dot = 0.0;
+    response_w0_initialized = false;
+  }
+  const Real response_w0_effective =
+      response_w0 + (response_w0_velocity_bridge_gain * response_w0_dot);
 
   Real diag_jw_ew_step = 0.0;
   Real diag_ja_ea_step = 0.0;
@@ -377,6 +420,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_bridge_power_mode2_abs_step = 0.0;
   Real diag_bridge_power_sum_step = 0.0;
   Real diag_bridge_power_sum_abs_step = 0.0;
+  Real diag_rhs_ay_mode0_w0_response_step = 0.0;
+  Real diag_rhs_ay_mode0_w0_response_abs_step = 0.0;
+  Real diag_rhs_aw_mode1_w0_response_step = 0.0;
+  Real diag_rhs_aw_mode1_w0_response_abs_step = 0.0;
+  Real diag_response_bridge_power_mode0_step = 0.0;
+  Real diag_response_bridge_power_mode0_abs_step = 0.0;
+  Real diag_response_bridge_power_mode1_step = 0.0;
+  Real diag_response_bridge_power_mode1_abs_step = 0.0;
+  Real diag_response_bridge_power_sum_step = 0.0;
+  Real diag_response_bridge_power_sum_abs_step = 0.0;
   Real diag_rhs_ay_mode0_total_step = 0.0;
   Real diag_rhs_aw_mode0_lap_step = 0.0;
   Real diag_rhs_aw_mode0_current_step = 0.0;
@@ -390,6 +443,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_gauge_mode0_l1_step = 0.0;
   Real diag_gauge_mode0_l2_step = 0.0;
   Real diag_gauge_mode0_max_abs_step = 0.0;
+  Real response_drive_energy_integral_step = 0.0;
+  Real response_drive_odd_energy_integral_step = 0.0;
+  Real response_drive_even_energy_integral_step = 0.0;
+  Real response_drive_volume_step = 0.0;
 
   const int num_blocks = md->NumBlocks();
   for (int b = 0; b < num_blocks; ++b) {
@@ -947,6 +1004,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
           }
 
           Real bridge_power_mode0_cell = 0.0;
+          Real response_bridge_power_mode0_cell = 0.0;
           for (int n = 0; n < n_modes; ++n) {
             const int idx_a0 = EMIndex(n, kCompA0);
             const int idx_ax = EMIndex(n, kCompAX);
@@ -1068,6 +1126,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             const Real src_ay_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_y;
             const Real src_az_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_z;
             const Real src_aw_spatial_mixed = -(c2 * mixed_div_a_next);
+            Real src_ay_w0_response = 0.0;
+            if (response_w0_enable && (response_w0_bridge_gain != 0.0) &&
+                (n + 1 < n_modes)) {
+              // Dynamic center-shift response: w0 mixes adjacent Hermite modes
+              // through an antisymmetric n <-> n+1 coupling.
+              const int idx_aw_next = EMIndex(n + 1, kCompAW);
+              src_ay_w0_response = response_w0_bridge_gain * response_w0_effective * c2 *
+                                   coupling_raise *
+                                   gradient_y(a_old, idx_aw_next, k, j, i);
+            }
             Real src_ay_mode0_even_bridge = 0.0;
             if ((n == 0) && (n_modes > 2) && (em_source_mode0_even_bridge_gain != 0.0)) {
               // Optional explicit even-parity bridge: mode-2 A_w gradient into mode-0 A_y RHS.
@@ -1087,6 +1155,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                   -em_source_mode0_even_bridge_gain * c2 * mode0_even_bridge_coeff *
                   gradient_y(a_old, idx_ay_mode0, k, j, i);
             }
+            Real src_aw_w0_response = 0.0;
+            if (response_w0_enable && (response_w0_bridge_gain != 0.0) && (n > 0)) {
+              const int idx_ay_prev = EMIndex(n - 1, kCompAY);
+              src_aw_w0_response = -response_w0_bridge_gain * response_w0_effective * c2 *
+                                   coupling_coeff *
+                                   gradient_y(a_old, idx_ay_prev, k, j, i);
+            }
 
             const Real rhs_a0_timelike_from_piw =
                 -em_source_timelike_gain * (c2 * coupling_coeff * mixed_dt_aw_prev);
@@ -1100,11 +1175,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                                 src_ax_current + src_ax_damping;
             const Real rhs_ay = src_ay_lap + src_ay_mass + src_ay_spatial_mixed +
                                 src_ay_current + src_ay_damping +
+                                src_ay_w0_response +
                                 src_ay_mode0_even_bridge;
             const Real rhs_az = src_az_lap + src_az_mass + src_az_spatial_mixed +
                                 src_az_current + src_az_damping;
             const Real rhs_aw = src_aw_lap + src_aw_spatial_mixed + src_aw_current +
                                 src_aw_damping + rhs_aw_timelike_from_pi0 +
+                                src_aw_w0_response +
                                 src_aw_mode2_even_bridge;
 
             // Track the time-like mixed couplings explicitly so conservative-path runs
@@ -1167,6 +1244,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                   dt * cell_volume * src_ay_mode0_even_bridge;
               diag_rhs_ay_mode0_even_bridge_abs_step +=
                   dt * cell_volume * std::abs(src_ay_mode0_even_bridge);
+              diag_rhs_ay_mode0_w0_response_step +=
+                  dt * cell_volume * src_ay_w0_response;
+              diag_rhs_ay_mode0_w0_response_abs_step +=
+                  dt * cell_volume * std::abs(src_ay_w0_response);
               const Real ey_mode0 =
                   -pi_old(idx_ay, k, j, i) - gradient_y(a_old, idx_a0, k, j, i);
               const Real bridge_power_mode0 = -src_ay_mode0_even_bridge * ey_mode0;
@@ -1174,6 +1255,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               diag_bridge_power_mode0_step += dt * cell_volume * bridge_power_mode0;
               diag_bridge_power_mode0_abs_step +=
                   dt * cell_volume * std::abs(bridge_power_mode0);
+              const Real response_bridge_power_mode0 =
+                  -src_ay_w0_response * ey_mode0;
+              response_bridge_power_mode0_cell = response_bridge_power_mode0;
+              diag_response_bridge_power_mode0_step +=
+                  dt * cell_volume * response_bridge_power_mode0;
+              diag_response_bridge_power_mode0_abs_step +=
+                  dt * cell_volume * std::abs(response_bridge_power_mode0);
               diag_rhs_ay_mode0_total_step += dt * cell_volume * rhs_ay;
               diag_rhs_aw_mode0_lap_step += dt * cell_volume * src_aw_lap;
               diag_rhs_aw_mode0_current_step += dt * cell_volume * src_aw_current;
@@ -1198,6 +1286,51 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               diag_bridge_power_sum_step += dt * cell_volume * bridge_power_sum;
               diag_bridge_power_sum_abs_step +=
                   dt * cell_volume * std::abs(bridge_power_sum);
+            }
+            if (n == 1) {
+              diag_rhs_aw_mode1_w0_response_step +=
+                  dt * cell_volume * src_aw_w0_response;
+              diag_rhs_aw_mode1_w0_response_abs_step +=
+                  dt * cell_volume * std::abs(src_aw_w0_response);
+              const Real ew_mode1 =
+                  -pi_old(idx_aw, k, j, i) - tables.ApplyID3Raising(a0_modes, n);
+              const Real response_bridge_power_mode1 =
+                  -src_aw_w0_response * ew_mode1;
+              const Real response_bridge_power_sum =
+                  response_bridge_power_mode0_cell + response_bridge_power_mode1;
+              diag_response_bridge_power_mode1_step +=
+                  dt * cell_volume * response_bridge_power_mode1;
+              diag_response_bridge_power_mode1_abs_step +=
+                  dt * cell_volume * std::abs(response_bridge_power_mode1);
+              diag_response_bridge_power_sum_step +=
+                  dt * cell_volume * response_bridge_power_sum;
+              diag_response_bridge_power_sum_abs_step +=
+                  dt * cell_volume * std::abs(response_bridge_power_sum);
+            }
+
+            if (response_w0_enable && (n >= 1)) {
+              // Use total higher-mode EM reservoir energy (not just n=1 odd channels)
+              // so even-seeded runs can drive the response state.
+              const Real reservoir_proxy_density =
+                  0.5 * ((a_old(idx_a0, k, j, i) * a_old(idx_a0, k, j, i)) +
+                         (a_old(idx_ax, k, j, i) * a_old(idx_ax, k, j, i)) +
+                         (a_old(idx_ay, k, j, i) * a_old(idx_ay, k, j, i)) +
+                         (a_old(idx_az, k, j, i) * a_old(idx_az, k, j, i)) +
+                         (a_old(idx_aw, k, j, i) * a_old(idx_aw, k, j, i)) +
+                         (pi_old(idx_a0, k, j, i) * pi_old(idx_a0, k, j, i)) +
+                         (pi_old(idx_ax, k, j, i) * pi_old(idx_ax, k, j, i)) +
+                         (pi_old(idx_ay, k, j, i) * pi_old(idx_ay, k, j, i)) +
+                         (pi_old(idx_az, k, j, i) * pi_old(idx_az, k, j, i)) +
+                         (pi_old(idx_aw, k, j, i) * pi_old(idx_aw, k, j, i)));
+              response_drive_energy_integral_step += cell_volume * reservoir_proxy_density;
+              if ((n % 2) == 0) {
+                response_drive_even_energy_integral_step +=
+                    cell_volume * reservoir_proxy_density;
+              } else {
+                response_drive_odd_energy_integral_step +=
+                    cell_volume * reservoir_proxy_density;
+              }
+              response_drive_volume_step += cell_volume;
             }
 
             pi_new(idx_a0, k, j, i) = pi_old(idx_a0, k, j, i) + (dt * rhs_a0);
@@ -1269,6 +1402,62 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     a_dev.DeepCopy(a_new);
     pi_dev.DeepCopy(pi_new);
     plasma_dev.DeepCopy(plasma_new);
+  }
+
+  if (response_w0_enable) {
+    const Real response_drive_density =
+        (response_drive_volume_step > 0.0)
+            ? (response_drive_energy_integral_step / response_drive_volume_step)
+            : 0.0;
+    const Real response_drive_parity_density =
+        (response_drive_volume_step > 0.0)
+            ? ((response_drive_odd_energy_integral_step -
+                response_drive_even_energy_integral_step) /
+               response_drive_volume_step)
+            : 0.0;
+    const Real response_drive_bridge_density =
+        ((response_drive_volume_step > 0.0) && (dt > 0.0))
+            ? (diag_response_bridge_power_sum_step / (dt * response_drive_volume_step))
+            : 0.0;
+    response_w0_drive_reservoir =
+        response_w0_drive_gain * std::log1p(std::max(response_drive_density, 0.0));
+    response_w0_drive_bridge =
+        response_w0_drive_from_bridge_gain * response_drive_bridge_density;
+    response_w0_drive_parity =
+        response_w0_drive_from_parity_gain * response_drive_parity_density;
+    response_w0_drive = response_w0_bias + response_w0_drive_reservoir +
+                        response_w0_drive_bridge + response_w0_drive_parity;
+    response_w0_force = response_w0_drive - (response_w0_stiffness * response_w0) -
+                        (response_w0_damping * response_w0_dot);
+    const Real response_w0_ddot = response_w0_force / response_w0_mass;
+    response_w0_dot += dt * response_w0_ddot;
+    response_w0 += dt * response_w0_dot;
+    if (response_w0_max_abs > 0.0) {
+      response_w0 = std::clamp(response_w0, -response_w0_max_abs, response_w0_max_abs);
+    }
+    response_w0_energy = 0.5 * ((response_w0_mass * response_w0_dot * response_w0_dot) +
+                                (response_w0_stiffness * response_w0 * response_w0));
+  } else {
+    response_w0 = 0.0;
+    response_w0_dot = 0.0;
+    response_w0_drive = 0.0;
+    response_w0_drive_reservoir = 0.0;
+    response_w0_drive_bridge = 0.0;
+    response_w0_drive_parity = 0.0;
+    response_w0_force = 0.0;
+    response_w0_energy = 0.0;
+    response_w0_initialized = false;
+  }
+
+  if (response_w0_projection_enable) {
+    response_w0_projection_center = response_w0_projection_gain * response_w0;
+    if (response_w0_projection_max_abs > 0.0) {
+      response_w0_projection_center =
+          std::clamp(response_w0_projection_center, -response_w0_projection_max_abs,
+                     response_w0_projection_max_abs);
+    }
+  } else {
+    response_w0_projection_center = 0.0;
   }
 
   auto *diag_jw_ew = modes_pkg->MutableParam<double>("diag/int_jw_ew");
@@ -1365,6 +1554,41 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/int_bridge_power_sum");
   auto *diag_bridge_power_sum_abs =
       modes_pkg->MutableParam<double>("diag/int_bridge_power_sum_abs");
+  auto *diag_response_w0_initialized =
+      modes_pkg->MutableParam<bool>("diag/response_w0_initialized");
+  auto *diag_response_w0 = modes_pkg->MutableParam<double>("diag/response_w0");
+  auto *diag_response_w0_dot = modes_pkg->MutableParam<double>("diag/response_w0_dot");
+  auto *diag_response_w0_drive = modes_pkg->MutableParam<double>("diag/response_w0_drive");
+  auto *diag_response_w0_drive_reservoir =
+      modes_pkg->MutableParam<double>("diag/response_w0_drive_reservoir");
+  auto *diag_response_w0_drive_bridge =
+      modes_pkg->MutableParam<double>("diag/response_w0_drive_bridge");
+  auto *diag_response_w0_drive_parity =
+      modes_pkg->MutableParam<double>("diag/response_w0_drive_parity");
+  auto *diag_response_w0_force = modes_pkg->MutableParam<double>("diag/response_w0_force");
+  auto *diag_response_w0_energy = modes_pkg->MutableParam<double>("diag/response_w0_energy");
+  auto *diag_projection_center_w =
+      modes_pkg->MutableParam<double>("diag/projection_center_w");
+  auto *diag_rhs_ay_mode0_w0_response =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_w0_response");
+  auto *diag_rhs_ay_mode0_w0_response_abs =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_w0_response_abs");
+  auto *diag_rhs_aw_mode1_w0_response =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode1_w0_response");
+  auto *diag_rhs_aw_mode1_w0_response_abs =
+      modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode1_w0_response_abs");
+  auto *diag_response_bridge_power_mode0 =
+      modes_pkg->MutableParam<double>("diag/int_response_bridge_power_mode0");
+  auto *diag_response_bridge_power_mode0_abs =
+      modes_pkg->MutableParam<double>("diag/int_response_bridge_power_mode0_abs");
+  auto *diag_response_bridge_power_mode1 =
+      modes_pkg->MutableParam<double>("diag/int_response_bridge_power_mode1");
+  auto *diag_response_bridge_power_mode1_abs =
+      modes_pkg->MutableParam<double>("diag/int_response_bridge_power_mode1_abs");
+  auto *diag_response_bridge_power_sum =
+      modes_pkg->MutableParam<double>("diag/int_response_bridge_power_sum");
+  auto *diag_response_bridge_power_sum_abs =
+      modes_pkg->MutableParam<double>("diag/int_response_bridge_power_sum_abs");
   auto *diag_rhs_ay_mode0_total =
       modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_total");
   auto *diag_rhs_aw_mode0_lap =
@@ -1443,6 +1667,26 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_bridge_power_mode2_abs += diag_bridge_power_mode2_abs_step;
   *diag_bridge_power_sum += diag_bridge_power_sum_step;
   *diag_bridge_power_sum_abs += diag_bridge_power_sum_abs_step;
+  *diag_response_w0_initialized = response_w0_initialized;
+  *diag_response_w0 = response_w0;
+  *diag_response_w0_dot = response_w0_dot;
+  *diag_response_w0_drive = response_w0_drive;
+  *diag_response_w0_drive_reservoir = response_w0_drive_reservoir;
+  *diag_response_w0_drive_bridge = response_w0_drive_bridge;
+  *diag_response_w0_drive_parity = response_w0_drive_parity;
+  *diag_response_w0_force = response_w0_force;
+  *diag_response_w0_energy = response_w0_energy;
+  *diag_projection_center_w = response_w0_projection_center;
+  *diag_rhs_ay_mode0_w0_response += diag_rhs_ay_mode0_w0_response_step;
+  *diag_rhs_ay_mode0_w0_response_abs += diag_rhs_ay_mode0_w0_response_abs_step;
+  *diag_rhs_aw_mode1_w0_response += diag_rhs_aw_mode1_w0_response_step;
+  *diag_rhs_aw_mode1_w0_response_abs += diag_rhs_aw_mode1_w0_response_abs_step;
+  *diag_response_bridge_power_mode0 += diag_response_bridge_power_mode0_step;
+  *diag_response_bridge_power_mode0_abs += diag_response_bridge_power_mode0_abs_step;
+  *diag_response_bridge_power_mode1 += diag_response_bridge_power_mode1_step;
+  *diag_response_bridge_power_mode1_abs += diag_response_bridge_power_mode1_abs_step;
+  *diag_response_bridge_power_sum += diag_response_bridge_power_sum_step;
+  *diag_response_bridge_power_sum_abs += diag_response_bridge_power_sum_abs_step;
   *diag_rhs_ay_mode0_total += diag_rhs_ay_mode0_total_step;
   *diag_rhs_aw_mode0_lap += diag_rhs_aw_mode0_lap_step;
   *diag_rhs_aw_mode0_current += diag_rhs_aw_mode0_current_step;

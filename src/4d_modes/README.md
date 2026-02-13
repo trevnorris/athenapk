@@ -1171,6 +1171,23 @@ Key parameters currently used from `<problem/harris_4d>`:
 - `init_charge_rel_tol`
 - `init_charge_abs_tol`
 
+Optional dynamic response knobs in `<modes4d>` (all default off/zero):
+- `response_w0_enable`
+- `response_w0_drive_gain`
+- `response_w0_drive_from_bridge_gain`
+- `response_w0_drive_from_parity_gain`
+- `response_w0_bias`
+- `response_w0_init`
+- `response_w0_mass`
+- `response_w0_stiffness`
+- `response_w0_damping`
+- `response_w0_bridge_gain`
+- `response_w0_velocity_bridge_gain`
+- `response_w0_max_abs`
+- `response_w0_projection_enable`
+- `response_w0_projection_gain`
+- `response_w0_projection_max_abs`
+
 ## Notes
 
 - The `harris_4d` initializer currently sets:
@@ -1188,3 +1205,20 @@ Key parameters currently used from `<problem/harris_4d>`:
   - `problem/em4d_pulse/component`
   - `problem/em4d_pulse/pi_pulse_scale`
 - This is a bring-up scaffold and not yet the final physics model from the docs.
+- When `response_w0_enable=true`, the solver evolves a scalar `w0(t)` response
+  state from a higher-mode (`n>=1`) EM reservoir proxy and applies an
+  antisymmetric adjacent-mode (`n <-> n+1`) bridge in the `A_y/A_w` channels,
+  controlled by `response_w0_bridge_gain`.
+- When `response_w0_projection_enable=true`, diagnostics interpret the dynamic
+  response state as a shifted observer/localization center and report:
+  `projection_center_w = response_w0_projection_gain * w0`, clamped by
+  `response_w0_projection_max_abs` when positive.
+- Diagnostics are emitted as:
+  - `m4d_response_w0`, `m4d_response_w0_dot`, `m4d_response_w0_drive`,
+    `m4d_response_w0_drive_reservoir`, `m4d_response_w0_drive_bridge`,
+    `m4d_response_w0_drive_parity`, `m4d_response_w0_force`,
+    `m4d_response_w0_energy`
+  - `m4d_projection_center_w`
+  - `m4d_int_rhs_ay_mode0_w0_response`, `m4d_int_rhs_aw_mode1_w0_response`
+  - `m4d_int_response_bridge_power_mode0`, `m4d_int_response_bridge_power_mode1`,
+    `m4d_int_response_bridge_power_sum` (and `_abs` variants)

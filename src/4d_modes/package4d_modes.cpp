@@ -39,6 +39,36 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "em_source_gauge_gain", 0.0);
   const double em_source_mode0_even_bridge_gain =
       pin->GetOrAddReal("modes4d", "em_source_mode0_even_bridge_gain", 0.0);
+  const bool response_w0_enable =
+      pin->GetOrAddBoolean("modes4d", "response_w0_enable", false);
+  const double response_w0_drive_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_drive_gain", 0.0);
+  const double response_w0_drive_from_bridge_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_drive_from_bridge_gain", 0.0);
+  const double response_w0_drive_from_parity_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_drive_from_parity_gain", 0.0);
+  const double response_w0_bias =
+      pin->GetOrAddReal("modes4d", "response_w0_bias", 0.0);
+  const double response_w0_init =
+      pin->GetOrAddReal("modes4d", "response_w0_init", 0.0);
+  const double response_w0_mass =
+      pin->GetOrAddReal("modes4d", "response_w0_mass", 1.0);
+  const double response_w0_stiffness =
+      pin->GetOrAddReal("modes4d", "response_w0_stiffness", 0.0);
+  const double response_w0_damping =
+      pin->GetOrAddReal("modes4d", "response_w0_damping", 0.0);
+  const double response_w0_bridge_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_bridge_gain", 0.0);
+  const double response_w0_velocity_bridge_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_velocity_bridge_gain", 0.0);
+  const double response_w0_max_abs =
+      pin->GetOrAddReal("modes4d", "response_w0_max_abs", 1.0e6);
+  const bool response_w0_projection_enable =
+      pin->GetOrAddBoolean("modes4d", "response_w0_projection_enable", false);
+  const double response_w0_projection_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_projection_gain", 1.0);
+  const double response_w0_projection_max_abs =
+      pin->GetOrAddReal("modes4d", "response_w0_projection_max_abs", 0.0);
   const bool em_conservative_transport =
       pin->GetOrAddBoolean("modes4d", "em_conservative_transport", false);
   const std::string diag_projection_kernel =
@@ -100,6 +130,12 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                     "modes4d/plasma_pressure_transport_max_mode must be >= 0");
   PARTHENON_REQUIRE(diag_projection_sigma_factor > 0.0,
                     "modes4d/diag_projection_sigma_factor must be > 0");
+  PARTHENON_REQUIRE(response_w0_max_abs >= 0.0,
+                    "modes4d/response_w0_max_abs must be >= 0");
+  PARTHENON_REQUIRE(response_w0_mass > 0.0,
+                    "modes4d/response_w0_mass must be > 0");
+  PARTHENON_REQUIRE(response_w0_projection_max_abs >= 0.0,
+                    "modes4d/response_w0_projection_max_abs must be >= 0");
   PARTHENON_REQUIRE((diag_projection_kernel == "matched") ||
                         (diag_projection_kernel == "point") ||
                         (diag_projection_kernel == "gaussian"),
@@ -123,6 +159,27 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/source_gauge_gain", em_source_gauge_gain);
   pkg->AddParam<double>("em4d/source_mode0_even_bridge_gain",
                         em_source_mode0_even_bridge_gain);
+  pkg->AddParam<bool>("em4d/response_w0_enable", response_w0_enable);
+  pkg->AddParam<double>("em4d/response_w0_drive_gain", response_w0_drive_gain);
+  pkg->AddParam<double>("em4d/response_w0_drive_from_bridge_gain",
+                        response_w0_drive_from_bridge_gain);
+  pkg->AddParam<double>("em4d/response_w0_drive_from_parity_gain",
+                        response_w0_drive_from_parity_gain);
+  pkg->AddParam<double>("em4d/response_w0_bias", response_w0_bias);
+  pkg->AddParam<double>("em4d/response_w0_init", response_w0_init);
+  pkg->AddParam<double>("em4d/response_w0_mass", response_w0_mass);
+  pkg->AddParam<double>("em4d/response_w0_stiffness", response_w0_stiffness);
+  pkg->AddParam<double>("em4d/response_w0_damping", response_w0_damping);
+  pkg->AddParam<double>("em4d/response_w0_bridge_gain", response_w0_bridge_gain);
+  pkg->AddParam<double>("em4d/response_w0_velocity_bridge_gain",
+                        response_w0_velocity_bridge_gain);
+  pkg->AddParam<double>("em4d/response_w0_max_abs", response_w0_max_abs);
+  pkg->AddParam<bool>("em4d/response_w0_projection_enable",
+                      response_w0_projection_enable);
+  pkg->AddParam<double>("em4d/response_w0_projection_gain",
+                        response_w0_projection_gain);
+  pkg->AddParam<double>("em4d/response_w0_projection_max_abs",
+                        response_w0_projection_max_abs);
   pkg->AddParam<bool>("em4d/use_conservative_transport", em_conservative_transport);
   pkg->AddParam<std::string>("diag/projection_kernel", diag_projection_kernel);
   pkg->AddParam<double>("diag/projection_sigma_factor", diag_projection_sigma_factor);

@@ -478,6 +478,39 @@ def analyze_case(
     int_bridge_power_mode2_abs = maybe_col(cols, "m4d_int_bridge_power_mode2_abs")
     int_bridge_power_sum = maybe_col(cols, "m4d_int_bridge_power_sum")
     int_bridge_power_sum_abs = maybe_col(cols, "m4d_int_bridge_power_sum_abs")
+    response_w0 = maybe_col(cols, "m4d_response_w0")
+    response_w0_dot = maybe_col(cols, "m4d_response_w0_dot")
+    response_w0_drive = maybe_col(cols, "m4d_response_w0_drive")
+    response_w0_drive_reservoir = maybe_col(cols, "m4d_response_w0_drive_reservoir")
+    response_w0_drive_bridge = maybe_col(cols, "m4d_response_w0_drive_bridge")
+    response_w0_drive_parity = maybe_col(cols, "m4d_response_w0_drive_parity")
+    response_w0_force = maybe_col(cols, "m4d_response_w0_force")
+    response_w0_energy = maybe_col(cols, "m4d_response_w0_energy")
+    projection_center_w = maybe_col(cols, "m4d_projection_center_w")
+    int_rhs_ay_mode0_w0_response = maybe_col(cols, "m4d_int_rhs_ay_mode0_w0_response")
+    int_rhs_ay_mode0_w0_response_abs = maybe_col(
+        cols, "m4d_int_rhs_ay_mode0_w0_response_abs"
+    )
+    int_rhs_aw_mode1_w0_response = maybe_col(cols, "m4d_int_rhs_aw_mode1_w0_response")
+    int_rhs_aw_mode1_w0_response_abs = maybe_col(
+        cols, "m4d_int_rhs_aw_mode1_w0_response_abs"
+    )
+    int_response_bridge_power_mode0 = maybe_col(
+        cols, "m4d_int_response_bridge_power_mode0"
+    )
+    int_response_bridge_power_mode0_abs = maybe_col(
+        cols, "m4d_int_response_bridge_power_mode0_abs"
+    )
+    int_response_bridge_power_mode1 = maybe_col(
+        cols, "m4d_int_response_bridge_power_mode1"
+    )
+    int_response_bridge_power_mode1_abs = maybe_col(
+        cols, "m4d_int_response_bridge_power_mode1_abs"
+    )
+    int_response_bridge_power_sum = maybe_col(cols, "m4d_int_response_bridge_power_sum")
+    int_response_bridge_power_sum_abs = maybe_col(
+        cols, "m4d_int_response_bridge_power_sum_abs"
+    )
     int_rhs_ay_mode0_total = maybe_col(cols, "m4d_int_rhs_ay_mode0_total")
     int_rhs_aw_mode0_lap = maybe_col(cols, "m4d_int_rhs_aw_mode0_lap")
     int_rhs_aw_mode0_current = maybe_col(cols, "m4d_int_rhs_aw_mode0_current")
@@ -1397,6 +1430,61 @@ def analyze_case(
         "final_int_bridge_power_sum_abs": int_bridge_power_sum_abs[-1]
         if int_bridge_power_sum_abs is not None
         else math.nan,
+        "final_response_w0": response_w0[-1] if response_w0 is not None else math.nan,
+        "final_response_w0_dot": response_w0_dot[-1]
+        if response_w0_dot is not None
+        else math.nan,
+        "final_response_w0_drive": response_w0_drive[-1]
+        if response_w0_drive is not None
+        else math.nan,
+        "final_response_w0_drive_reservoir": response_w0_drive_reservoir[-1]
+        if response_w0_drive_reservoir is not None
+        else math.nan,
+        "final_response_w0_drive_bridge": response_w0_drive_bridge[-1]
+        if response_w0_drive_bridge is not None
+        else math.nan,
+        "final_response_w0_drive_parity": response_w0_drive_parity[-1]
+        if response_w0_drive_parity is not None
+        else math.nan,
+        "final_response_w0_force": response_w0_force[-1]
+        if response_w0_force is not None
+        else math.nan,
+        "final_response_w0_energy": response_w0_energy[-1]
+        if response_w0_energy is not None
+        else math.nan,
+        "final_projection_center_w": projection_center_w[-1]
+        if projection_center_w is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_w0_response": int_rhs_ay_mode0_w0_response[-1]
+        if int_rhs_ay_mode0_w0_response is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_w0_response_abs": int_rhs_ay_mode0_w0_response_abs[-1]
+        if int_rhs_ay_mode0_w0_response_abs is not None
+        else math.nan,
+        "final_int_rhs_aw_mode1_w0_response": int_rhs_aw_mode1_w0_response[-1]
+        if int_rhs_aw_mode1_w0_response is not None
+        else math.nan,
+        "final_int_rhs_aw_mode1_w0_response_abs": int_rhs_aw_mode1_w0_response_abs[-1]
+        if int_rhs_aw_mode1_w0_response_abs is not None
+        else math.nan,
+        "final_int_response_bridge_power_mode0": int_response_bridge_power_mode0[-1]
+        if int_response_bridge_power_mode0 is not None
+        else math.nan,
+        "final_int_response_bridge_power_mode0_abs": int_response_bridge_power_mode0_abs[-1]
+        if int_response_bridge_power_mode0_abs is not None
+        else math.nan,
+        "final_int_response_bridge_power_mode1": int_response_bridge_power_mode1[-1]
+        if int_response_bridge_power_mode1 is not None
+        else math.nan,
+        "final_int_response_bridge_power_mode1_abs": int_response_bridge_power_mode1_abs[-1]
+        if int_response_bridge_power_mode1_abs is not None
+        else math.nan,
+        "final_int_response_bridge_power_sum": int_response_bridge_power_sum[-1]
+        if int_response_bridge_power_sum is not None
+        else math.nan,
+        "final_int_response_bridge_power_sum_abs": int_response_bridge_power_sum_abs[-1]
+        if int_response_bridge_power_sum_abs is not None
+        else math.nan,
         "final_bridge_transfer_cancellation": bridge_transfer_cancellation_final,
         "max_bridge_transfer_cancellation": bridge_transfer_cancellation_max_abs,
         "rms_bridge_transfer_cancellation": bridge_transfer_cancellation_rms,
@@ -1482,6 +1570,9 @@ def analyze_case(
         "corr_psi0_bridge_power_sum": pearson(psi0, int_bridge_power_sum)
         if int_bridge_power_sum is not None
         else math.nan,
+        "corr_psi0_response_bridge_power_sum": pearson(psi0, int_response_bridge_power_sum)
+        if int_response_bridge_power_sum is not None
+        else math.nan,
         "corr_psiw0_bridge_power_mode0": pearson(psi_w0, int_bridge_power_mode0)
         if int_bridge_power_mode0 is not None
         else math.nan,
@@ -1490,6 +1581,11 @@ def analyze_case(
         else math.nan,
         "corr_psiw0_bridge_power_sum": pearson(psi_w0, int_bridge_power_sum)
         if int_bridge_power_sum is not None
+        else math.nan,
+        "corr_psiw0_response_bridge_power_sum": pearson(
+            psi_w0, int_response_bridge_power_sum
+        )
+        if int_response_bridge_power_sum is not None
         else math.nan,
         "corr_psiw0_src_mode0_total_abs": pearson(psi_w0, int_src_mode0_total_abs)
         if int_src_mode0_total_abs is not None
@@ -1755,6 +1851,21 @@ def print_table(results):
         "final_int_bridge_power_mode2_abs",
         "final_int_bridge_power_sum",
         "final_int_bridge_power_sum_abs",
+        "final_response_w0",
+        "final_response_w0_dot",
+        "final_response_w0_drive",
+        "final_response_w0_energy",
+        "final_projection_center_w",
+        "final_int_rhs_ay_mode0_w0_response",
+        "final_int_rhs_ay_mode0_w0_response_abs",
+        "final_int_rhs_aw_mode1_w0_response",
+        "final_int_rhs_aw_mode1_w0_response_abs",
+        "final_int_response_bridge_power_mode0",
+        "final_int_response_bridge_power_mode0_abs",
+        "final_int_response_bridge_power_mode1",
+        "final_int_response_bridge_power_mode1_abs",
+        "final_int_response_bridge_power_sum",
+        "final_int_response_bridge_power_sum_abs",
         "final_bridge_transfer_cancellation",
         "max_bridge_transfer_cancellation",
         "rms_bridge_transfer_cancellation",
@@ -1813,9 +1924,11 @@ def print_table(results):
         "corr_psi0_bridge_power_mode0",
         "corr_psi0_bridge_power_mode2",
         "corr_psi0_bridge_power_sum",
+        "corr_psi0_response_bridge_power_sum",
         "corr_psiw0_bridge_power_mode0",
         "corr_psiw0_bridge_power_mode2",
         "corr_psiw0_bridge_power_sum",
+        "corr_psiw0_response_bridge_power_sum",
         "corr_psiw0_src_mode0_total_abs",
         "corr_psiw0_div_mode0_total_abs",
         "closure_max_norm",
@@ -1934,6 +2047,8 @@ def print_table(results):
         "correlation_failures",
         "activity_status",
         "activity_failures",
+        "topology_status",
+        "topology_failures",
     ]
     print(",".join(keys))
     for row in results:
@@ -2082,6 +2197,70 @@ def evaluate_full_correlation(
     return ("PASS", "none")
 
 
+def evaluate_full_topology(
+    row,
+    min_psiw0_minus_psiproj_span,
+    min_abs_corr_psiw0_mixed_ew2,
+    min_abs_corr_psiw0_emf_vw_c_abs,
+    min_abs_corr_psiw0_emf_cov_vxb_abs,
+    min_abs_corr_psiw0_minus_psiproj_mixed_ew2,
+    min_abs_corr_psiw0_minus_psiproj_emf_vw_c_abs,
+    min_abs_corr_psiw0_minus_psiproj_emf_cov_vxb_abs,
+    min_abs_corr_psiw0_minus_psiproj_src_mode0_total_abs,
+):
+    failures = []
+
+    def check_abs(key, threshold, label):
+        if threshold <= 0.0:
+            return
+        value = row.get(key, math.nan)
+        if math.isnan(value) or abs(value) < threshold:
+            failures.append(label)
+
+    if (
+        min_psiw0_minus_psiproj_span > 0.0
+        and abs(row.get("final_psi_w0_minus_psi_proj_span", math.nan))
+        < min_psiw0_minus_psiproj_span
+    ):
+        failures.append("final_psi_w0_minus_psi_proj_span")
+
+    check_abs("corr_psiw0_mixed_ew2", min_abs_corr_psiw0_mixed_ew2, "corr_psiw0_mixed_ew2")
+    check_abs(
+        "corr_psiw0_emf_vw_c_abs",
+        min_abs_corr_psiw0_emf_vw_c_abs,
+        "corr_psiw0_emf_vw_c_abs",
+    )
+    check_abs(
+        "corr_psiw0_emf_cov_vxb_abs",
+        min_abs_corr_psiw0_emf_cov_vxb_abs,
+        "corr_psiw0_emf_cov_vxb_abs",
+    )
+    check_abs(
+        "corr_psiw0_minus_psiproj_mixed_ew2",
+        min_abs_corr_psiw0_minus_psiproj_mixed_ew2,
+        "corr_psiw0_minus_psiproj_mixed_ew2",
+    )
+    check_abs(
+        "corr_psiw0_minus_psiproj_emf_vw_c_abs",
+        min_abs_corr_psiw0_minus_psiproj_emf_vw_c_abs,
+        "corr_psiw0_minus_psiproj_emf_vw_c_abs",
+    )
+    check_abs(
+        "corr_psiw0_minus_psiproj_emf_cov_vxb_abs",
+        min_abs_corr_psiw0_minus_psiproj_emf_cov_vxb_abs,
+        "corr_psiw0_minus_psiproj_emf_cov_vxb_abs",
+    )
+    check_abs(
+        "corr_psiw0_minus_psiproj_src_mode0_total_abs",
+        min_abs_corr_psiw0_minus_psiproj_src_mode0_total_abs,
+        "corr_psiw0_minus_psiproj_src_mode0_total_abs",
+    )
+
+    if failures:
+        return ("FAIL", "|".join(failures))
+    return ("PASS", "none")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", required=True, help="Path to athenaPK binary")
@@ -2151,6 +2330,11 @@ def main():
         "--check-em-bulk-ledger",
         action="store_true",
         help="Include EM bulk-ledger closure status in fail-on-check logic",
+    )
+    parser.add_argument(
+        "--check-topology",
+        action="store_true",
+        help="Include topology observer/correlation status in fail-on-check logic",
     )
     parser.add_argument(
         "--full-min-jw-ew-abs",
@@ -2327,6 +2511,54 @@ def main():
         help="Minimum |corr(psi0_span, edotb_sub)| for full-case correlation PASS (disabled when 0)",
     )
     parser.add_argument(
+        "--full-min-psiw0-minus-psiproj-span",
+        type=float,
+        default=0.0,
+        help="Minimum |final_psi_w0_minus_psi_proj_span| for full-case topology PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-mixed-ew2",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0_span, mixed_ew2)| for full-case topology PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-emf-vw-c-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0_span, emf_vw_c_abs)| for full-case topology PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-emf-cov-vxb-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0_span, emf_cov_vxb_abs)| for full-case topology PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-minus-psiproj-mixed-ew2",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0-psi_proj, mixed_ew2)| for full-case topology PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-minus-psiproj-emf-vw-c-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0-psi_proj, emf_vw_c_abs)| for full-case topology PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-minus-psiproj-emf-cov-vxb-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0-psi_proj, emf_cov_vxb_abs)| for full-case topology PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-minus-psiproj-src-mode0-total-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0-psi_proj, int_src_mode0_total_abs)| for full-case topology PASS (disabled when 0)",
+    )
+    parser.add_argument(
         "--em-bulk-ledger-abs-rate-tol",
         type=float,
         default=1.0,
@@ -2427,6 +2659,8 @@ def main():
         row["correlation_failures"] = "n/a"
         row["activity_status"] = "N/A"
         row["activity_failures"] = "n/a"
+        row["topology_status"] = "N/A"
+        row["topology_failures"] = "n/a"
         if row["case"] == "full":
             corr_status, corr_failures = evaluate_full_correlation(
                 row,
@@ -2467,6 +2701,19 @@ def main():
             )
             row["activity_status"] = status
             row["activity_failures"] = failures
+            topology_status, topology_failures = evaluate_full_topology(
+                row,
+                args.full_min_psiw0_minus_psiproj_span,
+                args.full_min_abs_corr_psiw0_mixed_ew2,
+                args.full_min_abs_corr_psiw0_emf_vw_c_abs,
+                args.full_min_abs_corr_psiw0_emf_cov_vxb_abs,
+                args.full_min_abs_corr_psiw0_minus_psiproj_mixed_ew2,
+                args.full_min_abs_corr_psiw0_minus_psiproj_emf_vw_c_abs,
+                args.full_min_abs_corr_psiw0_minus_psiproj_emf_cov_vxb_abs,
+                args.full_min_abs_corr_psiw0_minus_psiproj_src_mode0_total_abs,
+            )
+            row["topology_status"] = topology_status
+            row["topology_failures"] = topology_failures
 
     print_table(results)
 
@@ -2486,6 +2733,7 @@ def main():
                 args.check_em_bulk_ledger
                 and r["em_bulk_ledger_status"] == "FAIL"
             )
+            or (args.check_topology and r["topology_status"] == "FAIL")
         ]
         if failing:
             raise SystemExit(f"scan checks failed for: {', '.join(failing)}")

@@ -349,6 +349,15 @@ def main():
                 "full_corr_psiw0_emf_vw_c_abs": parse_float(
                     full, "corr_psiw0_emf_vw_c_abs"
                 ),
+                "full_corr_psiw0_minus_psiproj_mixed_ew2": parse_float(
+                    full, "corr_psiw0_minus_psiproj_mixed_ew2"
+                ),
+                "full_corr_psiw0_minus_psiproj_emf_vw_c_abs": parse_float(
+                    full, "corr_psiw0_minus_psiproj_emf_vw_c_abs"
+                ),
+                "full_corr_psiw0_minus_psiproj_emf_cov_vxb_abs": parse_float(
+                    full, "corr_psiw0_minus_psiproj_emf_cov_vxb_abs"
+                ),
                 "full_closure_status": full.get("closure_status", "N/A"),
                 "full_closure_local_mode0_status": full.get(
                     "closure_local_mode0_status", "N/A"
@@ -357,6 +366,8 @@ def main():
                 "full_em_bulk_ledger_status": full.get("em_bulk_ledger_status", "N/A"),
                 "full_correlation_status": full.get("correlation_status", "N/A"),
                 "full_activity_status": full.get("activity_status", "N/A"),
+                "full_topology_status": full.get("topology_status", "N/A"),
+                "full_topology_failures": full.get("topology_failures", "n/a"),
                 "case_dir": str(case_dir),
             }
         except Exception as err:  # noqa: BLE001
@@ -398,12 +409,17 @@ def main():
                 "full_corr_psi0_em_a2_odd_fraction": math.nan,
                 "full_corr_psi0_jw_l2_odd_fraction": math.nan,
                 "full_corr_psiw0_emf_vw_c_abs": math.nan,
+                "full_corr_psiw0_minus_psiproj_mixed_ew2": math.nan,
+                "full_corr_psiw0_minus_psiproj_emf_vw_c_abs": math.nan,
+                "full_corr_psiw0_minus_psiproj_emf_cov_vxb_abs": math.nan,
                 "full_closure_status": "N/A",
                 "full_closure_local_mode0_status": "N/A",
                 "full_transport_status": "N/A",
                 "full_em_bulk_ledger_status": "N/A",
                 "full_correlation_status": "N/A",
                 "full_activity_status": "N/A",
+                "full_topology_status": "N/A",
+                "full_topology_failures": "n/a",
                 "case_dir": str(case_dir),
                 "error": str(err),
             }
@@ -453,12 +469,17 @@ def main():
         "full_corr_psi0_em_a2_odd_fraction",
         "full_corr_psi0_jw_l2_odd_fraction",
         "full_corr_psiw0_emf_vw_c_abs",
+        "full_corr_psiw0_minus_psiproj_mixed_ew2",
+        "full_corr_psiw0_minus_psiproj_emf_vw_c_abs",
+        "full_corr_psiw0_minus_psiproj_emf_cov_vxb_abs",
         "full_closure_status",
         "full_closure_local_mode0_status",
         "full_transport_status",
         "full_em_bulk_ledger_status",
         "full_correlation_status",
         "full_activity_status",
+        "full_topology_status",
+        "full_topology_failures",
         "case_dir",
         "error",
     ]
