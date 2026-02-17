@@ -15,7 +15,7 @@ Implemented now:
     and `J^nu` source deposition
   - scalar component includes Laplacian and `J^w` source deposition
   - scalar-photon work (`J^w E_w`) and leakage (`S_leak`) accumulators are updated
-  - optional explicit mode-0/mode-2 bridge coupling (default disabled):
+- optional explicit mode-0/mode-2 bridge coupling (default disabled):
     - runtime gain: `modes4d/em_source_mode0_even_bridge_gain` (default `0.0`)
     - paired source terms:
       - `S_{A_y^(0)} += gain * c_wave^2 * (sqrt(8)/lambda^2) * d_y A_w^(2)`
@@ -25,6 +25,26 @@ Implemented now:
       - `m4d_int_bridge_power_mode2`, `m4d_int_bridge_power_mode2_abs`
       - `m4d_int_bridge_power_sum`, `m4d_int_bridge_power_sum_abs`
     - used for conservative spillback probes without changing baseline runs
+- optional dynamic geometry-shift coupling driven by `response_w0` (default disabled):
+  - runtime toggles:
+    - `modes4d/response_w0_geometry_shift_enable` (default `false`)
+    - `modes4d/response_w0_geometry_shift_gain` (default `1.0`)
+    - `modes4d/response_w0_geometry_shift_include_constant` (default `true`)
+  - when enabled, the EM mass operator is augmented by a shifted-confinement
+    expansion consistent with `(w - w0)^2 = w^2 - 2 w0 w + w0^2`:
+    - nearest-neighbor even/odd mixing term proportional to `w0`
+    - optional diagonal `w0^2` correction term
+  - new diagnostics for this path:
+    - `m4d_int_src_em_geometry_shift_abs`
+    - `m4d_int_rhs_ay_mode0_geometry_shift`
+    - `m4d_int_rhs_ay_mode0_geometry_shift_abs`
+    - `m4d_int_geometry_shift_power_mode0`
+    - `m4d_int_geometry_shift_power_mode0_abs`
+    - `m4d_response_w0_geometry_center`
+    - `m4d_int_response_w0_power_drive`
+    - `m4d_int_response_w0_power_stiffness`
+    - `m4d_int_response_w0_power_damping`
+    - `m4d_int_response_w0_power_net`
 - optional conservative EM transport path in the hydro flux pipeline:
   - `modes4d/em_conservative_transport = true` registers `em4d_pi` with `WithFluxes`
   - stage fluxes add `-c_wave^2 * grad(em4d_a)` transport for `em4d_pi`
@@ -1187,6 +1207,10 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
 - `response_w0_projection_enable`
 - `response_w0_projection_gain`
 - `response_w0_projection_max_abs`
+- `response_w0_lambda_shift_enable`
+- `response_w0_lambda_shift_gain`
+- `response_w0_lambda_shift_max_frac`
+- `response_w0_lambda_shift_apply_mass`
 
 ## Notes
 
@@ -1213,11 +1237,17 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
   response state as a shifted observer/localization center and report:
   `projection_center_w = response_w0_projection_gain * w0`, clamped by
   `response_w0_projection_max_abs` when positive.
+- When `response_w0_lambda_shift_enable=true`, the response state also drives
+  an effective localization width,
+  `lambda_eff = lambda * (1 + response_w0_lambda_shift_gain * w0_eff)`,
+  optionally clamped by `response_w0_lambda_shift_max_frac`, with optional mass
+  scaling controlled by `response_w0_lambda_shift_apply_mass`.
 - Diagnostics are emitted as:
   - `m4d_response_w0`, `m4d_response_w0_dot`, `m4d_response_w0_drive`,
     `m4d_response_w0_drive_reservoir`, `m4d_response_w0_drive_bridge`,
     `m4d_response_w0_drive_parity`, `m4d_response_w0_force`,
     `m4d_response_w0_energy`
+  - `m4d_response_w0_lambda_fraction`, `m4d_response_w0_lambda_eff`
   - `m4d_projection_center_w`
   - `m4d_int_rhs_ay_mode0_w0_response`, `m4d_int_rhs_aw_mode1_w0_response`
   - `m4d_int_response_bridge_power_mode0`, `m4d_int_response_bridge_power_mode1`,

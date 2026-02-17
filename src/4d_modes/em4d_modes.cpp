@@ -320,6 +320,20 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->Param<double>("em4d/response_w0_projection_gain");
   const Real response_w0_projection_max_abs =
       modes_pkg->Param<double>("em4d/response_w0_projection_max_abs");
+  const bool response_w0_geometry_shift_enable =
+      modes_pkg->Param<bool>("em4d/response_w0_geometry_shift_enable");
+  const Real response_w0_geometry_shift_gain =
+      modes_pkg->Param<double>("em4d/response_w0_geometry_shift_gain");
+  const bool response_w0_geometry_shift_include_constant =
+      modes_pkg->Param<bool>("em4d/response_w0_geometry_shift_include_constant");
+  const bool response_w0_lambda_shift_enable =
+      modes_pkg->Param<bool>("em4d/response_w0_lambda_shift_enable");
+  const Real response_w0_lambda_shift_gain =
+      modes_pkg->Param<double>("em4d/response_w0_lambda_shift_gain");
+  const Real response_w0_lambda_shift_max_frac =
+      modes_pkg->Param<double>("em4d/response_w0_lambda_shift_max_frac");
+  const bool response_w0_lambda_shift_apply_mass =
+      modes_pkg->Param<bool>("em4d/response_w0_lambda_shift_apply_mass");
   const bool use_conservative_transport =
       modes_pkg->Param<bool>("em4d/use_conservative_transport");
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
@@ -337,7 +351,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real gm1 = gamma - 1.0;
   const Real pressure_floor = modes_pkg->Param<double>("plasma4d/pressure_floor");
   const Real c2 = c_wave * c_wave;
-  const Real inv_lambda_root2 = std::sqrt(2.0) / lambda;
+  const Real inv_lambda2_base = 1.0 / (lambda * lambda);
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
   const auto &weights = tables.Weights();
   const auto &mass_squared = tables.MassSquared();
@@ -363,6 +377,35 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   }
   const Real response_w0_effective =
       response_w0 + (response_w0_velocity_bridge_gain * response_w0_dot);
+  Real response_w0_lambda_fraction = 0.0;
+  if (response_w0_enable && response_w0_lambda_shift_enable &&
+      (response_w0_lambda_shift_gain != 0.0)) {
+    response_w0_lambda_fraction = response_w0_lambda_shift_gain * response_w0_effective;
+    if (response_w0_lambda_shift_max_frac > 0.0) {
+      response_w0_lambda_fraction =
+          std::clamp(response_w0_lambda_fraction, -response_w0_lambda_shift_max_frac,
+                     response_w0_lambda_shift_max_frac);
+    }
+  }
+  Real response_w0_lambda = lambda * (1.0 + response_w0_lambda_fraction);
+  response_w0_lambda = std::max(response_w0_lambda, 1.0e-6 * lambda);
+  const Real inv_lambda2 = 1.0 / (response_w0_lambda * response_w0_lambda);
+  const Real inv_lambda3 = inv_lambda2 / response_w0_lambda;
+  const Real inv_lambda4 = inv_lambda2 * inv_lambda2;
+  const Real inv_lambda_root2 = std::sqrt(2.0) / response_w0_lambda;
+  const Real response_w0_lambda_mass_scale =
+      response_w0_lambda_shift_apply_mass ? (inv_lambda2 / inv_lambda2_base) : 1.0;
+  const bool response_w0_geometry_shift_active =
+      response_w0_enable && response_w0_geometry_shift_enable &&
+      (response_w0_geometry_shift_gain != 0.0);
+  const Real response_w0_geometry_linear_coeff =
+      response_w0_geometry_shift_active
+          ? (-std::sqrt(2.0) * response_w0_geometry_shift_gain * response_w0 * inv_lambda3)
+          : 0.0;
+  const Real response_w0_geometry_diag_coeff =
+      (response_w0_geometry_shift_active && response_w0_geometry_shift_include_constant)
+          ? (response_w0_geometry_shift_gain * response_w0 * response_w0 * inv_lambda4)
+          : 0.0;
 
   Real diag_jw_ew_step = 0.0;
   Real diag_ja_ea_step = 0.0;
@@ -394,6 +437,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_src_em_damping_abs_step = 0.0;
   Real diag_src_em_spatial_mixed_abs_step = 0.0;
   Real diag_src_em_timelike_abs_step = 0.0;
+  Real diag_src_em_geometry_shift_abs_step = 0.0;
   Real diag_src_em_gauge_step = 0.0;
   Real diag_src_em_gauge_abs_step = 0.0;
   Real diag_src_em_gauge_mode0_step = 0.0;
@@ -412,8 +456,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_rhs_ay_mode0_spatial_mixed_step = 0.0;
   Real diag_rhs_ay_mode0_even_bridge_step = 0.0;
   Real diag_rhs_ay_mode0_even_bridge_abs_step = 0.0;
+  Real diag_rhs_ay_mode0_geometry_shift_step = 0.0;
+  Real diag_rhs_ay_mode0_geometry_shift_abs_step = 0.0;
   Real diag_bridge_power_mode0_step = 0.0;
   Real diag_bridge_power_mode0_abs_step = 0.0;
+  Real diag_geometry_shift_power_mode0_step = 0.0;
+  Real diag_geometry_shift_power_mode0_abs_step = 0.0;
   Real diag_rhs_aw_mode2_even_bridge_step = 0.0;
   Real diag_rhs_aw_mode2_even_bridge_abs_step = 0.0;
   Real diag_bridge_power_mode2_step = 0.0;
@@ -430,6 +478,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_response_bridge_power_mode1_abs_step = 0.0;
   Real diag_response_bridge_power_sum_step = 0.0;
   Real diag_response_bridge_power_sum_abs_step = 0.0;
+  Real diag_response_w0_power_drive_step = 0.0;
+  Real diag_response_w0_power_stiffness_step = 0.0;
+  Real diag_response_w0_power_damping_step = 0.0;
+  Real diag_response_w0_power_net_step = 0.0;
   Real diag_rhs_ay_mode0_total_step = 0.0;
   Real diag_rhs_aw_mode0_lap_step = 0.0;
   Real diag_rhs_aw_mode0_current_step = 0.0;
@@ -897,8 +949,9 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               for (int n = 0; n < n_modes; ++n) {
                 const int base = PlasmaIndex(s, n, 0, n_modes);
                 const Real coupling =
-                    (n + 1 < n_modes) ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda)
-                                      : 0.0;
+                    (n + 1 < n_modes)
+                        ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / response_w0_lambda)
+                        : 0.0;
                 const Real leak_momx =
                     (n + 1 < n_modes) ? (-coupling * wflux_momx_modes[n + 1]) : 0.0;
                 const Real leak_momy =
@@ -930,7 +983,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               Real leak_rhs = 0.0;
               if (n + 1 < n_modes) {
                 const int base_np1 = PlasmaIndex(s, n + 1, 0, n_modes);
-                const Real coupling = std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda;
+                const Real coupling =
+                    std::sqrt(2.0 * static_cast<Real>(n + 1)) / response_w0_lambda;
                 leak_rhs = -coupling * plasma_new(base_np1 + kPlasmaMomW, k, j, i);
               }
 
@@ -981,8 +1035,9 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
 
           for (int n = 0; n < n_modes; ++n) {
             const Real coupling =
-                (n + 1 < n_modes) ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda)
-                                  : 0.0;
+                (n + 1 < n_modes)
+                    ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / response_w0_lambda)
+                    : 0.0;
             const Real jw_np1 = (n + 1 < n_modes) ? jw_modes[n + 1] : 0.0;
             const Real continuity_residual =
                 ((j0_modes[n] - charge_modes_old[n]) / dt) + (coupling * jw_np1);
@@ -1013,7 +1068,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             const int idx_aw = EMIndex(n, kCompAW);
 
             const Real coupling_coeff =
-                (n > 0) ? (std::sqrt(2.0 * static_cast<Real>(n)) / lambda) : 0.0;
+                (n > 0) ? (std::sqrt(2.0 * static_cast<Real>(n)) / response_w0_lambda)
+                        : 0.0;
             Real mixed_grad_aw_x = 0.0;
             Real mixed_grad_aw_y = 0.0;
             Real mixed_grad_aw_z = 0.0;
@@ -1033,7 +1089,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             Real mixed_div_a_next = 0.0;
             const Real coupling_raise =
                 (n + 1 < n_modes)
-                    ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda)
+                    ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / response_w0_lambda)
                     : 0.0;
             const int idx_aw_next = (n + 1 < n_modes) ? EMIndex(n + 1, kCompAW) : -1;
             if ((n + 1 < n_modes) && !use_conservative_transport) {
@@ -1094,14 +1150,59 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             const Real src_az_lap = lap_az;
             const Real src_aw_lap = lap_aw;
 
+            const Real mass_squared_eff = mass_squared[n] * response_w0_lambda_mass_scale;
             const Real src_a0_mass =
-                -em_source_mass_gain * (c2 * mass_squared[n] * a_old(idx_a0, k, j, i));
+                -em_source_mass_gain * (c2 * mass_squared_eff * a_old(idx_a0, k, j, i));
             const Real src_ax_mass =
-                -em_source_mass_gain * (c2 * mass_squared[n] * a_old(idx_ax, k, j, i));
+                -em_source_mass_gain * (c2 * mass_squared_eff * a_old(idx_ax, k, j, i));
             const Real src_ay_mass =
-                -em_source_mass_gain * (c2 * mass_squared[n] * a_old(idx_ay, k, j, i));
+                -em_source_mass_gain * (c2 * mass_squared_eff * a_old(idx_ay, k, j, i));
             const Real src_az_mass =
-                -em_source_mass_gain * (c2 * mass_squared[n] * a_old(idx_az, k, j, i));
+                -em_source_mass_gain * (c2 * mass_squared_eff * a_old(idx_az, k, j, i));
+            Real src_a0_geometry_shift = 0.0;
+            Real src_ax_geometry_shift = 0.0;
+            Real src_ay_geometry_shift = 0.0;
+            Real src_az_geometry_shift = 0.0;
+            if (response_w0_geometry_shift_active) {
+              const Real a0_prev =
+                  (n > 0) ? a_old(EMIndex(n - 1, kCompA0), k, j, i) : 0.0;
+              const Real a0_next =
+                  (n + 1 < n_modes) ? a_old(EMIndex(n + 1, kCompA0), k, j, i) : 0.0;
+              const Real ax_prev =
+                  (n > 0) ? a_old(EMIndex(n - 1, kCompAX), k, j, i) : 0.0;
+              const Real ax_next =
+                  (n + 1 < n_modes) ? a_old(EMIndex(n + 1, kCompAX), k, j, i) : 0.0;
+              const Real ay_prev =
+                  (n > 0) ? a_old(EMIndex(n - 1, kCompAY), k, j, i) : 0.0;
+              const Real ay_next =
+                  (n + 1 < n_modes) ? a_old(EMIndex(n + 1, kCompAY), k, j, i) : 0.0;
+              const Real az_prev =
+                  (n > 0) ? a_old(EMIndex(n - 1, kCompAZ), k, j, i) : 0.0;
+              const Real az_next =
+                  (n + 1 < n_modes) ? a_old(EMIndex(n + 1, kCompAZ), k, j, i) : 0.0;
+
+              const Real a0_shift_mix = (coupling_coeff * a0_prev) + (coupling_raise * a0_next);
+              const Real ax_shift_mix = (coupling_coeff * ax_prev) + (coupling_raise * ax_next);
+              const Real ay_shift_mix = (coupling_coeff * ay_prev) + (coupling_raise * ay_next);
+              const Real az_shift_mix = (coupling_coeff * az_prev) + (coupling_raise * az_next);
+
+              src_a0_geometry_shift = -em_source_mass_gain * c2 *
+                                      ((response_w0_geometry_linear_coeff * a0_shift_mix) +
+                                       (response_w0_geometry_diag_coeff *
+                                        a_old(idx_a0, k, j, i)));
+              src_ax_geometry_shift = -em_source_mass_gain * c2 *
+                                      ((response_w0_geometry_linear_coeff * ax_shift_mix) +
+                                       (response_w0_geometry_diag_coeff *
+                                        a_old(idx_ax, k, j, i)));
+              src_ay_geometry_shift = -em_source_mass_gain * c2 *
+                                      ((response_w0_geometry_linear_coeff * ay_shift_mix) +
+                                       (response_w0_geometry_diag_coeff *
+                                        a_old(idx_ay, k, j, i)));
+              src_az_geometry_shift = -em_source_mass_gain * c2 *
+                                      ((response_w0_geometry_linear_coeff * az_shift_mix) +
+                                       (response_w0_geometry_diag_coeff *
+                                        a_old(idx_az, k, j, i)));
+            }
 
             const Real src_a0_current = -em_source_current_gain * (mu0 * j0_modes[n]);
             const Real src_ax_current = -em_source_current_gain * (mu0 * jx_modes[n]);
@@ -1141,7 +1242,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               // Optional explicit even-parity bridge: mode-2 A_w gradient into mode-0 A_y RHS.
               // Disabled by default (gain=0) so baseline behavior is unchanged.
               const int idx_aw_mode2 = EMIndex(2, kCompAW);
-              const Real mode0_even_bridge_coeff = std::sqrt(8.0) / (lambda * lambda);
+              const Real mode0_even_bridge_coeff =
+                  std::sqrt(8.0) / (response_w0_lambda * response_w0_lambda);
               src_ay_mode0_even_bridge =
                   em_source_mode0_even_bridge_gain * c2 * mode0_even_bridge_coeff *
                   gradient_y(a_old, idx_aw_mode2, k, j, i);
@@ -1150,7 +1252,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             if ((n == 2) && (em_source_mode0_even_bridge_gain != 0.0)) {
               // Paired antisymmetric companion term so bridge transfer is internal (0 <-> 2).
               const int idx_ay_mode0 = EMIndex(0, kCompAY);
-              const Real mode0_even_bridge_coeff = std::sqrt(8.0) / (lambda * lambda);
+              const Real mode0_even_bridge_coeff =
+                  std::sqrt(8.0) / (response_w0_lambda * response_w0_lambda);
               src_aw_mode2_even_bridge =
                   -em_source_mode0_even_bridge_gain * c2 * mode0_even_bridge_coeff *
                   gradient_y(a_old, idx_ay_mode0, k, j, i);
@@ -1169,15 +1272,19 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 -em_source_timelike_gain * (c2 * coupling_raise * mixed_dt_a0_next);
 
             const Real rhs_a0 = src_a0_lap + src_a0_mass + src_a0_current +
-                                src_a0_damping + rhs_a0_timelike_from_piw +
+                                src_a0_damping + src_a0_geometry_shift +
+                                rhs_a0_timelike_from_piw +
                                 src_a0_gauge;
-            const Real rhs_ax = src_ax_lap + src_ax_mass + src_ax_spatial_mixed +
+            const Real rhs_ax = src_ax_lap + src_ax_mass + src_ax_geometry_shift +
+                                src_ax_spatial_mixed +
                                 src_ax_current + src_ax_damping;
-            const Real rhs_ay = src_ay_lap + src_ay_mass + src_ay_spatial_mixed +
+            const Real rhs_ay = src_ay_lap + src_ay_mass + src_ay_geometry_shift +
+                                src_ay_spatial_mixed +
                                 src_ay_current + src_ay_damping +
                                 src_ay_w0_response +
                                 src_ay_mode0_even_bridge;
-            const Real rhs_az = src_az_lap + src_az_mass + src_az_spatial_mixed +
+            const Real rhs_az = src_az_lap + src_az_mass + src_az_geometry_shift +
+                                src_az_spatial_mixed +
                                 src_az_current + src_az_damping;
             const Real rhs_aw = src_aw_lap + src_aw_spatial_mixed + src_aw_current +
                                 src_aw_damping + rhs_aw_timelike_from_pi0 +
@@ -1212,6 +1319,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                 (std::abs(src_a0_damping) + std::abs(src_ax_damping) +
                  std::abs(src_ay_damping) + std::abs(src_az_damping) +
                  std::abs(src_aw_damping));
+            diag_src_em_geometry_shift_abs_step +=
+                dt * cell_volume *
+                (std::abs(src_a0_geometry_shift) + std::abs(src_ax_geometry_shift) +
+                 std::abs(src_ay_geometry_shift) + std::abs(src_az_geometry_shift));
             diag_src_em_gauge_step +=
                 dt * cell_volume * src_a0_gauge;
             diag_src_em_gauge_abs_step +=
@@ -1244,6 +1355,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                   dt * cell_volume * src_ay_mode0_even_bridge;
               diag_rhs_ay_mode0_even_bridge_abs_step +=
                   dt * cell_volume * std::abs(src_ay_mode0_even_bridge);
+              diag_rhs_ay_mode0_geometry_shift_step +=
+                  dt * cell_volume * src_ay_geometry_shift;
+              diag_rhs_ay_mode0_geometry_shift_abs_step +=
+                  dt * cell_volume * std::abs(src_ay_geometry_shift);
               diag_rhs_ay_mode0_w0_response_step +=
                   dt * cell_volume * src_ay_w0_response;
               diag_rhs_ay_mode0_w0_response_abs_step +=
@@ -1262,6 +1377,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                   dt * cell_volume * response_bridge_power_mode0;
               diag_response_bridge_power_mode0_abs_step +=
                   dt * cell_volume * std::abs(response_bridge_power_mode0);
+              const Real geometry_shift_power_mode0 =
+                  -src_ay_geometry_shift * ey_mode0;
+              diag_geometry_shift_power_mode0_step +=
+                  dt * cell_volume * geometry_shift_power_mode0;
+              diag_geometry_shift_power_mode0_abs_step +=
+                  dt * cell_volume * std::abs(geometry_shift_power_mode0);
               diag_rhs_ay_mode0_total_step += dt * cell_volume * rhs_ay;
               diag_rhs_aw_mode0_lap_step += dt * cell_volume * src_aw_lap;
               diag_rhs_aw_mode0_current_step += dt * cell_volume * src_aw_current;
@@ -1429,8 +1550,20 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                         response_w0_drive_bridge + response_w0_drive_parity;
     response_w0_force = response_w0_drive - (response_w0_stiffness * response_w0) -
                         (response_w0_damping * response_w0_dot);
+    const Real response_w0_dot_old = response_w0_dot;
     const Real response_w0_ddot = response_w0_force / response_w0_mass;
     response_w0_dot += dt * response_w0_ddot;
+    const Real response_w0_dot_mid = 0.5 * (response_w0_dot_old + response_w0_dot);
+    const Real response_w0_power_drive = response_w0_drive * response_w0_dot_mid;
+    const Real response_w0_power_stiffness =
+        -(response_w0_stiffness * response_w0) * response_w0_dot_mid;
+    const Real response_w0_power_damping =
+        -(response_w0_damping * response_w0_dot_mid) * response_w0_dot_mid;
+    const Real response_w0_power_net = response_w0_force * response_w0_dot_mid;
+    diag_response_w0_power_drive_step = dt * response_w0_power_drive;
+    diag_response_w0_power_stiffness_step = dt * response_w0_power_stiffness;
+    diag_response_w0_power_damping_step = dt * response_w0_power_damping;
+    diag_response_w0_power_net_step = dt * response_w0_power_net;
     response_w0 += dt * response_w0_dot;
     if (response_w0_max_abs > 0.0) {
       response_w0 = std::clamp(response_w0, -response_w0_max_abs, response_w0_max_abs);
@@ -1499,6 +1632,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/int_src_em_current_abs");
   auto *diag_src_em_damping_abs =
       modes_pkg->MutableParam<double>("diag/int_src_em_damping_abs");
+  auto *diag_src_em_geometry_shift_abs =
+      modes_pkg->MutableParam<double>("diag/int_src_em_geometry_shift_abs");
   auto *diag_src_em_spatial_mixed_abs =
       modes_pkg->MutableParam<double>("diag/int_src_em_spatial_mixed_abs");
   auto *diag_src_em_timelike_abs =
@@ -1538,10 +1673,18 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_even_bridge");
   auto *diag_rhs_ay_mode0_even_bridge_abs =
       modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_even_bridge_abs");
+  auto *diag_rhs_ay_mode0_geometry_shift =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_geometry_shift");
+  auto *diag_rhs_ay_mode0_geometry_shift_abs =
+      modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_geometry_shift_abs");
   auto *diag_bridge_power_mode0 =
       modes_pkg->MutableParam<double>("diag/int_bridge_power_mode0");
   auto *diag_bridge_power_mode0_abs =
       modes_pkg->MutableParam<double>("diag/int_bridge_power_mode0_abs");
+  auto *diag_geometry_shift_power_mode0 =
+      modes_pkg->MutableParam<double>("diag/int_geometry_shift_power_mode0");
+  auto *diag_geometry_shift_power_mode0_abs =
+      modes_pkg->MutableParam<double>("diag/int_geometry_shift_power_mode0_abs");
   auto *diag_rhs_aw_mode2_even_bridge =
       modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode2_even_bridge");
   auto *diag_rhs_aw_mode2_even_bridge_abs =
@@ -1567,8 +1710,22 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/response_w0_drive_parity");
   auto *diag_response_w0_force = modes_pkg->MutableParam<double>("diag/response_w0_force");
   auto *diag_response_w0_energy = modes_pkg->MutableParam<double>("diag/response_w0_energy");
+  auto *diag_response_w0_geometry_center =
+      modes_pkg->MutableParam<double>("diag/response_w0_geometry_center");
+  auto *diag_response_w0_lambda_fraction =
+      modes_pkg->MutableParam<double>("diag/response_w0_lambda_fraction");
+  auto *diag_response_w0_lambda_eff =
+      modes_pkg->MutableParam<double>("diag/response_w0_lambda_eff");
   auto *diag_projection_center_w =
       modes_pkg->MutableParam<double>("diag/projection_center_w");
+  auto *diag_response_w0_power_drive =
+      modes_pkg->MutableParam<double>("diag/int_response_w0_power_drive");
+  auto *diag_response_w0_power_stiffness =
+      modes_pkg->MutableParam<double>("diag/int_response_w0_power_stiffness");
+  auto *diag_response_w0_power_damping =
+      modes_pkg->MutableParam<double>("diag/int_response_w0_power_damping");
+  auto *diag_response_w0_power_net =
+      modes_pkg->MutableParam<double>("diag/int_response_w0_power_net");
   auto *diag_rhs_ay_mode0_w0_response =
       modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_w0_response");
   auto *diag_rhs_ay_mode0_w0_response_abs =
@@ -1639,6 +1796,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_src_em_mass_abs += diag_src_em_mass_abs_step;
   *diag_src_em_current_abs += diag_src_em_current_abs_step;
   *diag_src_em_damping_abs += diag_src_em_damping_abs_step;
+  *diag_src_em_geometry_shift_abs += diag_src_em_geometry_shift_abs_step;
   *diag_src_em_spatial_mixed_abs += diag_src_em_spatial_mixed_abs_step;
   *diag_src_em_timelike_abs += diag_src_em_timelike_abs_step;
   *diag_src_em_gauge += diag_src_em_gauge_step;
@@ -1659,8 +1817,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_rhs_ay_mode0_spatial_mixed += diag_rhs_ay_mode0_spatial_mixed_step;
   *diag_rhs_ay_mode0_even_bridge += diag_rhs_ay_mode0_even_bridge_step;
   *diag_rhs_ay_mode0_even_bridge_abs += diag_rhs_ay_mode0_even_bridge_abs_step;
+  *diag_rhs_ay_mode0_geometry_shift += diag_rhs_ay_mode0_geometry_shift_step;
+  *diag_rhs_ay_mode0_geometry_shift_abs +=
+      diag_rhs_ay_mode0_geometry_shift_abs_step;
   *diag_bridge_power_mode0 += diag_bridge_power_mode0_step;
   *diag_bridge_power_mode0_abs += diag_bridge_power_mode0_abs_step;
+  *diag_geometry_shift_power_mode0 += diag_geometry_shift_power_mode0_step;
+  *diag_geometry_shift_power_mode0_abs +=
+      diag_geometry_shift_power_mode0_abs_step;
   *diag_rhs_aw_mode2_even_bridge += diag_rhs_aw_mode2_even_bridge_step;
   *diag_rhs_aw_mode2_even_bridge_abs += diag_rhs_aw_mode2_even_bridge_abs_step;
   *diag_bridge_power_mode2 += diag_bridge_power_mode2_step;
@@ -1676,7 +1840,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_response_w0_drive_parity = response_w0_drive_parity;
   *diag_response_w0_force = response_w0_force;
   *diag_response_w0_energy = response_w0_energy;
+  *diag_response_w0_geometry_center = response_w0;
+  *diag_response_w0_lambda_fraction = response_w0_lambda_fraction;
+  *diag_response_w0_lambda_eff = response_w0_lambda;
   *diag_projection_center_w = response_w0_projection_center;
+  *diag_response_w0_power_drive += diag_response_w0_power_drive_step;
+  *diag_response_w0_power_stiffness += diag_response_w0_power_stiffness_step;
+  *diag_response_w0_power_damping += diag_response_w0_power_damping_step;
+  *diag_response_w0_power_net += diag_response_w0_power_net_step;
   *diag_rhs_ay_mode0_w0_response += diag_rhs_ay_mode0_w0_response_step;
   *diag_rhs_ay_mode0_w0_response_abs += diag_rhs_ay_mode0_w0_response_abs_step;
   *diag_rhs_aw_mode1_w0_response += diag_rhs_aw_mode1_w0_response_step;

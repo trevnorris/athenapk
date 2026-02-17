@@ -69,6 +69,20 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "response_w0_projection_gain", 1.0);
   const double response_w0_projection_max_abs =
       pin->GetOrAddReal("modes4d", "response_w0_projection_max_abs", 0.0);
+  const bool response_w0_geometry_shift_enable =
+      pin->GetOrAddBoolean("modes4d", "response_w0_geometry_shift_enable", false);
+  const double response_w0_geometry_shift_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_geometry_shift_gain", 1.0);
+  const bool response_w0_geometry_shift_include_constant =
+      pin->GetOrAddBoolean("modes4d", "response_w0_geometry_shift_include_constant", true);
+  const bool response_w0_lambda_shift_enable =
+      pin->GetOrAddBoolean("modes4d", "response_w0_lambda_shift_enable", false);
+  const double response_w0_lambda_shift_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_lambda_shift_gain", 0.0);
+  const double response_w0_lambda_shift_max_frac =
+      pin->GetOrAddReal("modes4d", "response_w0_lambda_shift_max_frac", 0.0);
+  const bool response_w0_lambda_shift_apply_mass =
+      pin->GetOrAddBoolean("modes4d", "response_w0_lambda_shift_apply_mass", true);
   const bool em_conservative_transport =
       pin->GetOrAddBoolean("modes4d", "em_conservative_transport", false);
   const std::string diag_projection_kernel =
@@ -136,6 +150,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                     "modes4d/response_w0_mass must be > 0");
   PARTHENON_REQUIRE(response_w0_projection_max_abs >= 0.0,
                     "modes4d/response_w0_projection_max_abs must be >= 0");
+  PARTHENON_REQUIRE(response_w0_lambda_shift_max_frac >= 0.0,
+                    "modes4d/response_w0_lambda_shift_max_frac must be >= 0");
   PARTHENON_REQUIRE((diag_projection_kernel == "matched") ||
                         (diag_projection_kernel == "point") ||
                         (diag_projection_kernel == "gaussian"),
@@ -180,6 +196,20 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                         response_w0_projection_gain);
   pkg->AddParam<double>("em4d/response_w0_projection_max_abs",
                         response_w0_projection_max_abs);
+  pkg->AddParam<bool>("em4d/response_w0_geometry_shift_enable",
+                      response_w0_geometry_shift_enable);
+  pkg->AddParam<double>("em4d/response_w0_geometry_shift_gain",
+                        response_w0_geometry_shift_gain);
+  pkg->AddParam<bool>("em4d/response_w0_geometry_shift_include_constant",
+                      response_w0_geometry_shift_include_constant);
+  pkg->AddParam<bool>("em4d/response_w0_lambda_shift_enable",
+                      response_w0_lambda_shift_enable);
+  pkg->AddParam<double>("em4d/response_w0_lambda_shift_gain",
+                        response_w0_lambda_shift_gain);
+  pkg->AddParam<double>("em4d/response_w0_lambda_shift_max_frac",
+                        response_w0_lambda_shift_max_frac);
+  pkg->AddParam<bool>("em4d/response_w0_lambda_shift_apply_mass",
+                      response_w0_lambda_shift_apply_mass);
   pkg->AddParam<bool>("em4d/use_conservative_transport", em_conservative_transport);
   pkg->AddParam<std::string>("diag/projection_kernel", diag_projection_kernel);
   pkg->AddParam<double>("diag/projection_sigma_factor", diag_projection_sigma_factor);

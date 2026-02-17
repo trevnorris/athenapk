@@ -46,6 +46,43 @@ def parse_hst(path):
     return cols
 
 
+def detect_nonfinite_columns(cols):
+    times = cols.get("time")
+    total_count = 0
+    nonfinite_by_column = {}
+    first_column = "none"
+    first_row_index = -1
+    first_time = math.nan
+    first_value = math.nan
+
+    for name, series in cols.items():
+        col_count = 0
+        for i, value in enumerate(series):
+            if not math.isfinite(value):
+                col_count += 1
+                total_count += 1
+                if first_row_index < 0:
+                    first_column = name
+                    first_row_index = i
+                    first_value = value
+                    if times is not None and i < len(times):
+                        first_time = times[i]
+        if col_count > 0:
+            nonfinite_by_column[name] = col_count
+
+    has_nonfinite = total_count > 0
+    columns = ",".join(sorted(nonfinite_by_column.keys())) if has_nonfinite else "none"
+    return {
+        "has_nonfinite": has_nonfinite,
+        "total_count": total_count,
+        "columns_csv": columns,
+        "first_column": first_column,
+        "first_row_index": first_row_index,
+        "first_time": first_time,
+        "first_value": first_value,
+    }
+
+
 def pearson(xs, ys):
     if len(xs) != len(ys) or len(xs) < 2:
         return math.nan
@@ -446,6 +483,7 @@ def analyze_case(
     int_src_em_mass_abs = maybe_col(cols, "m4d_int_src_em_mass_abs")
     int_src_em_current_abs = maybe_col(cols, "m4d_int_src_em_current_abs")
     int_src_em_damping_abs = maybe_col(cols, "m4d_int_src_em_damping_abs")
+    int_src_em_geometry_shift_abs = maybe_col(cols, "m4d_int_src_em_geometry_shift_abs")
     int_src_em_spatial_mixed_abs = maybe_col(cols, "m4d_int_src_em_spatial_mixed_abs")
     int_src_em_timelike_abs = maybe_col(cols, "m4d_int_src_em_timelike_abs")
     int_src_em_gauge = maybe_col(cols, "m4d_int_src_em_gauge")
@@ -468,8 +506,18 @@ def analyze_case(
     int_rhs_ay_mode0_even_bridge_abs = maybe_col(
         cols, "m4d_int_rhs_ay_mode0_even_bridge_abs"
     )
+    int_rhs_ay_mode0_geometry_shift = maybe_col(
+        cols, "m4d_int_rhs_ay_mode0_geometry_shift"
+    )
+    int_rhs_ay_mode0_geometry_shift_abs = maybe_col(
+        cols, "m4d_int_rhs_ay_mode0_geometry_shift_abs"
+    )
     int_bridge_power_mode0 = maybe_col(cols, "m4d_int_bridge_power_mode0")
     int_bridge_power_mode0_abs = maybe_col(cols, "m4d_int_bridge_power_mode0_abs")
+    int_geometry_shift_power_mode0 = maybe_col(cols, "m4d_int_geometry_shift_power_mode0")
+    int_geometry_shift_power_mode0_abs = maybe_col(
+        cols, "m4d_int_geometry_shift_power_mode0_abs"
+    )
     int_rhs_aw_mode2_even_bridge = maybe_col(cols, "m4d_int_rhs_aw_mode2_even_bridge")
     int_rhs_aw_mode2_even_bridge_abs = maybe_col(
         cols, "m4d_int_rhs_aw_mode2_even_bridge_abs"
@@ -486,7 +534,16 @@ def analyze_case(
     response_w0_drive_parity = maybe_col(cols, "m4d_response_w0_drive_parity")
     response_w0_force = maybe_col(cols, "m4d_response_w0_force")
     response_w0_energy = maybe_col(cols, "m4d_response_w0_energy")
+    response_w0_geometry_center = maybe_col(cols, "m4d_response_w0_geometry_center")
+    response_w0_lambda_fraction = maybe_col(cols, "m4d_response_w0_lambda_fraction")
+    response_w0_lambda_eff = maybe_col(cols, "m4d_response_w0_lambda_eff")
     projection_center_w = maybe_col(cols, "m4d_projection_center_w")
+    int_response_w0_power_drive = maybe_col(cols, "m4d_int_response_w0_power_drive")
+    int_response_w0_power_stiffness = maybe_col(
+        cols, "m4d_int_response_w0_power_stiffness"
+    )
+    int_response_w0_power_damping = maybe_col(cols, "m4d_int_response_w0_power_damping")
+    int_response_w0_power_net = maybe_col(cols, "m4d_int_response_w0_power_net")
     int_rhs_ay_mode0_w0_response = maybe_col(cols, "m4d_int_rhs_ay_mode0_w0_response")
     int_rhs_ay_mode0_w0_response_abs = maybe_col(
         cols, "m4d_int_rhs_ay_mode0_w0_response_abs"
@@ -1346,6 +1403,9 @@ def analyze_case(
         "final_int_src_em_damping_abs": int_src_em_damping_abs[-1]
         if int_src_em_damping_abs is not None
         else math.nan,
+        "final_int_src_em_geometry_shift_abs": int_src_em_geometry_shift_abs[-1]
+        if int_src_em_geometry_shift_abs is not None
+        else math.nan,
         "final_int_src_em_spatial_mixed_abs": int_src_em_spatial_mixed_abs[-1]
         if int_src_em_spatial_mixed_abs is not None
         else math.nan,
@@ -1406,11 +1466,23 @@ def analyze_case(
         "final_int_rhs_ay_mode0_even_bridge_abs": int_rhs_ay_mode0_even_bridge_abs[-1]
         if int_rhs_ay_mode0_even_bridge_abs is not None
         else math.nan,
+        "final_int_rhs_ay_mode0_geometry_shift": int_rhs_ay_mode0_geometry_shift[-1]
+        if int_rhs_ay_mode0_geometry_shift is not None
+        else math.nan,
+        "final_int_rhs_ay_mode0_geometry_shift_abs": int_rhs_ay_mode0_geometry_shift_abs[-1]
+        if int_rhs_ay_mode0_geometry_shift_abs is not None
+        else math.nan,
         "final_int_bridge_power_mode0": int_bridge_power_mode0[-1]
         if int_bridge_power_mode0 is not None
         else math.nan,
         "final_int_bridge_power_mode0_abs": int_bridge_power_mode0_abs[-1]
         if int_bridge_power_mode0_abs is not None
+        else math.nan,
+        "final_int_geometry_shift_power_mode0": int_geometry_shift_power_mode0[-1]
+        if int_geometry_shift_power_mode0 is not None
+        else math.nan,
+        "final_int_geometry_shift_power_mode0_abs": int_geometry_shift_power_mode0_abs[-1]
+        if int_geometry_shift_power_mode0_abs is not None
         else math.nan,
         "final_int_rhs_aw_mode2_even_bridge": int_rhs_aw_mode2_even_bridge[-1]
         if int_rhs_aw_mode2_even_bridge is not None
@@ -1452,8 +1524,29 @@ def analyze_case(
         "final_response_w0_energy": response_w0_energy[-1]
         if response_w0_energy is not None
         else math.nan,
+        "final_response_w0_geometry_center": response_w0_geometry_center[-1]
+        if response_w0_geometry_center is not None
+        else math.nan,
+        "final_response_w0_lambda_fraction": response_w0_lambda_fraction[-1]
+        if response_w0_lambda_fraction is not None
+        else math.nan,
+        "final_response_w0_lambda_eff": response_w0_lambda_eff[-1]
+        if response_w0_lambda_eff is not None
+        else math.nan,
         "final_projection_center_w": projection_center_w[-1]
         if projection_center_w is not None
+        else math.nan,
+        "final_int_response_w0_power_drive": int_response_w0_power_drive[-1]
+        if int_response_w0_power_drive is not None
+        else math.nan,
+        "final_int_response_w0_power_stiffness": int_response_w0_power_stiffness[-1]
+        if int_response_w0_power_stiffness is not None
+        else math.nan,
+        "final_int_response_w0_power_damping": int_response_w0_power_damping[-1]
+        if int_response_w0_power_damping is not None
+        else math.nan,
+        "final_int_response_w0_power_net": int_response_w0_power_net[-1]
+        if int_response_w0_power_net is not None
         else math.nan,
         "final_int_rhs_ay_mode0_w0_response": int_rhs_ay_mode0_w0_response[-1]
         if int_rhs_ay_mode0_w0_response is not None
@@ -1570,6 +1663,9 @@ def analyze_case(
         "corr_psi0_bridge_power_sum": pearson(psi0, int_bridge_power_sum)
         if int_bridge_power_sum is not None
         else math.nan,
+        "corr_psi0_geometry_shift_power_mode0": pearson(psi0, int_geometry_shift_power_mode0)
+        if int_geometry_shift_power_mode0 is not None
+        else math.nan,
         "corr_psi0_response_bridge_power_sum": pearson(psi0, int_response_bridge_power_sum)
         if int_response_bridge_power_sum is not None
         else math.nan,
@@ -1581,6 +1677,11 @@ def analyze_case(
         else math.nan,
         "corr_psiw0_bridge_power_sum": pearson(psi_w0, int_bridge_power_sum)
         if int_bridge_power_sum is not None
+        else math.nan,
+        "corr_psiw0_geometry_shift_power_mode0": pearson(
+            psi_w0, int_geometry_shift_power_mode0
+        )
+        if int_geometry_shift_power_mode0 is not None
         else math.nan,
         "corr_psiw0_response_bridge_power_sum": pearson(
             psi_w0, int_response_bridge_power_sum
@@ -1823,6 +1924,7 @@ def print_table(results):
         "final_int_src_em_mass_abs",
         "final_int_src_em_current_abs",
         "final_int_src_em_damping_abs",
+        "final_int_src_em_geometry_shift_abs",
         "final_int_src_em_spatial_mixed_abs",
         "final_int_src_em_timelike_abs",
         "final_int_src_em_gauge",
@@ -1843,8 +1945,12 @@ def print_table(results):
         "final_int_rhs_ay_mode0_spatial_mixed",
         "final_int_rhs_ay_mode0_even_bridge",
         "final_int_rhs_ay_mode0_even_bridge_abs",
+        "final_int_rhs_ay_mode0_geometry_shift",
+        "final_int_rhs_ay_mode0_geometry_shift_abs",
         "final_int_bridge_power_mode0",
         "final_int_bridge_power_mode0_abs",
+        "final_int_geometry_shift_power_mode0",
+        "final_int_geometry_shift_power_mode0_abs",
         "final_int_rhs_aw_mode2_even_bridge",
         "final_int_rhs_aw_mode2_even_bridge_abs",
         "final_int_bridge_power_mode2",
@@ -1854,8 +1960,19 @@ def print_table(results):
         "final_response_w0",
         "final_response_w0_dot",
         "final_response_w0_drive",
+        "final_response_w0_drive_reservoir",
+        "final_response_w0_drive_bridge",
+        "final_response_w0_drive_parity",
+        "final_response_w0_force",
         "final_response_w0_energy",
+        "final_response_w0_geometry_center",
+        "final_response_w0_lambda_fraction",
+        "final_response_w0_lambda_eff",
         "final_projection_center_w",
+        "final_int_response_w0_power_drive",
+        "final_int_response_w0_power_stiffness",
+        "final_int_response_w0_power_damping",
+        "final_int_response_w0_power_net",
         "final_int_rhs_ay_mode0_w0_response",
         "final_int_rhs_ay_mode0_w0_response_abs",
         "final_int_rhs_aw_mode1_w0_response",
@@ -1924,10 +2041,12 @@ def print_table(results):
         "corr_psi0_bridge_power_mode0",
         "corr_psi0_bridge_power_mode2",
         "corr_psi0_bridge_power_sum",
+        "corr_psi0_geometry_shift_power_mode0",
         "corr_psi0_response_bridge_power_sum",
         "corr_psiw0_bridge_power_mode0",
         "corr_psiw0_bridge_power_mode2",
         "corr_psiw0_bridge_power_sum",
+        "corr_psiw0_geometry_shift_power_mode0",
         "corr_psiw0_response_bridge_power_sum",
         "corr_psiw0_src_mode0_total_abs",
         "corr_psiw0_div_mode0_total_abs",
@@ -2043,10 +2162,19 @@ def print_table(results):
         "piw_transport_status",
         "em_transport_closure_status",
         "transport_closure_status",
+        "history_nonfinite_status",
+        "history_nonfinite_count",
+        "history_nonfinite_columns",
+        "history_first_nonfinite_column",
+        "history_first_nonfinite_row_index",
+        "history_first_nonfinite_time",
+        "history_first_nonfinite_value",
         "correlation_status",
         "correlation_failures",
         "activity_status",
         "activity_failures",
+        "mechanism_status",
+        "mechanism_failures",
         "topology_status",
         "topology_failures",
     ]
@@ -2261,6 +2389,75 @@ def evaluate_full_topology(
     return ("PASS", "none")
 
 
+def evaluate_full_mechanism(
+    row,
+    min_topology_emf_vw_c_abs,
+    min_topology_emf_cov_vxb_abs,
+    min_topology_s_leak_abs,
+    min_topology_mixed_ew2,
+    min_topology_helicity_sub_abs,
+    min_topology_edotb_sub_abs,
+    min_abs_corr_psiw0_topology_emf_vw_c_abs,
+    min_abs_corr_psiw0_topology_emf_cov_vxb_abs,
+    min_abs_corr_psiw0_topology_mixed_ew2,
+    min_abs_corr_psiw0_topology_src_mode0_total_abs,
+):
+    failures = []
+
+    def check_min_abs(metric_key, threshold, label):
+        if threshold <= 0.0:
+            return
+        value = row.get(metric_key, math.nan)
+        if math.isnan(value) or abs(value) < threshold:
+            failures.append(label)
+
+    def check_min(metric_key, threshold, label):
+        if threshold <= 0.0:
+            return
+        value = row.get(metric_key, math.nan)
+        if math.isnan(value) or value < threshold:
+            failures.append(label)
+
+    check_min_abs("final_emf_vw_c_abs", min_topology_emf_vw_c_abs, "final_emf_vw_c_abs")
+    check_min_abs(
+        "final_emf_cov_vxb_abs",
+        min_topology_emf_cov_vxb_abs,
+        "final_emf_cov_vxb_abs",
+    )
+    check_min("final_s_leak_abs", min_topology_s_leak_abs, "final_s_leak_abs")
+    check_min("final_mixed_ew2", min_topology_mixed_ew2, "final_mixed_ew2")
+    check_min_abs(
+        "final_helicity_sub",
+        min_topology_helicity_sub_abs,
+        "final_helicity_sub",
+    )
+    check_min_abs("final_edotb_sub", min_topology_edotb_sub_abs, "final_edotb_sub")
+    check_min_abs(
+        "corr_psiw0_emf_vw_c_abs",
+        min_abs_corr_psiw0_topology_emf_vw_c_abs,
+        "corr_psiw0_emf_vw_c_abs",
+    )
+    check_min_abs(
+        "corr_psiw0_emf_cov_vxb_abs",
+        min_abs_corr_psiw0_topology_emf_cov_vxb_abs,
+        "corr_psiw0_emf_cov_vxb_abs",
+    )
+    check_min_abs(
+        "corr_psiw0_mixed_ew2",
+        min_abs_corr_psiw0_topology_mixed_ew2,
+        "corr_psiw0_mixed_ew2",
+    )
+    check_min_abs(
+        "corr_psiw0_minus_psiproj_src_mode0_total_abs",
+        min_abs_corr_psiw0_topology_src_mode0_total_abs,
+        "corr_psiw0_minus_psiproj_src_mode0_total_abs",
+    )
+
+    if failures:
+        return ("FAIL", "|".join(failures))
+    return ("PASS", "none")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", required=True, help="Path to athenaPK binary")
@@ -2322,6 +2519,16 @@ def main():
         help="Exit nonzero if any case fails closure or activity checks",
     )
     parser.add_argument(
+        "--fail-on-nonfinite-hst",
+        action="store_true",
+        help="Exit nonzero if either controlled/full history includes nan/inf values",
+    )
+    parser.add_argument(
+        "--check-history-nonfinite",
+        action="store_true",
+        help="Include history non-finite status in fail-on-check logic",
+    )
+    parser.add_argument(
         "--check-transport-closure",
         action="store_true",
         help="Include plasma+EM transport closure status in fail-on-check logic",
@@ -2335,6 +2542,11 @@ def main():
         "--check-topology",
         action="store_true",
         help="Include topology observer/correlation status in fail-on-check logic",
+    )
+    parser.add_argument(
+        "--check-mechanism",
+        action="store_true",
+        help="Include topology-EMF/leakage/mixed/helicity mechanism status in fail-on-check logic",
     )
     parser.add_argument(
         "--full-min-jw-ew-abs",
@@ -2559,6 +2771,66 @@ def main():
         help="Minimum |corr(psi_w0-psi_proj, int_src_mode0_total_abs)| for full-case topology PASS (disabled when 0)",
     )
     parser.add_argument(
+        "--full-min-topology-emf-vw-c-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_emf_vw_c_abs| required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-topology-emf-cov-vxb-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_emf_cov_vxb_abs| required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-topology-s-leak-abs",
+        type=float,
+        default=0.0,
+        help="Minimum final_s_leak_abs required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-topology-mixed-ew2",
+        type=float,
+        default=0.0,
+        help="Minimum final_mixed_ew2 required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-topology-helicity-sub-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_helicity_sub| required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-topology-edotb-sub-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |final_edotb_sub| required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-topology-emf-vw-c-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0_span, emf_vw_c_abs)| required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-topology-emf-cov-vxb-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0_span, emf_cov_vxb_abs)| required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-topology-mixed-ew2",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0_span, mixed_ew2)| required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
+        "--full-min-abs-corr-psiw0-topology-src-mode0-total-abs",
+        type=float,
+        default=0.0,
+        help="Minimum |corr(psi_w0-psi_proj, int_src_mode0_total_abs)| required for mechanism PASS (disabled when 0)",
+    )
+    parser.add_argument(
         "--em-bulk-ledger-abs-rate-tol",
         type=float,
         default=1.0,
@@ -2625,6 +2897,10 @@ def main():
         output_dir / "harris_full.out1.hst",
         full_args,
     )
+    history_nonfinite_reports = {
+        "controlled": detect_nonfinite_columns(controlled_cols),
+        "full": detect_nonfinite_columns(full_cols),
+    }
 
     results = [
         analyze_case(
@@ -2655,10 +2931,22 @@ def main():
         ),
     ]
     for row in results:
+        history_report = history_nonfinite_reports[row["case"]]
+        row["history_nonfinite_status"] = (
+            "FAIL" if history_report["has_nonfinite"] else "PASS"
+        )
+        row["history_nonfinite_count"] = history_report["total_count"]
+        row["history_nonfinite_columns"] = history_report["columns_csv"]
+        row["history_first_nonfinite_column"] = history_report["first_column"]
+        row["history_first_nonfinite_row_index"] = history_report["first_row_index"]
+        row["history_first_nonfinite_time"] = history_report["first_time"]
+        row["history_first_nonfinite_value"] = history_report["first_value"]
         row["correlation_status"] = "N/A"
         row["correlation_failures"] = "n/a"
         row["activity_status"] = "N/A"
         row["activity_failures"] = "n/a"
+        row["mechanism_status"] = "N/A"
+        row["mechanism_failures"] = "n/a"
         row["topology_status"] = "N/A"
         row["topology_failures"] = "n/a"
         if row["case"] == "full":
@@ -2701,6 +2989,21 @@ def main():
             )
             row["activity_status"] = status
             row["activity_failures"] = failures
+            mechanism_status, mechanism_failures = evaluate_full_mechanism(
+                row,
+                args.full_min_topology_emf_vw_c_abs,
+                args.full_min_topology_emf_cov_vxb_abs,
+                args.full_min_topology_s_leak_abs,
+                args.full_min_topology_mixed_ew2,
+                args.full_min_topology_helicity_sub_abs,
+                args.full_min_topology_edotb_sub_abs,
+                args.full_min_abs_corr_psiw0_topology_emf_vw_c_abs,
+                args.full_min_abs_corr_psiw0_topology_emf_cov_vxb_abs,
+                args.full_min_abs_corr_psiw0_topology_mixed_ew2,
+                args.full_min_abs_corr_psiw0_topology_src_mode0_total_abs,
+            )
+            row["mechanism_status"] = mechanism_status
+            row["mechanism_failures"] = mechanism_failures
             topology_status, topology_failures = evaluate_full_topology(
                 row,
                 args.full_min_psiw0_minus_psiproj_span,
@@ -2716,6 +3019,15 @@ def main():
             row["topology_failures"] = topology_failures
 
     print_table(results)
+
+    if args.fail_on_nonfinite_hst:
+        failing_nonfinite = [
+            r["case"] for r in results if r["history_nonfinite_status"] == "FAIL"
+        ]
+        if failing_nonfinite:
+            raise SystemExit(
+                f"non-finite history values detected for: {', '.join(failing_nonfinite)}"
+            )
 
     if args.fail_on_check:
         failing = [
@@ -2733,6 +3045,11 @@ def main():
                 args.check_em_bulk_ledger
                 and r["em_bulk_ledger_status"] == "FAIL"
             )
+            or (
+                args.check_history_nonfinite
+                and r["history_nonfinite_status"] == "FAIL"
+            )
+            or (args.check_mechanism and r["mechanism_status"] == "FAIL")
             or (args.check_topology and r["topology_status"] == "FAIL")
         ]
         if failing:
