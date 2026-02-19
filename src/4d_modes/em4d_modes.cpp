@@ -88,8 +88,13 @@ TaskStatus AddEMTransportFluxes(MeshData<Real> *md) {
 
   const Real c_wave = modes_pkg->Param<double>("em4d/c_wave");
   const Real c2 = c_wave * c_wave;
-  const Real lambda = modes_pkg->Param<double>("lambda");
-  const Real inv_lambda = 1.0 / lambda;
+  const Real lambda_base = modes_pkg->Param<double>("lambda");
+  Real lambda_eff = lambda_base;
+  const Real lambda_diag = modes_pkg->Param<double>("diag/response_w0_lambda_eff");
+  if (std::isfinite(lambda_diag) && (lambda_diag > 0.0)) {
+    lambda_eff = lambda_diag;
+  }
+  const Real inv_lambda = 1.0 / lambda_eff;
   const int n_modes = modes_pkg->Param<int>("n_modes");
   const auto &pi_pack =
       md->PackVariablesAndFluxes(std::vector<std::string>{"em4d_pi"},
@@ -303,6 +308,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   const Real response_w0_drive_gain = modes_pkg->Param<double>("em4d/response_w0_drive_gain");
   const Real response_w0_drive_from_bridge_gain =
       modes_pkg->Param<double>("em4d/response_w0_drive_from_bridge_gain");
+  const std::string response_w0_drive_from_bridge_channel =
+      modes_pkg->Param<std::string>("em4d/response_w0_drive_from_bridge_channel");
+  const bool response_w0_drive_from_bridge_abs =
+      modes_pkg->Param<bool>("em4d/response_w0_drive_from_bridge_abs");
   const Real response_w0_drive_from_parity_gain =
       modes_pkg->Param<double>("em4d/response_w0_drive_from_parity_gain");
   const Real response_w0_bias = modes_pkg->Param<double>("em4d/response_w0_bias");
@@ -334,6 +343,30 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->Param<double>("em4d/response_w0_lambda_shift_max_frac");
   const bool response_w0_lambda_shift_apply_mass =
       modes_pkg->Param<bool>("em4d/response_w0_lambda_shift_apply_mass");
+  const bool response_lambda_enable =
+      modes_pkg->Param<bool>("em4d/response_lambda_enable");
+  const Real response_lambda_drive_gain =
+      modes_pkg->Param<double>("em4d/response_lambda_drive_gain");
+  const Real response_lambda_drive_from_bridge_gain =
+      modes_pkg->Param<double>("em4d/response_lambda_drive_from_bridge_gain");
+  const std::string response_lambda_drive_from_bridge_channel =
+      modes_pkg->Param<std::string>("em4d/response_lambda_drive_from_bridge_channel");
+  const bool response_lambda_drive_from_bridge_abs =
+      modes_pkg->Param<bool>("em4d/response_lambda_drive_from_bridge_abs");
+  const Real response_lambda_bias =
+      modes_pkg->Param<double>("em4d/response_lambda_bias");
+  const Real response_lambda_init_fraction =
+      modes_pkg->Param<double>("em4d/response_lambda_init_fraction");
+  const Real response_lambda_mass =
+      modes_pkg->Param<double>("em4d/response_lambda_mass");
+  const Real response_lambda_stiffness =
+      modes_pkg->Param<double>("em4d/response_lambda_stiffness");
+  const Real response_lambda_damping =
+      modes_pkg->Param<double>("em4d/response_lambda_damping");
+  const Real response_lambda_max_abs_frac =
+      modes_pkg->Param<double>("em4d/response_lambda_max_abs_frac");
+  const bool response_lambda_apply_mass =
+      modes_pkg->Param<bool>("em4d/response_lambda_apply_mass");
   const bool use_conservative_transport =
       modes_pkg->Param<bool>("em4d/use_conservative_transport");
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
@@ -375,26 +408,57 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     response_w0_dot = 0.0;
     response_w0_initialized = false;
   }
+  Real response_lambda_fraction =
+      modes_pkg->Param<double>("diag/response_lambda_fraction");
+  Real response_lambda_dot = modes_pkg->Param<double>("diag/response_lambda_dot");
+  bool response_lambda_initialized =
+      modes_pkg->Param<bool>("diag/response_lambda_initialized");
+  Real response_lambda_drive = 0.0;
+  Real response_lambda_drive_reservoir = 0.0;
+  Real response_lambda_drive_bridge = 0.0;
+  Real response_lambda_force = 0.0;
+  Real response_lambda_energy = 0.0;
+  if (response_lambda_enable && !response_lambda_initialized) {
+    response_lambda_fraction = response_lambda_init_fraction;
+    response_lambda_dot = 0.0;
+    response_lambda_initialized = true;
+  } else if (!response_lambda_enable) {
+    response_lambda_fraction = 0.0;
+    response_lambda_dot = 0.0;
+    response_lambda_initialized = false;
+  }
+  if (response_lambda_max_abs_frac > 0.0) {
+    response_lambda_fraction = std::clamp(response_lambda_fraction, -response_lambda_max_abs_frac,
+                                          response_lambda_max_abs_frac);
+  }
   const Real response_w0_effective =
       response_w0 + (response_w0_velocity_bridge_gain * response_w0_dot);
-  Real response_w0_lambda_fraction = 0.0;
+  Real response_w0_lambda_fraction_from_w0 = 0.0;
   if (response_w0_enable && response_w0_lambda_shift_enable &&
       (response_w0_lambda_shift_gain != 0.0)) {
-    response_w0_lambda_fraction = response_w0_lambda_shift_gain * response_w0_effective;
+    response_w0_lambda_fraction_from_w0 =
+        response_w0_lambda_shift_gain * response_w0_effective;
     if (response_w0_lambda_shift_max_frac > 0.0) {
-      response_w0_lambda_fraction =
-          std::clamp(response_w0_lambda_fraction, -response_w0_lambda_shift_max_frac,
+      response_w0_lambda_fraction_from_w0 =
+          std::clamp(response_w0_lambda_fraction_from_w0,
+                     -response_w0_lambda_shift_max_frac,
                      response_w0_lambda_shift_max_frac);
     }
   }
-  Real response_w0_lambda = lambda * (1.0 + response_w0_lambda_fraction);
+  const Real response_lambda_fraction_total =
+      response_w0_lambda_fraction_from_w0 + response_lambda_fraction;
+  Real response_w0_lambda = lambda * (1.0 + response_lambda_fraction_total);
   response_w0_lambda = std::max(response_w0_lambda, 1.0e-6 * lambda);
   const Real inv_lambda2 = 1.0 / (response_w0_lambda * response_w0_lambda);
   const Real inv_lambda3 = inv_lambda2 / response_w0_lambda;
   const Real inv_lambda4 = inv_lambda2 * inv_lambda2;
   const Real inv_lambda_root2 = std::sqrt(2.0) / response_w0_lambda;
+  const bool apply_lambda_mass_scale =
+      (response_w0_lambda_shift_apply_mass &&
+       (response_w0_lambda_fraction_from_w0 != 0.0)) ||
+      (response_lambda_apply_mass && (response_lambda_fraction != 0.0));
   const Real response_w0_lambda_mass_scale =
-      response_w0_lambda_shift_apply_mass ? (inv_lambda2 / inv_lambda2_base) : 1.0;
+      apply_lambda_mass_scale ? (inv_lambda2 / inv_lambda2_base) : 1.0;
   const bool response_w0_geometry_shift_active =
       response_w0_enable && response_w0_geometry_shift_enable &&
       (response_w0_geometry_shift_gain != 0.0);
@@ -482,6 +546,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_response_w0_power_stiffness_step = 0.0;
   Real diag_response_w0_power_damping_step = 0.0;
   Real diag_response_w0_power_net_step = 0.0;
+  Real diag_response_lambda_power_drive_step = 0.0;
+  Real diag_response_lambda_power_stiffness_step = 0.0;
+  Real diag_response_lambda_power_damping_step = 0.0;
+  Real diag_response_lambda_power_net_step = 0.0;
   Real diag_rhs_ay_mode0_total_step = 0.0;
   Real diag_rhs_aw_mode0_lap_step = 0.0;
   Real diag_rhs_aw_mode0_current_step = 0.0;
@@ -1525,20 +1593,36 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     plasma_dev.DeepCopy(plasma_new);
   }
 
+  auto select_bridge_integral = [&](const std::string &channel) -> Real {
+    if (channel == "response") {
+      return diag_response_bridge_power_sum_step;
+    }
+    if (channel == "combined") {
+      return diag_bridge_power_sum_step + diag_response_bridge_power_sum_step;
+    }
+    return diag_bridge_power_sum_step;
+  };
+
+  const Real response_drive_density =
+      (response_drive_volume_step > 0.0)
+          ? (response_drive_energy_integral_step / response_drive_volume_step)
+          : 0.0;
+  const Real response_drive_parity_density =
+      (response_drive_volume_step > 0.0)
+          ? ((response_drive_odd_energy_integral_step -
+              response_drive_even_energy_integral_step) /
+             response_drive_volume_step)
+          : 0.0;
+
   if (response_w0_enable) {
-    const Real response_drive_density =
-        (response_drive_volume_step > 0.0)
-            ? (response_drive_energy_integral_step / response_drive_volume_step)
-            : 0.0;
-    const Real response_drive_parity_density =
-        (response_drive_volume_step > 0.0)
-            ? ((response_drive_odd_energy_integral_step -
-                response_drive_even_energy_integral_step) /
-               response_drive_volume_step)
-            : 0.0;
+    Real response_drive_bridge_integral =
+        select_bridge_integral(response_w0_drive_from_bridge_channel);
+    if (response_w0_drive_from_bridge_abs) {
+      response_drive_bridge_integral = std::abs(response_drive_bridge_integral);
+    }
     const Real response_drive_bridge_density =
         ((response_drive_volume_step > 0.0) && (dt > 0.0))
-            ? (diag_response_bridge_power_sum_step / (dt * response_drive_volume_step))
+            ? (response_drive_bridge_integral / (dt * response_drive_volume_step))
             : 0.0;
     response_w0_drive_reservoir =
         response_w0_drive_gain * std::log1p(std::max(response_drive_density, 0.0));
@@ -1581,6 +1665,81 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     response_w0_energy = 0.0;
     response_w0_initialized = false;
   }
+
+  if (response_lambda_enable) {
+    Real response_lambda_bridge_integral =
+        select_bridge_integral(response_lambda_drive_from_bridge_channel);
+    if (response_lambda_drive_from_bridge_abs) {
+      response_lambda_bridge_integral = std::abs(response_lambda_bridge_integral);
+    }
+    const Real response_lambda_bridge_density =
+        ((response_drive_volume_step > 0.0) && (dt > 0.0))
+            ? (response_lambda_bridge_integral / (dt * response_drive_volume_step))
+            : 0.0;
+    response_lambda_drive_reservoir =
+        response_lambda_drive_gain * std::log1p(std::max(response_drive_density, 0.0));
+    response_lambda_drive_bridge =
+        response_lambda_drive_from_bridge_gain * response_lambda_bridge_density;
+    response_lambda_drive =
+        response_lambda_bias + response_lambda_drive_reservoir + response_lambda_drive_bridge;
+    response_lambda_force =
+        response_lambda_drive - (response_lambda_stiffness * response_lambda_fraction) -
+        (response_lambda_damping * response_lambda_dot);
+    const Real response_lambda_dot_old = response_lambda_dot;
+    const Real response_lambda_ddot = response_lambda_force / response_lambda_mass;
+    response_lambda_dot += dt * response_lambda_ddot;
+    const Real response_lambda_dot_mid =
+        0.5 * (response_lambda_dot_old + response_lambda_dot);
+    const Real response_lambda_power_drive =
+        response_lambda_drive * response_lambda_dot_mid;
+    const Real response_lambda_power_stiffness =
+        -(response_lambda_stiffness * response_lambda_fraction) * response_lambda_dot_mid;
+    const Real response_lambda_power_damping =
+        -(response_lambda_damping * response_lambda_dot_mid) * response_lambda_dot_mid;
+    const Real response_lambda_power_net = response_lambda_force * response_lambda_dot_mid;
+    diag_response_lambda_power_drive_step = dt * response_lambda_power_drive;
+    diag_response_lambda_power_stiffness_step = dt * response_lambda_power_stiffness;
+    diag_response_lambda_power_damping_step = dt * response_lambda_power_damping;
+    diag_response_lambda_power_net_step = dt * response_lambda_power_net;
+    response_lambda_fraction += dt * response_lambda_dot;
+    if (response_lambda_max_abs_frac > 0.0) {
+      response_lambda_fraction = std::clamp(response_lambda_fraction,
+                                            -response_lambda_max_abs_frac,
+                                            response_lambda_max_abs_frac);
+    }
+    response_lambda_energy =
+        0.5 * ((response_lambda_mass * response_lambda_dot * response_lambda_dot) +
+               (response_lambda_stiffness * response_lambda_fraction *
+                response_lambda_fraction));
+  } else {
+    response_lambda_fraction = 0.0;
+    response_lambda_dot = 0.0;
+    response_lambda_drive = 0.0;
+    response_lambda_drive_reservoir = 0.0;
+    response_lambda_drive_bridge = 0.0;
+    response_lambda_force = 0.0;
+    response_lambda_energy = 0.0;
+    response_lambda_initialized = false;
+  }
+
+  const Real response_w0_effective_out =
+      response_w0 + (response_w0_velocity_bridge_gain * response_w0_dot);
+  Real response_w0_lambda_fraction_from_w0_out = 0.0;
+  if (response_w0_enable && response_w0_lambda_shift_enable &&
+      (response_w0_lambda_shift_gain != 0.0)) {
+    response_w0_lambda_fraction_from_w0_out =
+        response_w0_lambda_shift_gain * response_w0_effective_out;
+    if (response_w0_lambda_shift_max_frac > 0.0) {
+      response_w0_lambda_fraction_from_w0_out =
+          std::clamp(response_w0_lambda_fraction_from_w0_out,
+                     -response_w0_lambda_shift_max_frac,
+                     response_w0_lambda_shift_max_frac);
+    }
+  }
+  const Real response_lambda_fraction_total_out =
+      response_w0_lambda_fraction_from_w0_out + response_lambda_fraction;
+  Real response_w0_lambda_out = lambda * (1.0 + response_lambda_fraction_total_out);
+  response_w0_lambda_out = std::max(response_w0_lambda_out, 1.0e-6 * lambda);
 
   if (response_w0_projection_enable) {
     response_w0_projection_center = response_w0_projection_gain * response_w0;
@@ -1716,6 +1875,22 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/response_w0_lambda_fraction");
   auto *diag_response_w0_lambda_eff =
       modes_pkg->MutableParam<double>("diag/response_w0_lambda_eff");
+  auto *diag_response_lambda_initialized =
+      modes_pkg->MutableParam<bool>("diag/response_lambda_initialized");
+  auto *diag_response_lambda_fraction =
+      modes_pkg->MutableParam<double>("diag/response_lambda_fraction");
+  auto *diag_response_lambda_dot =
+      modes_pkg->MutableParam<double>("diag/response_lambda_dot");
+  auto *diag_response_lambda_drive =
+      modes_pkg->MutableParam<double>("diag/response_lambda_drive");
+  auto *diag_response_lambda_drive_reservoir =
+      modes_pkg->MutableParam<double>("diag/response_lambda_drive_reservoir");
+  auto *diag_response_lambda_drive_bridge =
+      modes_pkg->MutableParam<double>("diag/response_lambda_drive_bridge");
+  auto *diag_response_lambda_force =
+      modes_pkg->MutableParam<double>("diag/response_lambda_force");
+  auto *diag_response_lambda_energy =
+      modes_pkg->MutableParam<double>("diag/response_lambda_energy");
   auto *diag_projection_center_w =
       modes_pkg->MutableParam<double>("diag/projection_center_w");
   auto *diag_response_w0_power_drive =
@@ -1726,6 +1901,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/int_response_w0_power_damping");
   auto *diag_response_w0_power_net =
       modes_pkg->MutableParam<double>("diag/int_response_w0_power_net");
+  auto *diag_response_lambda_power_drive =
+      modes_pkg->MutableParam<double>("diag/int_response_lambda_power_drive");
+  auto *diag_response_lambda_power_stiffness =
+      modes_pkg->MutableParam<double>("diag/int_response_lambda_power_stiffness");
+  auto *diag_response_lambda_power_damping =
+      modes_pkg->MutableParam<double>("diag/int_response_lambda_power_damping");
+  auto *diag_response_lambda_power_net =
+      modes_pkg->MutableParam<double>("diag/int_response_lambda_power_net");
   auto *diag_rhs_ay_mode0_w0_response =
       modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_w0_response");
   auto *diag_rhs_ay_mode0_w0_response_abs =
@@ -1841,13 +2024,25 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_response_w0_force = response_w0_force;
   *diag_response_w0_energy = response_w0_energy;
   *diag_response_w0_geometry_center = response_w0;
-  *diag_response_w0_lambda_fraction = response_w0_lambda_fraction;
-  *diag_response_w0_lambda_eff = response_w0_lambda;
+  *diag_response_w0_lambda_fraction = response_lambda_fraction_total_out;
+  *diag_response_w0_lambda_eff = response_w0_lambda_out;
+  *diag_response_lambda_initialized = response_lambda_initialized;
+  *diag_response_lambda_fraction = response_lambda_fraction;
+  *diag_response_lambda_dot = response_lambda_dot;
+  *diag_response_lambda_drive = response_lambda_drive;
+  *diag_response_lambda_drive_reservoir = response_lambda_drive_reservoir;
+  *diag_response_lambda_drive_bridge = response_lambda_drive_bridge;
+  *diag_response_lambda_force = response_lambda_force;
+  *diag_response_lambda_energy = response_lambda_energy;
   *diag_projection_center_w = response_w0_projection_center;
   *diag_response_w0_power_drive += diag_response_w0_power_drive_step;
   *diag_response_w0_power_stiffness += diag_response_w0_power_stiffness_step;
   *diag_response_w0_power_damping += diag_response_w0_power_damping_step;
   *diag_response_w0_power_net += diag_response_w0_power_net_step;
+  *diag_response_lambda_power_drive += diag_response_lambda_power_drive_step;
+  *diag_response_lambda_power_stiffness += diag_response_lambda_power_stiffness_step;
+  *diag_response_lambda_power_damping += diag_response_lambda_power_damping_step;
+  *diag_response_lambda_power_net += diag_response_lambda_power_net_step;
   *diag_rhs_ay_mode0_w0_response += diag_rhs_ay_mode0_w0_response_step;
   *diag_rhs_ay_mode0_w0_response_abs += diag_rhs_ay_mode0_w0_response_abs_step;
   *diag_rhs_aw_mode1_w0_response += diag_rhs_aw_mode1_w0_response_step;

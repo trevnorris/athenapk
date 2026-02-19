@@ -45,6 +45,10 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "response_w0_drive_gain", 0.0);
   const double response_w0_drive_from_bridge_gain =
       pin->GetOrAddReal("modes4d", "response_w0_drive_from_bridge_gain", 0.0);
+  const std::string response_w0_drive_from_bridge_channel = pin->GetOrAddString(
+      "modes4d", "response_w0_drive_from_bridge_channel", "primary");
+  const bool response_w0_drive_from_bridge_abs =
+      pin->GetOrAddBoolean("modes4d", "response_w0_drive_from_bridge_abs", false);
   const double response_w0_drive_from_parity_gain =
       pin->GetOrAddReal("modes4d", "response_w0_drive_from_parity_gain", 0.0);
   const double response_w0_bias =
@@ -83,6 +87,30 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "response_w0_lambda_shift_max_frac", 0.0);
   const bool response_w0_lambda_shift_apply_mass =
       pin->GetOrAddBoolean("modes4d", "response_w0_lambda_shift_apply_mass", true);
+  const bool response_lambda_enable =
+      pin->GetOrAddBoolean("modes4d", "response_lambda_enable", false);
+  const double response_lambda_drive_gain =
+      pin->GetOrAddReal("modes4d", "response_lambda_drive_gain", 0.0);
+  const double response_lambda_drive_from_bridge_gain =
+      pin->GetOrAddReal("modes4d", "response_lambda_drive_from_bridge_gain", 0.0);
+  const std::string response_lambda_drive_from_bridge_channel = pin->GetOrAddString(
+      "modes4d", "response_lambda_drive_from_bridge_channel", "primary");
+  const bool response_lambda_drive_from_bridge_abs =
+      pin->GetOrAddBoolean("modes4d", "response_lambda_drive_from_bridge_abs", false);
+  const double response_lambda_bias =
+      pin->GetOrAddReal("modes4d", "response_lambda_bias", 0.0);
+  const double response_lambda_init_fraction =
+      pin->GetOrAddReal("modes4d", "response_lambda_init_fraction", 0.0);
+  const double response_lambda_mass =
+      pin->GetOrAddReal("modes4d", "response_lambda_mass", 1.0);
+  const double response_lambda_stiffness =
+      pin->GetOrAddReal("modes4d", "response_lambda_stiffness", 0.0);
+  const double response_lambda_damping =
+      pin->GetOrAddReal("modes4d", "response_lambda_damping", 0.0);
+  const double response_lambda_max_abs_frac =
+      pin->GetOrAddReal("modes4d", "response_lambda_max_abs_frac", 0.5);
+  const bool response_lambda_apply_mass =
+      pin->GetOrAddBoolean("modes4d", "response_lambda_apply_mass", true);
   const bool em_conservative_transport =
       pin->GetOrAddBoolean("modes4d", "em_conservative_transport", false);
   const std::string diag_projection_kernel =
@@ -152,6 +180,22 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                     "modes4d/response_w0_projection_max_abs must be >= 0");
   PARTHENON_REQUIRE(response_w0_lambda_shift_max_frac >= 0.0,
                     "modes4d/response_w0_lambda_shift_max_frac must be >= 0");
+  PARTHENON_REQUIRE(response_lambda_mass > 0.0,
+                    "modes4d/response_lambda_mass must be > 0");
+  PARTHENON_REQUIRE(response_lambda_max_abs_frac >= 0.0,
+                    "modes4d/response_lambda_max_abs_frac must be >= 0");
+  PARTHENON_REQUIRE(
+      (response_w0_drive_from_bridge_channel == "primary") ||
+          (response_w0_drive_from_bridge_channel == "response") ||
+          (response_w0_drive_from_bridge_channel == "combined"),
+      "modes4d/response_w0_drive_from_bridge_channel must be one of: primary, response, "
+      "combined");
+  PARTHENON_REQUIRE(
+      (response_lambda_drive_from_bridge_channel == "primary") ||
+          (response_lambda_drive_from_bridge_channel == "response") ||
+          (response_lambda_drive_from_bridge_channel == "combined"),
+      "modes4d/response_lambda_drive_from_bridge_channel must be one of: primary, "
+      "response, combined");
   PARTHENON_REQUIRE((diag_projection_kernel == "matched") ||
                         (diag_projection_kernel == "point") ||
                         (diag_projection_kernel == "gaussian"),
@@ -179,6 +223,10 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/response_w0_drive_gain", response_w0_drive_gain);
   pkg->AddParam<double>("em4d/response_w0_drive_from_bridge_gain",
                         response_w0_drive_from_bridge_gain);
+  pkg->AddParam<std::string>("em4d/response_w0_drive_from_bridge_channel",
+                             response_w0_drive_from_bridge_channel);
+  pkg->AddParam<bool>("em4d/response_w0_drive_from_bridge_abs",
+                      response_w0_drive_from_bridge_abs);
   pkg->AddParam<double>("em4d/response_w0_drive_from_parity_gain",
                         response_w0_drive_from_parity_gain);
   pkg->AddParam<double>("em4d/response_w0_bias", response_w0_bias);
@@ -210,6 +258,23 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                         response_w0_lambda_shift_max_frac);
   pkg->AddParam<bool>("em4d/response_w0_lambda_shift_apply_mass",
                       response_w0_lambda_shift_apply_mass);
+  pkg->AddParam<bool>("em4d/response_lambda_enable", response_lambda_enable);
+  pkg->AddParam<double>("em4d/response_lambda_drive_gain", response_lambda_drive_gain);
+  pkg->AddParam<double>("em4d/response_lambda_drive_from_bridge_gain",
+                        response_lambda_drive_from_bridge_gain);
+  pkg->AddParam<std::string>("em4d/response_lambda_drive_from_bridge_channel",
+                             response_lambda_drive_from_bridge_channel);
+  pkg->AddParam<bool>("em4d/response_lambda_drive_from_bridge_abs",
+                      response_lambda_drive_from_bridge_abs);
+  pkg->AddParam<double>("em4d/response_lambda_bias", response_lambda_bias);
+  pkg->AddParam<double>("em4d/response_lambda_init_fraction",
+                        response_lambda_init_fraction);
+  pkg->AddParam<double>("em4d/response_lambda_mass", response_lambda_mass);
+  pkg->AddParam<double>("em4d/response_lambda_stiffness", response_lambda_stiffness);
+  pkg->AddParam<double>("em4d/response_lambda_damping", response_lambda_damping);
+  pkg->AddParam<double>("em4d/response_lambda_max_abs_frac",
+                        response_lambda_max_abs_frac);
+  pkg->AddParam<bool>("em4d/response_lambda_apply_mass", response_lambda_apply_mass);
   pkg->AddParam<bool>("em4d/use_conservative_transport", em_conservative_transport);
   pkg->AddParam<std::string>("diag/projection_kernel", diag_projection_kernel);
   pkg->AddParam<double>("diag/projection_sigma_factor", diag_projection_sigma_factor);

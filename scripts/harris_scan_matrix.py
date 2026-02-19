@@ -537,6 +537,15 @@ def analyze_case(
     response_w0_geometry_center = maybe_col(cols, "m4d_response_w0_geometry_center")
     response_w0_lambda_fraction = maybe_col(cols, "m4d_response_w0_lambda_fraction")
     response_w0_lambda_eff = maybe_col(cols, "m4d_response_w0_lambda_eff")
+    response_lambda_fraction = maybe_col(cols, "m4d_response_lambda_fraction")
+    response_lambda_dot = maybe_col(cols, "m4d_response_lambda_dot")
+    response_lambda_drive = maybe_col(cols, "m4d_response_lambda_drive")
+    response_lambda_drive_reservoir = maybe_col(
+        cols, "m4d_response_lambda_drive_reservoir"
+    )
+    response_lambda_drive_bridge = maybe_col(cols, "m4d_response_lambda_drive_bridge")
+    response_lambda_force = maybe_col(cols, "m4d_response_lambda_force")
+    response_lambda_energy = maybe_col(cols, "m4d_response_lambda_energy")
     projection_center_w = maybe_col(cols, "m4d_projection_center_w")
     int_response_w0_power_drive = maybe_col(cols, "m4d_int_response_w0_power_drive")
     int_response_w0_power_stiffness = maybe_col(
@@ -544,6 +553,16 @@ def analyze_case(
     )
     int_response_w0_power_damping = maybe_col(cols, "m4d_int_response_w0_power_damping")
     int_response_w0_power_net = maybe_col(cols, "m4d_int_response_w0_power_net")
+    int_response_lambda_power_drive = maybe_col(
+        cols, "m4d_int_response_lambda_power_drive"
+    )
+    int_response_lambda_power_stiffness = maybe_col(
+        cols, "m4d_int_response_lambda_power_stiffness"
+    )
+    int_response_lambda_power_damping = maybe_col(
+        cols, "m4d_int_response_lambda_power_damping"
+    )
+    int_response_lambda_power_net = maybe_col(cols, "m4d_int_response_lambda_power_net")
     int_rhs_ay_mode0_w0_response = maybe_col(cols, "m4d_int_rhs_ay_mode0_w0_response")
     int_rhs_ay_mode0_w0_response_abs = maybe_col(
         cols, "m4d_int_rhs_ay_mode0_w0_response_abs"
@@ -1533,6 +1552,27 @@ def analyze_case(
         "final_response_w0_lambda_eff": response_w0_lambda_eff[-1]
         if response_w0_lambda_eff is not None
         else math.nan,
+        "final_response_lambda_fraction": response_lambda_fraction[-1]
+        if response_lambda_fraction is not None
+        else math.nan,
+        "final_response_lambda_dot": response_lambda_dot[-1]
+        if response_lambda_dot is not None
+        else math.nan,
+        "final_response_lambda_drive": response_lambda_drive[-1]
+        if response_lambda_drive is not None
+        else math.nan,
+        "final_response_lambda_drive_reservoir": response_lambda_drive_reservoir[-1]
+        if response_lambda_drive_reservoir is not None
+        else math.nan,
+        "final_response_lambda_drive_bridge": response_lambda_drive_bridge[-1]
+        if response_lambda_drive_bridge is not None
+        else math.nan,
+        "final_response_lambda_force": response_lambda_force[-1]
+        if response_lambda_force is not None
+        else math.nan,
+        "final_response_lambda_energy": response_lambda_energy[-1]
+        if response_lambda_energy is not None
+        else math.nan,
         "final_projection_center_w": projection_center_w[-1]
         if projection_center_w is not None
         else math.nan,
@@ -1547,6 +1587,18 @@ def analyze_case(
         else math.nan,
         "final_int_response_w0_power_net": int_response_w0_power_net[-1]
         if int_response_w0_power_net is not None
+        else math.nan,
+        "final_int_response_lambda_power_drive": int_response_lambda_power_drive[-1]
+        if int_response_lambda_power_drive is not None
+        else math.nan,
+        "final_int_response_lambda_power_stiffness": int_response_lambda_power_stiffness[-1]
+        if int_response_lambda_power_stiffness is not None
+        else math.nan,
+        "final_int_response_lambda_power_damping": int_response_lambda_power_damping[-1]
+        if int_response_lambda_power_damping is not None
+        else math.nan,
+        "final_int_response_lambda_power_net": int_response_lambda_power_net[-1]
+        if int_response_lambda_power_net is not None
         else math.nan,
         "final_int_rhs_ay_mode0_w0_response": int_rhs_ay_mode0_w0_response[-1]
         if int_rhs_ay_mode0_w0_response is not None
@@ -1968,11 +2020,22 @@ def print_table(results):
         "final_response_w0_geometry_center",
         "final_response_w0_lambda_fraction",
         "final_response_w0_lambda_eff",
+        "final_response_lambda_fraction",
+        "final_response_lambda_dot",
+        "final_response_lambda_drive",
+        "final_response_lambda_drive_reservoir",
+        "final_response_lambda_drive_bridge",
+        "final_response_lambda_force",
+        "final_response_lambda_energy",
         "final_projection_center_w",
         "final_int_response_w0_power_drive",
         "final_int_response_w0_power_stiffness",
         "final_int_response_w0_power_damping",
         "final_int_response_w0_power_net",
+        "final_int_response_lambda_power_drive",
+        "final_int_response_lambda_power_stiffness",
+        "final_int_response_lambda_power_damping",
+        "final_int_response_lambda_power_net",
         "final_int_rhs_ay_mode0_w0_response",
         "final_int_rhs_ay_mode0_w0_response_abs",
         "final_int_rhs_aw_mode1_w0_response",

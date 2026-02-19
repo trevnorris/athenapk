@@ -494,6 +494,41 @@ Real ResponseW0LambdaEffHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/response_w0_lambda_eff");
 }
 
+Real ResponseLambdaFractionHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_fraction");
+}
+
+Real ResponseLambdaDotHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_dot");
+}
+
+Real ResponseLambdaDriveHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_drive");
+}
+
+Real ResponseLambdaDriveReservoirHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_drive_reservoir");
+}
+
+Real ResponseLambdaDriveBridgeHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_drive_bridge");
+}
+
+Real ResponseLambdaForceHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_force");
+}
+
+Real ResponseLambdaEnergyHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_energy");
+}
+
 Real ResponseW0PowerDriveAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_response_w0_power_drive");
@@ -512,6 +547,26 @@ Real ResponseW0PowerDampingAccumulatorHst(MeshData<Real> *md) {
 Real ResponseW0PowerNetAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_response_w0_power_net");
+}
+
+Real ResponseLambdaPowerDriveAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_lambda_power_drive");
+}
+
+Real ResponseLambdaPowerStiffnessAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_lambda_power_stiffness");
+}
+
+Real ResponseLambdaPowerDampingAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_lambda_power_damping");
+}
+
+Real ResponseLambdaPowerNetAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_lambda_power_net");
 }
 
 Real RHSAyMode0W0ResponseAccumulatorHst(MeshData<Real> *md) {
@@ -2616,12 +2671,24 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/response_w0_geometry_center", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_lambda_fraction", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_lambda_eff", 0.0, true);
+  pkg->AddParam<bool>("diag/response_lambda_initialized", false, true);
+  pkg->AddParam<double>("diag/response_lambda_fraction", 0.0, true);
+  pkg->AddParam<double>("diag/response_lambda_dot", 0.0, true);
+  pkg->AddParam<double>("diag/response_lambda_drive", 0.0, true);
+  pkg->AddParam<double>("diag/response_lambda_drive_reservoir", 0.0, true);
+  pkg->AddParam<double>("diag/response_lambda_drive_bridge", 0.0, true);
+  pkg->AddParam<double>("diag/response_lambda_force", 0.0, true);
+  pkg->AddParam<double>("diag/response_lambda_energy", 0.0, true);
   pkg->AddParam<double>("diag/projection_center_w", 0.0, true);
   pkg->AddParam<bool>("diag/response_w0_initialized", false, true);
   pkg->AddParam<double>("diag/int_response_w0_power_drive", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_power_stiffness", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_power_damping", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_power_net", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_lambda_power_drive", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_lambda_power_stiffness", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_lambda_power_damping", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_lambda_power_net", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_ay_mode0_w0_response", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_ay_mode0_w0_response_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_aw_mode1_w0_response", 0.0, true);
@@ -2890,6 +2957,27 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0LambdaEffHst,
       "m4d_response_w0_lambda_eff"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaFractionHst,
+      "m4d_response_lambda_fraction"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaDotHst,
+      "m4d_response_lambda_dot"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaDriveHst,
+      "m4d_response_lambda_drive"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaDriveReservoirHst,
+      "m4d_response_lambda_drive_reservoir"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaDriveBridgeHst,
+      "m4d_response_lambda_drive_bridge"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaForceHst,
+      "m4d_response_lambda_force"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaEnergyHst,
+      "m4d_response_lambda_energy"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     ProjectionCenterWHst,
                                                     "m4d_projection_center_w"));
@@ -2905,6 +2993,18 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0PowerNetAccumulatorHst,
       "m4d_int_response_w0_power_net"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaPowerDriveAccumulatorHst,
+      "m4d_int_response_lambda_power_drive"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaPowerStiffnessAccumulatorHst,
+      "m4d_int_response_lambda_power_stiffness"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaPowerDampingAccumulatorHst,
+      "m4d_int_response_lambda_power_damping"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaPowerNetAccumulatorHst,
+      "m4d_int_response_lambda_power_net"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, RHSAyMode0W0ResponseAccumulatorHst,
       "m4d_int_rhs_ay_mode0_w0_response"));

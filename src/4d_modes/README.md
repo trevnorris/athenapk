@@ -1211,6 +1211,18 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
 - `response_w0_lambda_shift_gain`
 - `response_w0_lambda_shift_max_frac`
 - `response_w0_lambda_shift_apply_mass`
+- `response_lambda_enable`
+- `response_lambda_drive_gain`
+- `response_lambda_drive_from_bridge_gain`
+- `response_lambda_drive_from_bridge_channel`
+- `response_lambda_drive_from_bridge_abs`
+- `response_lambda_bias`
+- `response_lambda_init_fraction`
+- `response_lambda_mass`
+- `response_lambda_stiffness`
+- `response_lambda_damping`
+- `response_lambda_max_abs_frac`
+- `response_lambda_apply_mass`
 
 ## Notes
 
@@ -1242,13 +1254,25 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
   `lambda_eff = lambda * (1 + response_w0_lambda_shift_gain * w0_eff)`,
   optionally clamped by `response_w0_lambda_shift_max_frac`, with optional mass
   scaling controlled by `response_w0_lambda_shift_apply_mass`.
+- When `response_lambda_enable=true`, the solver evolves a second dynamic
+  response DOF for localization width as a fractional shift `delta_lambda` with
+  its own mass/stiffness/damping/drive ledger. This contribution is added to
+  the `w0`-driven lambda shift so `lambda_eff = lambda * (1 + frac_total)`.
 - Diagnostics are emitted as:
   - `m4d_response_w0`, `m4d_response_w0_dot`, `m4d_response_w0_drive`,
     `m4d_response_w0_drive_reservoir`, `m4d_response_w0_drive_bridge`,
     `m4d_response_w0_drive_parity`, `m4d_response_w0_force`,
     `m4d_response_w0_energy`
   - `m4d_response_w0_lambda_fraction`, `m4d_response_w0_lambda_eff`
+  - `m4d_response_lambda_fraction`, `m4d_response_lambda_dot`,
+    `m4d_response_lambda_drive`, `m4d_response_lambda_drive_reservoir`,
+    `m4d_response_lambda_drive_bridge`, `m4d_response_lambda_force`,
+    `m4d_response_lambda_energy`
   - `m4d_projection_center_w`
   - `m4d_int_rhs_ay_mode0_w0_response`, `m4d_int_rhs_aw_mode1_w0_response`
+  - `m4d_int_response_lambda_power_drive`,
+    `m4d_int_response_lambda_power_stiffness`,
+    `m4d_int_response_lambda_power_damping`,
+    `m4d_int_response_lambda_power_net`
   - `m4d_int_response_bridge_power_mode0`, `m4d_int_response_bridge_power_mode1`,
     `m4d_int_response_bridge_power_sum` (and `_abs` variants)
