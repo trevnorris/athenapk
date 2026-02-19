@@ -1497,9 +1497,9 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
                   dt * cell_volume * std::abs(response_bridge_power_sum);
             }
 
-            if (response_w0_enable && (n >= 1)) {
+            if ((response_w0_enable || response_lambda_enable) && (n >= 1)) {
               // Use total higher-mode EM reservoir energy (not just n=1 odd channels)
-              // so even-seeded runs can drive the response state.
+              // so either response path (w0 or lambda) can be driven in even-seeded runs.
               const Real reservoir_proxy_density =
                   0.5 * ((a_old(idx_a0, k, j, i) * a_old(idx_a0, k, j, i)) +
                          (a_old(idx_ax, k, j, i) * a_old(idx_ax, k, j, i)) +
