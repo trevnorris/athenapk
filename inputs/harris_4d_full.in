@@ -80,6 +80,7 @@ perturb_phase_x = 0.0
 perturb_phase_z = 0.0
 sheet_half_width = 0.1
 drift_current_scale = 0.05
+drift_momw_scale = 0.0
 aw_mode1_amp = 5.0e-2
 piw_mode1_amp = 0.0
 ay_mode2_amp = 0.0

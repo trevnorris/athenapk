@@ -82,7 +82,9 @@ perturbation_amp = 1.0e-3
 perturb_phase_x = 0.0
 perturb_phase_z = 0.0
 sheet_half_width = 0.1
+sheet_w_offset = 0.0
 drift_current_scale = 0.05
+drift_momw_scale = 0.0
 
 # Baseline mixed-sector drive
 aw_mode1_amp = 5.0e-2

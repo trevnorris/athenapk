@@ -190,6 +190,77 @@ def continuity_closure_metrics(times, charge_mode0, int_s_leak, int_divj_mode0, 
     return (max_norm, rms_norm, max_abs, final_residual)
 
 
+def continuity_closure_component_metrics(times, charge_mode0, int_s_leak, int_divj_mode0):
+    if len(times) < 2 or len(charge_mode0) != len(times) or len(int_s_leak) != len(times):
+        return (
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+        )
+    if int_divj_mode0 is not None and len(int_divj_mode0) != len(times):
+        return (
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+        )
+
+    dcharge = []
+    dsleak = []
+    ddivj = []
+    residual = []
+    for i in range(1, len(times)):
+        dt = times[i] - times[i - 1]
+        if dt <= 0.0:
+            continue
+        dcharge_dt = (charge_mode0[i] - charge_mode0[i - 1]) / dt
+        dsleak_dt = (int_s_leak[i] - int_s_leak[i - 1]) / dt
+        ddivj_dt = 0.0
+        if int_divj_mode0 is not None:
+            ddivj_dt = (int_divj_mode0[i] - int_divj_mode0[i - 1]) / dt
+        dcharge.append(dcharge_dt)
+        dsleak.append(dsleak_dt)
+        ddivj.append(ddivj_dt)
+        residual.append(dcharge_dt - dsleak_dt + ddivj_dt)
+
+    if not residual:
+        return (
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+            math.nan,
+        )
+
+    rms = lambda arr: math.sqrt(sum(x * x for x in arr) / len(arr))
+    return (
+        rms(dcharge),
+        rms(dsleak),
+        rms(ddivj),
+        dcharge[-1],
+        dsleak[-1],
+        ddivj[-1],
+        residual[-1],
+        max(abs(x) for x in residual),
+        max(abs(x) for x in dcharge),
+    )
+
+
 def transport_balance_metrics(
     times,
     quantity_mode0,
@@ -785,6 +856,16 @@ def analyze_case(
     closure_rms_norm = math.nan
     closure_max_abs_rate = math.nan
     closure_final_residual = math.nan
+    closure_proj_dcharge_rms = math.nan
+    closure_proj_dsleak_rms = math.nan
+    closure_proj_ddivj_rms = math.nan
+    closure_proj_dcharge_final = math.nan
+    closure_proj_dsleak_final = math.nan
+    closure_proj_ddivj_final = math.nan
+    closure_proj_final_residual = math.nan
+    closure_proj_max_abs_residual = math.nan
+    closure_proj_max_abs_dcharge = math.nan
+    closure_proj_final_norm = math.nan
     closure_status = "N/A"
     closure_local_mode0_status = "N/A"
     if charge_mode0 is not None:
@@ -805,6 +886,32 @@ def analyze_case(
                 )
                 else "FAIL"
             )
+        (
+            closure_proj_dcharge_rms,
+            closure_proj_dsleak_rms,
+            closure_proj_ddivj_rms,
+            closure_proj_dcharge_final,
+            closure_proj_dsleak_final,
+            closure_proj_ddivj_final,
+            closure_proj_final_residual,
+            closure_proj_max_abs_residual,
+            closure_proj_max_abs_dcharge,
+        ) = continuity_closure_component_metrics(
+            times, charge_mode0, leak, int_divj_mode0
+        )
+        if (
+            math.isfinite(closure_proj_dcharge_final)
+            and math.isfinite(closure_proj_dsleak_final)
+            and math.isfinite(closure_proj_ddivj_final)
+            and math.isfinite(closure_proj_final_residual)
+        ):
+            proj_scale = max(
+                abs(closure_proj_dcharge_final)
+                + abs(closure_proj_dsleak_final)
+                + abs(closure_proj_ddivj_final),
+                closure_abs_rate_tol,
+            )
+            closure_proj_final_norm = abs(closure_proj_final_residual) / proj_scale
     if cont_local_mode0_max_abs is not None:
         closure_local_mode0_status = (
             "PASS"
@@ -1751,6 +1858,20 @@ def analyze_case(
         "closure_max_abs_rate": closure_max_abs_rate,
         "closure_final_residual": closure_final_residual,
         "closure_status": closure_status,
+        "closure_projected_max_norm": closure_max_norm,
+        "closure_projected_rms_norm": closure_rms_norm,
+        "closure_projected_max_abs_rate": closure_max_abs_rate,
+        "closure_projected_final_residual": closure_final_residual,
+        "closure_projected_final_norm": closure_proj_final_norm,
+        "closure_projected_dcharge_rms": closure_proj_dcharge_rms,
+        "closure_projected_dsleak_rms": closure_proj_dsleak_rms,
+        "closure_projected_ddivj_rms": closure_proj_ddivj_rms,
+        "closure_projected_dcharge_final": closure_proj_dcharge_final,
+        "closure_projected_dsleak_final": closure_proj_dsleak_final,
+        "closure_projected_ddivj_final": closure_proj_ddivj_final,
+        "closure_projected_max_abs_residual": closure_proj_max_abs_residual,
+        "closure_projected_max_abs_dcharge": closure_proj_max_abs_dcharge,
+        "closure_projected_status": closure_status,
         "closure_local_mode0_max_abs_rate": max(cont_local_mode0_max_abs)
         if cont_local_mode0_max_abs is not None
         else math.nan,
@@ -2118,6 +2239,20 @@ def print_table(results):
         "closure_max_abs_rate",
         "closure_final_residual",
         "closure_status",
+        "closure_projected_max_norm",
+        "closure_projected_rms_norm",
+        "closure_projected_max_abs_rate",
+        "closure_projected_final_residual",
+        "closure_projected_final_norm",
+        "closure_projected_dcharge_rms",
+        "closure_projected_dsleak_rms",
+        "closure_projected_ddivj_rms",
+        "closure_projected_dcharge_final",
+        "closure_projected_dsleak_final",
+        "closure_projected_ddivj_final",
+        "closure_projected_max_abs_residual",
+        "closure_projected_max_abs_dcharge",
+        "closure_projected_status",
         "closure_local_mode0_max_abs_rate",
         "closure_local_mode0_final_max_abs_rate",
         "closure_local_mode0_final_l1",

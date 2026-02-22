@@ -1168,10 +1168,12 @@ Key parameters currently used from `<problem/harris_4d>`:
 - `n_sheet`
 - `p_bg`
 - `sheet_half_width`
+- `sheet_w_offset` (physical w-offset of Harris sheet; requires `n_modes > 1` when nonzero)
 - `perturbation_amp`
 - `perturb_phase_x`
 - `perturb_phase_z`
 - `drift_current_scale`
+- `drift_momw_scale`
 - `aw_mode1_amp`
 - `piw_mode1_amp`
 - `ay_mode1_amp`
