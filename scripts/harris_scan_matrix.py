@@ -603,6 +603,8 @@ def analyze_case(
     response_w0_drive_reservoir = maybe_col(cols, "m4d_response_w0_drive_reservoir")
     response_w0_drive_bridge = maybe_col(cols, "m4d_response_w0_drive_bridge")
     response_w0_drive_parity = maybe_col(cols, "m4d_response_w0_drive_parity")
+    response_w0_drive_work = maybe_col(cols, "m4d_response_w0_drive_work")
+    response_w0_drive_leak = maybe_col(cols, "m4d_response_w0_drive_leak")
     response_w0_force = maybe_col(cols, "m4d_response_w0_force")
     response_w0_energy = maybe_col(cols, "m4d_response_w0_energy")
     response_w0_geometry_center = maybe_col(cols, "m4d_response_w0_geometry_center")
@@ -615,6 +617,8 @@ def analyze_case(
         cols, "m4d_response_lambda_drive_reservoir"
     )
     response_lambda_drive_bridge = maybe_col(cols, "m4d_response_lambda_drive_bridge")
+    response_lambda_drive_work = maybe_col(cols, "m4d_response_lambda_drive_work")
+    response_lambda_drive_leak = maybe_col(cols, "m4d_response_lambda_drive_leak")
     response_lambda_force = maybe_col(cols, "m4d_response_lambda_force")
     response_lambda_energy = maybe_col(cols, "m4d_response_lambda_energy")
     projection_center_w = maybe_col(cols, "m4d_projection_center_w")
@@ -1644,6 +1648,12 @@ def analyze_case(
         "final_response_w0_drive_parity": response_w0_drive_parity[-1]
         if response_w0_drive_parity is not None
         else math.nan,
+        "final_response_w0_drive_work": response_w0_drive_work[-1]
+        if response_w0_drive_work is not None
+        else math.nan,
+        "final_response_w0_drive_leak": response_w0_drive_leak[-1]
+        if response_w0_drive_leak is not None
+        else math.nan,
         "final_response_w0_force": response_w0_force[-1]
         if response_w0_force is not None
         else math.nan,
@@ -1673,6 +1683,12 @@ def analyze_case(
         else math.nan,
         "final_response_lambda_drive_bridge": response_lambda_drive_bridge[-1]
         if response_lambda_drive_bridge is not None
+        else math.nan,
+        "final_response_lambda_drive_work": response_lambda_drive_work[-1]
+        if response_lambda_drive_work is not None
+        else math.nan,
+        "final_response_lambda_drive_leak": response_lambda_drive_leak[-1]
+        if response_lambda_drive_leak is not None
         else math.nan,
         "final_response_lambda_force": response_lambda_force[-1]
         if response_lambda_force is not None

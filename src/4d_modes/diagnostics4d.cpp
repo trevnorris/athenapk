@@ -469,6 +469,16 @@ Real ResponseW0DriveParityHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/response_w0_drive_parity");
 }
 
+Real ResponseW0DriveWorkHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_drive_work");
+}
+
+Real ResponseW0DriveLeakHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_drive_leak");
+}
+
 Real ResponseW0ForceHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/response_w0_force");
@@ -517,6 +527,16 @@ Real ResponseLambdaDriveReservoirHst(MeshData<Real> *md) {
 Real ResponseLambdaDriveBridgeHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/response_lambda_drive_bridge");
+}
+
+Real ResponseLambdaDriveWorkHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_drive_work");
+}
+
+Real ResponseLambdaDriveLeakHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_drive_leak");
 }
 
 Real ResponseLambdaForceHst(MeshData<Real> *md) {
@@ -2666,6 +2686,8 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/response_w0_drive_reservoir", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_drive_bridge", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_drive_parity", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_drive_work", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_drive_leak", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_force", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_energy", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_geometry_center", 0.0, true);
@@ -2677,6 +2699,8 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/response_lambda_drive", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_drive_reservoir", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_drive_bridge", 0.0, true);
+  pkg->AddParam<double>("diag/response_lambda_drive_work", 0.0, true);
+  pkg->AddParam<double>("diag/response_lambda_drive_leak", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_force", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_energy", 0.0, true);
   pkg->AddParam<double>("diag/projection_center_w", 0.0, true);
@@ -2942,6 +2966,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0DriveParityHst,
       "m4d_response_w0_drive_parity"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0DriveWorkHst,
+      "m4d_response_w0_drive_work"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0DriveLeakHst,
+      "m4d_response_w0_drive_leak"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     ResponseW0ForceHst,
                                                     "m4d_response_w0_force"));
@@ -2972,6 +3002,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseLambdaDriveBridgeHst,
       "m4d_response_lambda_drive_bridge"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaDriveWorkHst,
+      "m4d_response_lambda_drive_work"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaDriveLeakHst,
+      "m4d_response_lambda_drive_leak"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseLambdaForceHst,
       "m4d_response_lambda_force"));

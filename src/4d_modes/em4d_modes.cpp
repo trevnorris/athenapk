@@ -314,6 +314,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->Param<bool>("em4d/response_w0_drive_from_bridge_abs");
   const Real response_w0_drive_from_parity_gain =
       modes_pkg->Param<double>("em4d/response_w0_drive_from_parity_gain");
+  const Real response_w0_drive_from_work_gain =
+      modes_pkg->Param<double>("em4d/response_w0_drive_from_work_gain");
+  const bool response_w0_drive_from_work_abs =
+      modes_pkg->Param<bool>("em4d/response_w0_drive_from_work_abs");
+  const Real response_w0_drive_from_leak_gain =
+      modes_pkg->Param<double>("em4d/response_w0_drive_from_leak_gain");
+  const bool response_w0_drive_from_leak_abs =
+      modes_pkg->Param<bool>("em4d/response_w0_drive_from_leak_abs");
   const Real response_w0_bias = modes_pkg->Param<double>("em4d/response_w0_bias");
   const Real response_w0_init = modes_pkg->Param<double>("em4d/response_w0_init");
   const Real response_w0_mass = modes_pkg->Param<double>("em4d/response_w0_mass");
@@ -353,6 +361,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->Param<std::string>("em4d/response_lambda_drive_from_bridge_channel");
   const bool response_lambda_drive_from_bridge_abs =
       modes_pkg->Param<bool>("em4d/response_lambda_drive_from_bridge_abs");
+  const Real response_lambda_drive_from_work_gain =
+      modes_pkg->Param<double>("em4d/response_lambda_drive_from_work_gain");
+  const bool response_lambda_drive_from_work_abs =
+      modes_pkg->Param<bool>("em4d/response_lambda_drive_from_work_abs");
+  const Real response_lambda_drive_from_leak_gain =
+      modes_pkg->Param<double>("em4d/response_lambda_drive_from_leak_gain");
+  const bool response_lambda_drive_from_leak_abs =
+      modes_pkg->Param<bool>("em4d/response_lambda_drive_from_leak_abs");
   const Real response_lambda_bias =
       modes_pkg->Param<double>("em4d/response_lambda_bias");
   const Real response_lambda_init_fraction =
@@ -396,6 +412,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real response_w0_drive_reservoir = 0.0;
   Real response_w0_drive_bridge = 0.0;
   Real response_w0_drive_parity = 0.0;
+  Real response_w0_drive_work = 0.0;
+  Real response_w0_drive_leak = 0.0;
   Real response_w0_force = 0.0;
   Real response_w0_energy = 0.0;
   Real response_w0_projection_center = 0.0;
@@ -416,6 +434,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real response_lambda_drive = 0.0;
   Real response_lambda_drive_reservoir = 0.0;
   Real response_lambda_drive_bridge = 0.0;
+  Real response_lambda_drive_work = 0.0;
+  Real response_lambda_drive_leak = 0.0;
   Real response_lambda_force = 0.0;
   Real response_lambda_energy = 0.0;
   if (response_lambda_enable && !response_lambda_initialized) {
@@ -1613,6 +1633,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
               response_drive_even_energy_integral_step) /
              response_drive_volume_step)
           : 0.0;
+  const Real response_drive_work_density =
+      ((response_drive_volume_step > 0.0) && (dt > 0.0))
+          ? (diag_jw_ew_step / (dt * response_drive_volume_step))
+          : 0.0;
+  const Real response_drive_leak_density =
+      ((response_drive_volume_step > 0.0) && (dt > 0.0))
+          ? (diag_s_leak_step / (dt * response_drive_volume_step))
+          : 0.0;
 
   if (response_w0_enable) {
     Real response_drive_bridge_integral =
@@ -1624,14 +1652,27 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
         ((response_drive_volume_step > 0.0) && (dt > 0.0))
             ? (response_drive_bridge_integral / (dt * response_drive_volume_step))
             : 0.0;
+    Real response_drive_work_term = response_drive_work_density;
+    if (response_w0_drive_from_work_abs) {
+      response_drive_work_term = std::abs(response_drive_work_term);
+    }
+    Real response_drive_leak_term = response_drive_leak_density;
+    if (response_w0_drive_from_leak_abs) {
+      response_drive_leak_term = std::abs(response_drive_leak_term);
+    }
     response_w0_drive_reservoir =
         response_w0_drive_gain * std::log1p(std::max(response_drive_density, 0.0));
     response_w0_drive_bridge =
         response_w0_drive_from_bridge_gain * response_drive_bridge_density;
     response_w0_drive_parity =
         response_w0_drive_from_parity_gain * response_drive_parity_density;
+    response_w0_drive_work =
+        response_w0_drive_from_work_gain * response_drive_work_term;
+    response_w0_drive_leak =
+        response_w0_drive_from_leak_gain * response_drive_leak_term;
     response_w0_drive = response_w0_bias + response_w0_drive_reservoir +
-                        response_w0_drive_bridge + response_w0_drive_parity;
+                        response_w0_drive_bridge + response_w0_drive_parity +
+                        response_w0_drive_work + response_w0_drive_leak;
     response_w0_force = response_w0_drive - (response_w0_stiffness * response_w0) -
                         (response_w0_damping * response_w0_dot);
     const Real response_w0_dot_old = response_w0_dot;
@@ -1661,6 +1702,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     response_w0_drive_reservoir = 0.0;
     response_w0_drive_bridge = 0.0;
     response_w0_drive_parity = 0.0;
+    response_w0_drive_work = 0.0;
+    response_w0_drive_leak = 0.0;
     response_w0_force = 0.0;
     response_w0_energy = 0.0;
     response_w0_initialized = false;
@@ -1676,12 +1719,26 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
         ((response_drive_volume_step > 0.0) && (dt > 0.0))
             ? (response_lambda_bridge_integral / (dt * response_drive_volume_step))
             : 0.0;
+    Real response_lambda_work_term = response_drive_work_density;
+    if (response_lambda_drive_from_work_abs) {
+      response_lambda_work_term = std::abs(response_lambda_work_term);
+    }
+    Real response_lambda_leak_term = response_drive_leak_density;
+    if (response_lambda_drive_from_leak_abs) {
+      response_lambda_leak_term = std::abs(response_lambda_leak_term);
+    }
     response_lambda_drive_reservoir =
         response_lambda_drive_gain * std::log1p(std::max(response_drive_density, 0.0));
     response_lambda_drive_bridge =
         response_lambda_drive_from_bridge_gain * response_lambda_bridge_density;
+    response_lambda_drive_work =
+        response_lambda_drive_from_work_gain * response_lambda_work_term;
+    response_lambda_drive_leak =
+        response_lambda_drive_from_leak_gain * response_lambda_leak_term;
     response_lambda_drive =
-        response_lambda_bias + response_lambda_drive_reservoir + response_lambda_drive_bridge;
+        response_lambda_bias + response_lambda_drive_reservoir +
+        response_lambda_drive_bridge + response_lambda_drive_work +
+        response_lambda_drive_leak;
     response_lambda_force =
         response_lambda_drive - (response_lambda_stiffness * response_lambda_fraction) -
         (response_lambda_damping * response_lambda_dot);
@@ -1717,6 +1774,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
     response_lambda_drive = 0.0;
     response_lambda_drive_reservoir = 0.0;
     response_lambda_drive_bridge = 0.0;
+    response_lambda_drive_work = 0.0;
+    response_lambda_drive_leak = 0.0;
     response_lambda_force = 0.0;
     response_lambda_energy = 0.0;
     response_lambda_initialized = false;
@@ -1867,6 +1926,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/response_w0_drive_bridge");
   auto *diag_response_w0_drive_parity =
       modes_pkg->MutableParam<double>("diag/response_w0_drive_parity");
+  auto *diag_response_w0_drive_work =
+      modes_pkg->MutableParam<double>("diag/response_w0_drive_work");
+  auto *diag_response_w0_drive_leak =
+      modes_pkg->MutableParam<double>("diag/response_w0_drive_leak");
   auto *diag_response_w0_force = modes_pkg->MutableParam<double>("diag/response_w0_force");
   auto *diag_response_w0_energy = modes_pkg->MutableParam<double>("diag/response_w0_energy");
   auto *diag_response_w0_geometry_center =
@@ -1887,6 +1950,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/response_lambda_drive_reservoir");
   auto *diag_response_lambda_drive_bridge =
       modes_pkg->MutableParam<double>("diag/response_lambda_drive_bridge");
+  auto *diag_response_lambda_drive_work =
+      modes_pkg->MutableParam<double>("diag/response_lambda_drive_work");
+  auto *diag_response_lambda_drive_leak =
+      modes_pkg->MutableParam<double>("diag/response_lambda_drive_leak");
   auto *diag_response_lambda_force =
       modes_pkg->MutableParam<double>("diag/response_lambda_force");
   auto *diag_response_lambda_energy =
@@ -2021,6 +2088,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_response_w0_drive_reservoir = response_w0_drive_reservoir;
   *diag_response_w0_drive_bridge = response_w0_drive_bridge;
   *diag_response_w0_drive_parity = response_w0_drive_parity;
+  *diag_response_w0_drive_work = response_w0_drive_work;
+  *diag_response_w0_drive_leak = response_w0_drive_leak;
   *diag_response_w0_force = response_w0_force;
   *diag_response_w0_energy = response_w0_energy;
   *diag_response_w0_geometry_center = response_w0;
@@ -2032,6 +2101,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_response_lambda_drive = response_lambda_drive;
   *diag_response_lambda_drive_reservoir = response_lambda_drive_reservoir;
   *diag_response_lambda_drive_bridge = response_lambda_drive_bridge;
+  *diag_response_lambda_drive_work = response_lambda_drive_work;
+  *diag_response_lambda_drive_leak = response_lambda_drive_leak;
   *diag_response_lambda_force = response_lambda_force;
   *diag_response_lambda_energy = response_lambda_energy;
   *diag_projection_center_w = response_w0_projection_center;

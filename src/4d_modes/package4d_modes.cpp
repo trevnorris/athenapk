@@ -51,6 +51,14 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddBoolean("modes4d", "response_w0_drive_from_bridge_abs", false);
   const double response_w0_drive_from_parity_gain =
       pin->GetOrAddReal("modes4d", "response_w0_drive_from_parity_gain", 0.0);
+  const double response_w0_drive_from_work_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_drive_from_work_gain", 0.0);
+  const bool response_w0_drive_from_work_abs =
+      pin->GetOrAddBoolean("modes4d", "response_w0_drive_from_work_abs", false);
+  const double response_w0_drive_from_leak_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_drive_from_leak_gain", 0.0);
+  const bool response_w0_drive_from_leak_abs =
+      pin->GetOrAddBoolean("modes4d", "response_w0_drive_from_leak_abs", false);
   const double response_w0_bias =
       pin->GetOrAddReal("modes4d", "response_w0_bias", 0.0);
   const double response_w0_init =
@@ -97,6 +105,14 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       "modes4d", "response_lambda_drive_from_bridge_channel", "primary");
   const bool response_lambda_drive_from_bridge_abs =
       pin->GetOrAddBoolean("modes4d", "response_lambda_drive_from_bridge_abs", false);
+  const double response_lambda_drive_from_work_gain =
+      pin->GetOrAddReal("modes4d", "response_lambda_drive_from_work_gain", 0.0);
+  const bool response_lambda_drive_from_work_abs =
+      pin->GetOrAddBoolean("modes4d", "response_lambda_drive_from_work_abs", false);
+  const double response_lambda_drive_from_leak_gain =
+      pin->GetOrAddReal("modes4d", "response_lambda_drive_from_leak_gain", 0.0);
+  const bool response_lambda_drive_from_leak_abs =
+      pin->GetOrAddBoolean("modes4d", "response_lambda_drive_from_leak_abs", false);
   const double response_lambda_bias =
       pin->GetOrAddReal("modes4d", "response_lambda_bias", 0.0);
   const double response_lambda_init_fraction =
@@ -229,6 +245,14 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                       response_w0_drive_from_bridge_abs);
   pkg->AddParam<double>("em4d/response_w0_drive_from_parity_gain",
                         response_w0_drive_from_parity_gain);
+  pkg->AddParam<double>("em4d/response_w0_drive_from_work_gain",
+                        response_w0_drive_from_work_gain);
+  pkg->AddParam<bool>("em4d/response_w0_drive_from_work_abs",
+                      response_w0_drive_from_work_abs);
+  pkg->AddParam<double>("em4d/response_w0_drive_from_leak_gain",
+                        response_w0_drive_from_leak_gain);
+  pkg->AddParam<bool>("em4d/response_w0_drive_from_leak_abs",
+                      response_w0_drive_from_leak_abs);
   pkg->AddParam<double>("em4d/response_w0_bias", response_w0_bias);
   pkg->AddParam<double>("em4d/response_w0_init", response_w0_init);
   pkg->AddParam<double>("em4d/response_w0_mass", response_w0_mass);
@@ -266,6 +290,14 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                              response_lambda_drive_from_bridge_channel);
   pkg->AddParam<bool>("em4d/response_lambda_drive_from_bridge_abs",
                       response_lambda_drive_from_bridge_abs);
+  pkg->AddParam<double>("em4d/response_lambda_drive_from_work_gain",
+                        response_lambda_drive_from_work_gain);
+  pkg->AddParam<bool>("em4d/response_lambda_drive_from_work_abs",
+                      response_lambda_drive_from_work_abs);
+  pkg->AddParam<double>("em4d/response_lambda_drive_from_leak_gain",
+                        response_lambda_drive_from_leak_gain);
+  pkg->AddParam<bool>("em4d/response_lambda_drive_from_leak_abs",
+                      response_lambda_drive_from_leak_abs);
   pkg->AddParam<double>("em4d/response_lambda_bias", response_lambda_bias);
   pkg->AddParam<double>("em4d/response_lambda_init_fraction",
                         response_lambda_init_fraction);
