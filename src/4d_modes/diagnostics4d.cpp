@@ -504,6 +504,16 @@ Real ResponseW0LambdaEffHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/response_w0_lambda_eff");
 }
 
+Real ResponseW0LocalAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_abs");
+}
+
+Real ResponseW0LocalDotAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_dot_abs");
+}
+
 Real ResponseLambdaFractionHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/response_lambda_fraction");
@@ -2713,6 +2723,8 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/response_w0_geometry_center", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_lambda_fraction", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_lambda_eff", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_dot_abs", 0.0, true);
   pkg->AddParam<bool>("diag/response_lambda_initialized", false, true);
   pkg->AddParam<double>("diag/response_lambda_fraction", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_dot", 0.0, true);
@@ -3011,6 +3023,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0LambdaEffHst,
       "m4d_response_w0_lambda_eff"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalAbsHst,
+      "m4d_response_w0_local_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalDotAbsHst,
+      "m4d_response_w0_local_dot_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseLambdaFractionHst,
       "m4d_response_lambda_fraction"));

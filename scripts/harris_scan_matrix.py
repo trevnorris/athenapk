@@ -610,6 +610,8 @@ def analyze_case(
     response_w0_geometry_center = maybe_col(cols, "m4d_response_w0_geometry_center")
     response_w0_lambda_fraction = maybe_col(cols, "m4d_response_w0_lambda_fraction")
     response_w0_lambda_eff = maybe_col(cols, "m4d_response_w0_lambda_eff")
+    response_w0_local_abs = maybe_col(cols, "m4d_response_w0_local_abs")
+    response_w0_local_dot_abs = maybe_col(cols, "m4d_response_w0_local_dot_abs")
     response_lambda_fraction = maybe_col(cols, "m4d_response_lambda_fraction")
     response_lambda_dot = maybe_col(cols, "m4d_response_lambda_dot")
     response_lambda_drive = maybe_col(cols, "m4d_response_lambda_drive")
@@ -1681,6 +1683,12 @@ def analyze_case(
         "final_response_w0_lambda_eff": response_w0_lambda_eff[-1]
         if response_w0_lambda_eff is not None
         else math.nan,
+        "final_response_w0_local_abs": response_w0_local_abs[-1]
+        if response_w0_local_abs is not None
+        else math.nan,
+        "final_response_w0_local_dot_abs": response_w0_local_dot_abs[-1]
+        if response_w0_local_dot_abs is not None
+        else math.nan,
         "final_response_lambda_fraction": response_lambda_fraction[-1]
         if response_lambda_fraction is not None
         else math.nan,
@@ -2185,6 +2193,8 @@ def print_table(results):
         "final_response_w0_geometry_center",
         "final_response_w0_lambda_fraction",
         "final_response_w0_lambda_eff",
+        "final_response_w0_local_abs",
+        "final_response_w0_local_dot_abs",
         "final_response_lambda_fraction",
         "final_response_lambda_dot",
         "final_response_lambda_drive",

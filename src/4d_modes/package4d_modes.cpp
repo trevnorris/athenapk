@@ -101,6 +101,28 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddBoolean("modes4d", "response_w0_dynamic_mixing_enable", false);
   const double response_w0_dynamic_mixing_gain =
       pin->GetOrAddReal("modes4d", "response_w0_dynamic_mixing_gain", 1.0);
+  const bool response_w0_local_enable =
+      pin->GetOrAddBoolean("modes4d", "response_w0_local_enable", false);
+  const double response_w0_local_mode1_amp =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode1_amp", 0.0);
+  const double response_w0_local_mode1_kx =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode1_kx", 0.0);
+  const double response_w0_local_mode1_kz =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode1_kz", 0.0);
+  const double response_w0_local_mode1_phase =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode1_phase", 0.0);
+  const double response_w0_local_mode1_omega =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode1_omega", 0.0);
+  const double response_w0_local_mode2_amp =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode2_amp", 0.0);
+  const double response_w0_local_mode2_kx =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode2_kx", 0.0);
+  const double response_w0_local_mode2_kz =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode2_kz", 0.0);
+  const double response_w0_local_mode2_phase =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode2_phase", 0.0);
+  const double response_w0_local_mode2_omega =
+      pin->GetOrAddReal("modes4d", "response_w0_local_mode2_omega", 0.0);
   const bool response_lambda_enable =
       pin->GetOrAddBoolean("modes4d", "response_lambda_enable", false);
   const bool response_lambda_dynamic_mixing_enable = pin->GetOrAddBoolean(
@@ -299,6 +321,17 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                       response_w0_dynamic_mixing_enable);
   pkg->AddParam<double>("em4d/response_w0_dynamic_mixing_gain",
                         response_w0_dynamic_mixing_gain);
+  pkg->AddParam<bool>("em4d/response_w0_local_enable", response_w0_local_enable);
+  pkg->AddParam<double>("em4d/response_w0_local_mode1_amp", response_w0_local_mode1_amp);
+  pkg->AddParam<double>("em4d/response_w0_local_mode1_kx", response_w0_local_mode1_kx);
+  pkg->AddParam<double>("em4d/response_w0_local_mode1_kz", response_w0_local_mode1_kz);
+  pkg->AddParam<double>("em4d/response_w0_local_mode1_phase", response_w0_local_mode1_phase);
+  pkg->AddParam<double>("em4d/response_w0_local_mode1_omega", response_w0_local_mode1_omega);
+  pkg->AddParam<double>("em4d/response_w0_local_mode2_amp", response_w0_local_mode2_amp);
+  pkg->AddParam<double>("em4d/response_w0_local_mode2_kx", response_w0_local_mode2_kx);
+  pkg->AddParam<double>("em4d/response_w0_local_mode2_kz", response_w0_local_mode2_kz);
+  pkg->AddParam<double>("em4d/response_w0_local_mode2_phase", response_w0_local_mode2_phase);
+  pkg->AddParam<double>("em4d/response_w0_local_mode2_omega", response_w0_local_mode2_omega);
   pkg->AddParam<bool>("em4d/response_lambda_enable", response_lambda_enable);
   pkg->AddParam<bool>("em4d/response_lambda_dynamic_mixing_enable",
                       response_lambda_dynamic_mixing_enable);

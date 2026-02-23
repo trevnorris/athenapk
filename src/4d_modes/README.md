@@ -1216,6 +1216,17 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
 - `response_w0_lambda_shift_apply_mass`
 - `response_w0_dynamic_mixing_enable`
 - `response_w0_dynamic_mixing_gain`
+- `response_w0_local_enable`
+- `response_w0_local_mode1_amp`
+- `response_w0_local_mode1_kx`
+- `response_w0_local_mode1_kz`
+- `response_w0_local_mode1_phase`
+- `response_w0_local_mode1_omega`
+- `response_w0_local_mode2_amp`
+- `response_w0_local_mode2_kx`
+- `response_w0_local_mode2_kz`
+- `response_w0_local_mode2_phase`
+- `response_w0_local_mode2_omega`
 - `response_lambda_enable`
 - `response_lambda_dynamic_mixing_enable`
 - `response_lambda_dynamic_mixing_gain`
@@ -1257,6 +1268,11 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
   response state as a shifted observer/localization center and report:
   `projection_center_w = response_w0_projection_gain * w0`, clamped by
   `response_w0_projection_max_abs` when positive.
+- When `response_w0_local_enable=true`, a low-rank local warp field
+  `w0_local(x,z,t)` is synthesized from up to two sinusoidal modes
+  (`mode1`, `mode2` knobs). Its time derivative is added to the global
+  `response_w0_dot` in the dynamic-mixing rate. This keeps the projection
+  window fixed unless `response_w0_projection_enable` is also enabled.
 - When `response_w0_lambda_shift_enable=true`, the response state also drives
   an effective localization width,
   `lambda_eff = lambda * (1 + response_w0_lambda_shift_gain * w0_eff)`,
@@ -1272,6 +1288,7 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
     `m4d_response_w0_drive_parity`, `m4d_response_w0_force`,
     `m4d_response_w0_energy`
   - `m4d_response_w0_lambda_fraction`, `m4d_response_w0_lambda_eff`
+  - `m4d_response_w0_local_abs`, `m4d_response_w0_local_dot_abs`
   - `m4d_response_lambda_fraction`, `m4d_response_lambda_dot`,
     `m4d_response_lambda_drive`, `m4d_response_lambda_drive_reservoir`,
     `m4d_response_lambda_drive_bridge`, `m4d_response_lambda_force`,
