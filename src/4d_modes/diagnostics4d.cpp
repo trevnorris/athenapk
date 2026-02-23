@@ -589,6 +589,16 @@ Real ResponseLambdaPowerNetAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_response_lambda_power_net");
 }
 
+Real ResponseW0DynamicMixAAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_w0_dynamic_mix_a_abs");
+}
+
+Real ResponseW0DynamicMixPiAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_w0_dynamic_mix_pi_abs");
+}
+
 Real RHSAyMode0W0ResponseAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_rhs_ay_mode0_w0_response");
@@ -2713,6 +2723,8 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_response_lambda_power_stiffness", 0.0, true);
   pkg->AddParam<double>("diag/int_response_lambda_power_damping", 0.0, true);
   pkg->AddParam<double>("diag/int_response_lambda_power_net", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_w0_dynamic_mix_a_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_w0_dynamic_mix_pi_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_ay_mode0_w0_response", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_ay_mode0_w0_response_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_aw_mode1_w0_response", 0.0, true);
@@ -3041,6 +3053,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseLambdaPowerNetAccumulatorHst,
       "m4d_int_response_lambda_power_net"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0DynamicMixAAbsAccumulatorHst,
+      "m4d_int_response_w0_dynamic_mix_a_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0DynamicMixPiAbsAccumulatorHst,
+      "m4d_int_response_w0_dynamic_mix_pi_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, RHSAyMode0W0ResponseAccumulatorHst,
       "m4d_int_rhs_ay_mode0_w0_response"));

@@ -63,6 +63,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "response_w0_bias", 0.0);
   const double response_w0_init =
       pin->GetOrAddReal("modes4d", "response_w0_init", 0.0);
+  const double response_w0_dot_init =
+      pin->GetOrAddReal("modes4d", "response_w0_dot_init", 0.0);
   const double response_w0_mass =
       pin->GetOrAddReal("modes4d", "response_w0_mass", 1.0);
   const double response_w0_stiffness =
@@ -95,6 +97,10 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "response_w0_lambda_shift_max_frac", 0.0);
   const bool response_w0_lambda_shift_apply_mass =
       pin->GetOrAddBoolean("modes4d", "response_w0_lambda_shift_apply_mass", true);
+  const bool response_w0_dynamic_mixing_enable =
+      pin->GetOrAddBoolean("modes4d", "response_w0_dynamic_mixing_enable", false);
+  const double response_w0_dynamic_mixing_gain =
+      pin->GetOrAddReal("modes4d", "response_w0_dynamic_mixing_gain", 1.0);
   const bool response_lambda_enable =
       pin->GetOrAddBoolean("modes4d", "response_lambda_enable", false);
   const double response_lambda_drive_gain =
@@ -117,6 +123,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "response_lambda_bias", 0.0);
   const double response_lambda_init_fraction =
       pin->GetOrAddReal("modes4d", "response_lambda_init_fraction", 0.0);
+  const double response_lambda_dot_init =
+      pin->GetOrAddReal("modes4d", "response_lambda_dot_init", 0.0);
   const double response_lambda_mass =
       pin->GetOrAddReal("modes4d", "response_lambda_mass", 1.0);
   const double response_lambda_stiffness =
@@ -255,6 +263,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                       response_w0_drive_from_leak_abs);
   pkg->AddParam<double>("em4d/response_w0_bias", response_w0_bias);
   pkg->AddParam<double>("em4d/response_w0_init", response_w0_init);
+  pkg->AddParam<double>("em4d/response_w0_dot_init", response_w0_dot_init);
   pkg->AddParam<double>("em4d/response_w0_mass", response_w0_mass);
   pkg->AddParam<double>("em4d/response_w0_stiffness", response_w0_stiffness);
   pkg->AddParam<double>("em4d/response_w0_damping", response_w0_damping);
@@ -282,6 +291,10 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                         response_w0_lambda_shift_max_frac);
   pkg->AddParam<bool>("em4d/response_w0_lambda_shift_apply_mass",
                       response_w0_lambda_shift_apply_mass);
+  pkg->AddParam<bool>("em4d/response_w0_dynamic_mixing_enable",
+                      response_w0_dynamic_mixing_enable);
+  pkg->AddParam<double>("em4d/response_w0_dynamic_mixing_gain",
+                        response_w0_dynamic_mixing_gain);
   pkg->AddParam<bool>("em4d/response_lambda_enable", response_lambda_enable);
   pkg->AddParam<double>("em4d/response_lambda_drive_gain", response_lambda_drive_gain);
   pkg->AddParam<double>("em4d/response_lambda_drive_from_bridge_gain",
@@ -301,6 +314,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/response_lambda_bias", response_lambda_bias);
   pkg->AddParam<double>("em4d/response_lambda_init_fraction",
                         response_lambda_init_fraction);
+  pkg->AddParam<double>("em4d/response_lambda_dot_init", response_lambda_dot_init);
   pkg->AddParam<double>("em4d/response_lambda_mass", response_lambda_mass);
   pkg->AddParam<double>("em4d/response_lambda_stiffness", response_lambda_stiffness);
   pkg->AddParam<double>("em4d/response_lambda_damping", response_lambda_damping);

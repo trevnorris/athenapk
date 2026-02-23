@@ -192,6 +192,12 @@ def main():
         max_abs_response_lambda_drive_leak = series_max_abs(
             full_cols.get("m4d_response_lambda_drive_leak")
         )
+        max_abs_dynamic_mix_a_abs = series_max_abs(
+            full_cols.get("m4d_int_response_w0_dynamic_mix_a_abs")
+        )
+        max_abs_dynamic_mix_pi_abs = series_max_abs(
+            full_cols.get("m4d_int_response_w0_dynamic_mix_pi_abs")
+        )
 
         gate_ew_active = gate_status(max_abs_ew_l1, args.min_max_ew_l1)
         gate_c_active = gate_status(max_abs_mixed_c2, args.min_max_mixed_c2)
@@ -237,6 +243,9 @@ def main():
                 ),
                 "response_w0_drive_from_leak_gain": parse_arg_from_log(
                     log_path, "modes4d/response_w0_drive_from_leak_gain"
+                ),
+                "response_w0_dynamic_mixing_gain": parse_arg_from_log(
+                    log_path, "modes4d/response_w0_dynamic_mixing_gain"
                 ),
                 "response_lambda_drive_from_work_gain": parse_arg_from_log(
                     log_path, "modes4d/response_lambda_drive_from_work_gain"
@@ -287,6 +296,14 @@ def main():
                     "final_response_lambda_drive_leak", math.nan
                 ),
                 "full_max_abs_response_lambda_drive_leak": max_abs_response_lambda_drive_leak,
+                "full_final_int_response_w0_dynamic_mix_a_abs": full.get(
+                    "final_int_response_w0_dynamic_mix_a_abs", math.nan
+                ),
+                "full_max_abs_int_response_w0_dynamic_mix_a_abs": max_abs_dynamic_mix_a_abs,
+                "full_final_int_response_w0_dynamic_mix_pi_abs": full.get(
+                    "final_int_response_w0_dynamic_mix_pi_abs", math.nan
+                ),
+                "full_max_abs_int_response_w0_dynamic_mix_pi_abs": max_abs_dynamic_mix_pi_abs,
                 "gate_ew_active": gate_ew_active,
                 "gate_c_active": gate_c_active,
                 "gate_jw_active": gate_jw_active,
@@ -331,7 +348,7 @@ def main():
             f.write("No valid cases found.\n")
         else:
             f.write(
-                "| case | aw/piw | ay/piy | drift_momw | em_cur/time/damp | momw/press gains | w0 drv work/leak | lambda drv work/leak | Ew(final/max) | C2(final/max) | Jw(final/max) | JwEw(final/max) | S_leak(final/max) | S_EMw(final/max) | emf_vw_c(final/max) | emf_cov(final/max) | gate Ew/C/Jw/JwEw/Semw/EMF | psi_w0-psi_proj | psi0 ratio | proj/local/transport/ledger |\n"
+                "| case | aw/piw | ay/piy | drift_momw | em_cur/time/damp | momw/press gains | w0 drv work/leak/mix | lambda drv work/leak | Ew(final/max) | C2(final/max) | Jw(final/max) | JwEw(final/max) | S_leak(final/max) | S_EMw(final/max) | emf_vw_c(final/max) | emf_cov(final/max) | gate Ew/C/Jw/JwEw/Semw/EMF | psi_w0-psi_proj | psi0 ratio | proj/local/transport/ledger |\n"
             )
             f.write(
                 "|:---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---|---:|---:|:---|\n"
@@ -361,7 +378,7 @@ def main():
                             fmt(r["drift_momw_scale"]),
                             f"{fmt(r['em_source_current_gain'])}/{fmt(r['em_source_timelike_gain'])}/{fmt(r['em_source_damping_gain'])}",
                             f"{fmt(r['plasma_momw_source_gain'])}/{fmt(r['plasma_momw_pressure_source_gain'])}",
-                            f"{fmt(r['response_w0_drive_from_work_gain'])}/{fmt(r['response_w0_drive_from_leak_gain'])}",
+                            f"{fmt(r['response_w0_drive_from_work_gain'])}/{fmt(r['response_w0_drive_from_leak_gain'])}/{fmt(r['response_w0_dynamic_mixing_gain'])}",
                             f"{fmt(r['response_lambda_drive_from_work_gain'])}/{fmt(r['response_lambda_drive_from_leak_gain'])}",
                             f"{fmt(r['full_final_ew_l1'])}/{fmt(r['full_max_abs_ew_l1'])}",
                             f"{fmt(r['full_final_mixed_c2'])}/{fmt(r['full_max_abs_mixed_c2'])}",
