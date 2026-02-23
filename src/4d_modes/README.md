@@ -1200,6 +1200,7 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
 - `response_w0_drive_from_parity_gain`
 - `response_w0_bias`
 - `response_w0_init`
+- `response_w0_dot_init`
 - `response_w0_mass`
 - `response_w0_stiffness`
 - `response_w0_damping`
@@ -1213,13 +1214,18 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
 - `response_w0_lambda_shift_gain`
 - `response_w0_lambda_shift_max_frac`
 - `response_w0_lambda_shift_apply_mass`
+- `response_w0_dynamic_mixing_enable`
+- `response_w0_dynamic_mixing_gain`
 - `response_lambda_enable`
+- `response_lambda_dynamic_mixing_enable`
+- `response_lambda_dynamic_mixing_gain`
 - `response_lambda_drive_gain`
 - `response_lambda_drive_from_bridge_gain`
 - `response_lambda_drive_from_bridge_channel`
 - `response_lambda_drive_from_bridge_abs`
 - `response_lambda_bias`
 - `response_lambda_init_fraction`
+- `response_lambda_dot_init`
 - `response_lambda_mass`
 - `response_lambda_stiffness`
 - `response_lambda_damping`
@@ -1276,5 +1282,9 @@ Optional dynamic response knobs in `<modes4d>` (all default off/zero):
     `m4d_int_response_lambda_power_stiffness`,
     `m4d_int_response_lambda_power_damping`,
     `m4d_int_response_lambda_power_net`
+  - `m4d_int_response_w0_dynamic_mix_a_abs`,
+    `m4d_int_response_w0_dynamic_mix_pi_abs`
+  - `m4d_int_response_lambda_dynamic_mix_a_abs`,
+    `m4d_int_response_lambda_dynamic_mix_pi_abs`
   - `m4d_int_response_bridge_power_mode0`, `m4d_int_response_bridge_power_mode1`,
     `m4d_int_response_bridge_power_sum` (and `_abs` variants)

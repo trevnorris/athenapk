@@ -358,6 +358,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->Param<double>("em4d/response_w0_dynamic_mixing_gain");
   const bool response_lambda_enable =
       modes_pkg->Param<bool>("em4d/response_lambda_enable");
+  const bool response_lambda_dynamic_mixing_enable =
+      modes_pkg->Param<bool>("em4d/response_lambda_dynamic_mixing_enable");
+  const Real response_lambda_dynamic_mixing_gain =
+      modes_pkg->Param<double>("em4d/response_lambda_dynamic_mixing_gain");
   const Real response_lambda_drive_gain =
       modes_pkg->Param<double>("em4d/response_lambda_drive_gain");
   const Real response_lambda_drive_from_bridge_gain =
@@ -579,6 +583,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   Real diag_response_lambda_power_net_step = 0.0;
   Real diag_response_w0_dynamic_mix_a_abs_step = 0.0;
   Real diag_response_w0_dynamic_mix_pi_abs_step = 0.0;
+  Real diag_response_lambda_dynamic_mix_a_abs_step = 0.0;
+  Real diag_response_lambda_dynamic_mix_pi_abs_step = 0.0;
   Real diag_rhs_ay_mode0_total_step = 0.0;
   Real diag_rhs_aw_mode0_lap_step = 0.0;
   Real diag_rhs_aw_mode0_current_step = 0.0;
@@ -1561,46 +1567,114 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
             Real mix_piy = 0.0;
             Real mix_piz = 0.0;
             Real mix_piw = 0.0;
-            if (response_w0_enable && response_w0_dynamic_mixing_enable &&
-                (response_w0_dynamic_mixing_gain != 0.0) && (response_w0_dot != 0.0)) {
-              const Real mix_rate =
-                  response_w0_dynamic_mixing_gain * response_w0_dot;
+            const bool w0_dynamic_mix_active =
+                response_w0_enable && response_w0_dynamic_mixing_enable &&
+                (response_w0_dynamic_mixing_gain != 0.0) && (response_w0_dot != 0.0);
+            const bool lambda_dynamic_mix_active =
+                response_lambda_enable && response_lambda_dynamic_mixing_enable &&
+                (response_lambda_dynamic_mixing_gain != 0.0) &&
+                (response_lambda_dot != 0.0);
+            if (w0_dynamic_mix_active || lambda_dynamic_mix_active) {
               const Real coupling_lower =
                   (n > 0) ? (std::sqrt(2.0 * static_cast<Real>(n)) / response_w0_lambda) : 0.0;
               const int n_prev = n - 1;
               const int n_next = n + 1;
-              const auto mix_component = [&](const int comp) -> Real {
+              const auto mix_component = [&](const int comp, const Real mix_rate,
+                                             const bool use_pi) -> Real {
+                if (mix_rate == 0.0) {
+                  return 0.0;
+                }
                 const Real q_prev =
-                    (n_prev >= 0) ? a_old(EMIndex(n_prev, comp), k, j, i) : 0.0;
+                    (n_prev >= 0)
+                        ? (use_pi ? pi_old(EMIndex(n_prev, comp), k, j, i)
+                                  : a_old(EMIndex(n_prev, comp), k, j, i))
+                        : 0.0;
                 const Real q_next =
-                    (n_next < n_modes) ? a_old(EMIndex(n_next, comp), k, j, i) : 0.0;
+                    (n_next < n_modes)
+                        ? (use_pi ? pi_old(EMIndex(n_next, comp), k, j, i)
+                                  : a_old(EMIndex(n_next, comp), k, j, i))
+                        : 0.0;
                 return mix_rate * ((coupling_lower * q_prev) - (coupling_raise * q_next));
               };
-              const auto mix_pi_component = [&](const int comp) -> Real {
-                const Real q_prev =
-                    (n_prev >= 0) ? pi_old(EMIndex(n_prev, comp), k, j, i) : 0.0;
-                const Real q_next =
-                    (n_next < n_modes) ? pi_old(EMIndex(n_next, comp), k, j, i) : 0.0;
-                return mix_rate * ((coupling_lower * q_prev) - (coupling_raise * q_next));
-              };
-              mix_a0 = mix_component(kCompA0);
-              mix_ax = mix_component(kCompAX);
-              mix_ay = mix_component(kCompAY);
-              mix_az = mix_component(kCompAZ);
-              mix_aw = mix_component(kCompAW);
-              mix_pi0 = mix_pi_component(kCompA0);
-              mix_pix = mix_pi_component(kCompAX);
-              mix_piy = mix_pi_component(kCompAY);
-              mix_piz = mix_pi_component(kCompAZ);
-              mix_piw = mix_pi_component(kCompAW);
-              diag_response_w0_dynamic_mix_a_abs_step +=
-                  dt * cell_volume *
-                  (std::abs(mix_a0) + std::abs(mix_ax) + std::abs(mix_ay) +
-                   std::abs(mix_az) + std::abs(mix_aw));
-              diag_response_w0_dynamic_mix_pi_abs_step +=
-                  dt * cell_volume *
-                  (std::abs(mix_pi0) + std::abs(mix_pix) + std::abs(mix_piy) +
-                   std::abs(mix_piz) + std::abs(mix_piw));
+              const Real mix_rate_w0 = w0_dynamic_mix_active
+                                           ? (response_w0_dynamic_mixing_gain *
+                                              response_w0_dot)
+                                           : 0.0;
+              // response_lambda_dot is the time derivative of fractional width:
+              // lambda_dot = lambda_eff * d(lambda_frac)/dt.
+              const Real mix_rate_lambda =
+                  lambda_dynamic_mix_active
+                      ? (response_lambda_dynamic_mixing_gain * response_w0_lambda *
+                         response_lambda_dot)
+                      : 0.0;
+
+              const Real mix_w0_a0 = mix_component(kCompA0, mix_rate_w0, false);
+              const Real mix_w0_ax = mix_component(kCompAX, mix_rate_w0, false);
+              const Real mix_w0_ay = mix_component(kCompAY, mix_rate_w0, false);
+              const Real mix_w0_az = mix_component(kCompAZ, mix_rate_w0, false);
+              const Real mix_w0_aw = mix_component(kCompAW, mix_rate_w0, false);
+              const Real mix_w0_pi0 = mix_component(kCompA0, mix_rate_w0, true);
+              const Real mix_w0_pix = mix_component(kCompAX, mix_rate_w0, true);
+              const Real mix_w0_piy = mix_component(kCompAY, mix_rate_w0, true);
+              const Real mix_w0_piz = mix_component(kCompAZ, mix_rate_w0, true);
+              const Real mix_w0_piw = mix_component(kCompAW, mix_rate_w0, true);
+
+              const Real mix_lambda_a0 =
+                  mix_component(kCompA0, mix_rate_lambda, false);
+              const Real mix_lambda_ax =
+                  mix_component(kCompAX, mix_rate_lambda, false);
+              const Real mix_lambda_ay =
+                  mix_component(kCompAY, mix_rate_lambda, false);
+              const Real mix_lambda_az =
+                  mix_component(kCompAZ, mix_rate_lambda, false);
+              const Real mix_lambda_aw =
+                  mix_component(kCompAW, mix_rate_lambda, false);
+              const Real mix_lambda_pi0 =
+                  mix_component(kCompA0, mix_rate_lambda, true);
+              const Real mix_lambda_pix =
+                  mix_component(kCompAX, mix_rate_lambda, true);
+              const Real mix_lambda_piy =
+                  mix_component(kCompAY, mix_rate_lambda, true);
+              const Real mix_lambda_piz =
+                  mix_component(kCompAZ, mix_rate_lambda, true);
+              const Real mix_lambda_piw =
+                  mix_component(kCompAW, mix_rate_lambda, true);
+
+              mix_a0 = mix_w0_a0 + mix_lambda_a0;
+              mix_ax = mix_w0_ax + mix_lambda_ax;
+              mix_ay = mix_w0_ay + mix_lambda_ay;
+              mix_az = mix_w0_az + mix_lambda_az;
+              mix_aw = mix_w0_aw + mix_lambda_aw;
+              mix_pi0 = mix_w0_pi0 + mix_lambda_pi0;
+              mix_pix = mix_w0_pix + mix_lambda_pix;
+              mix_piy = mix_w0_piy + mix_lambda_piy;
+              mix_piz = mix_w0_piz + mix_lambda_piz;
+              mix_piw = mix_w0_piw + mix_lambda_piw;
+
+              if (w0_dynamic_mix_active) {
+                diag_response_w0_dynamic_mix_a_abs_step +=
+                    dt * cell_volume *
+                    (std::abs(mix_w0_a0) + std::abs(mix_w0_ax) +
+                     std::abs(mix_w0_ay) + std::abs(mix_w0_az) +
+                     std::abs(mix_w0_aw));
+                diag_response_w0_dynamic_mix_pi_abs_step +=
+                    dt * cell_volume *
+                    (std::abs(mix_w0_pi0) + std::abs(mix_w0_pix) +
+                     std::abs(mix_w0_piy) + std::abs(mix_w0_piz) +
+                     std::abs(mix_w0_piw));
+              }
+              if (lambda_dynamic_mix_active) {
+                diag_response_lambda_dynamic_mix_a_abs_step +=
+                    dt * cell_volume *
+                    (std::abs(mix_lambda_a0) + std::abs(mix_lambda_ax) +
+                     std::abs(mix_lambda_ay) + std::abs(mix_lambda_az) +
+                     std::abs(mix_lambda_aw));
+                diag_response_lambda_dynamic_mix_pi_abs_step +=
+                    dt * cell_volume *
+                    (std::abs(mix_lambda_pi0) + std::abs(mix_lambda_pix) +
+                     std::abs(mix_lambda_piy) + std::abs(mix_lambda_piz) +
+                     std::abs(mix_lambda_piw));
+              }
             }
 
             pi_new(idx_a0, k, j, i) = pi_old(idx_a0, k, j, i) + (dt * (rhs_a0 + mix_pi0));
@@ -2046,6 +2120,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
       modes_pkg->MutableParam<double>("diag/int_response_w0_dynamic_mix_a_abs");
   auto *diag_response_w0_dynamic_mix_pi_abs =
       modes_pkg->MutableParam<double>("diag/int_response_w0_dynamic_mix_pi_abs");
+  auto *diag_response_lambda_dynamic_mix_a_abs =
+      modes_pkg->MutableParam<double>("diag/int_response_lambda_dynamic_mix_a_abs");
+  auto *diag_response_lambda_dynamic_mix_pi_abs =
+      modes_pkg->MutableParam<double>("diag/int_response_lambda_dynamic_mix_pi_abs");
   auto *diag_rhs_ay_mode0_w0_response =
       modes_pkg->MutableParam<double>("diag/int_rhs_ay_mode0_w0_response");
   auto *diag_rhs_ay_mode0_w0_response_abs =
@@ -2186,6 +2264,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &, const Real dt
   *diag_response_lambda_power_net += diag_response_lambda_power_net_step;
   *diag_response_w0_dynamic_mix_a_abs += diag_response_w0_dynamic_mix_a_abs_step;
   *diag_response_w0_dynamic_mix_pi_abs += diag_response_w0_dynamic_mix_pi_abs_step;
+  *diag_response_lambda_dynamic_mix_a_abs +=
+      diag_response_lambda_dynamic_mix_a_abs_step;
+  *diag_response_lambda_dynamic_mix_pi_abs +=
+      diag_response_lambda_dynamic_mix_pi_abs_step;
   *diag_rhs_ay_mode0_w0_response += diag_rhs_ay_mode0_w0_response_step;
   *diag_rhs_ay_mode0_w0_response_abs += diag_rhs_ay_mode0_w0_response_abs_step;
   *diag_rhs_aw_mode1_w0_response += diag_rhs_aw_mode1_w0_response_step;

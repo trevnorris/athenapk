@@ -103,6 +103,10 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "response_w0_dynamic_mixing_gain", 1.0);
   const bool response_lambda_enable =
       pin->GetOrAddBoolean("modes4d", "response_lambda_enable", false);
+  const bool response_lambda_dynamic_mixing_enable = pin->GetOrAddBoolean(
+      "modes4d", "response_lambda_dynamic_mixing_enable", false);
+  const double response_lambda_dynamic_mixing_gain =
+      pin->GetOrAddReal("modes4d", "response_lambda_dynamic_mixing_gain", 1.0);
   const double response_lambda_drive_gain =
       pin->GetOrAddReal("modes4d", "response_lambda_drive_gain", 0.0);
   const double response_lambda_drive_from_bridge_gain =
@@ -296,6 +300,10 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/response_w0_dynamic_mixing_gain",
                         response_w0_dynamic_mixing_gain);
   pkg->AddParam<bool>("em4d/response_lambda_enable", response_lambda_enable);
+  pkg->AddParam<bool>("em4d/response_lambda_dynamic_mixing_enable",
+                      response_lambda_dynamic_mixing_enable);
+  pkg->AddParam<double>("em4d/response_lambda_dynamic_mixing_gain",
+                        response_lambda_dynamic_mixing_gain);
   pkg->AddParam<double>("em4d/response_lambda_drive_gain", response_lambda_drive_gain);
   pkg->AddParam<double>("em4d/response_lambda_drive_from_bridge_gain",
                         response_lambda_drive_from_bridge_gain);

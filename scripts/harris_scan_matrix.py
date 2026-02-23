@@ -644,6 +644,12 @@ def analyze_case(
     int_response_w0_dynamic_mix_pi_abs = maybe_col(
         cols, "m4d_int_response_w0_dynamic_mix_pi_abs"
     )
+    int_response_lambda_dynamic_mix_a_abs = maybe_col(
+        cols, "m4d_int_response_lambda_dynamic_mix_a_abs"
+    )
+    int_response_lambda_dynamic_mix_pi_abs = maybe_col(
+        cols, "m4d_int_response_lambda_dynamic_mix_pi_abs"
+    )
     int_rhs_ay_mode0_w0_response = maybe_col(cols, "m4d_int_rhs_ay_mode0_w0_response")
     int_rhs_ay_mode0_w0_response_abs = maybe_col(
         cols, "m4d_int_rhs_ay_mode0_w0_response_abs"
@@ -1735,6 +1741,16 @@ def analyze_case(
         "final_int_response_w0_dynamic_mix_pi_abs": int_response_w0_dynamic_mix_pi_abs[-1]
         if int_response_w0_dynamic_mix_pi_abs is not None
         else math.nan,
+        "final_int_response_lambda_dynamic_mix_a_abs": int_response_lambda_dynamic_mix_a_abs[
+            -1
+        ]
+        if int_response_lambda_dynamic_mix_a_abs is not None
+        else math.nan,
+        "final_int_response_lambda_dynamic_mix_pi_abs": int_response_lambda_dynamic_mix_pi_abs[
+            -1
+        ]
+        if int_response_lambda_dynamic_mix_pi_abs is not None
+        else math.nan,
         "final_int_rhs_ay_mode0_w0_response": int_rhs_ay_mode0_w0_response[-1]
         if int_rhs_ay_mode0_w0_response is not None
         else math.nan,
@@ -2185,6 +2201,10 @@ def print_table(results):
         "final_int_response_lambda_power_stiffness",
         "final_int_response_lambda_power_damping",
         "final_int_response_lambda_power_net",
+        "final_int_response_w0_dynamic_mix_a_abs",
+        "final_int_response_w0_dynamic_mix_pi_abs",
+        "final_int_response_lambda_dynamic_mix_a_abs",
+        "final_int_response_lambda_dynamic_mix_pi_abs",
         "final_int_rhs_ay_mode0_w0_response",
         "final_int_rhs_ay_mode0_w0_response_abs",
         "final_int_rhs_aw_mode1_w0_response",
