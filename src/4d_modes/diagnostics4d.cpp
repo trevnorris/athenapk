@@ -514,6 +514,11 @@ Real ResponseW0LocalDotAbsHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/response_w0_local_dot_abs");
 }
 
+Real ResponseW0LocalGradAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_grad_abs");
+}
+
 Real ResponseLambdaFractionHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/response_lambda_fraction");
@@ -607,6 +612,16 @@ Real ResponseW0DynamicMixAAbsAccumulatorHst(MeshData<Real> *md) {
 Real ResponseW0DynamicMixPiAbsAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_response_w0_dynamic_mix_pi_abs");
+}
+
+Real ResponseW0LocalGradientMixAAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_w0_local_gradient_mix_a_abs");
+}
+
+Real ResponseW0LocalGradientMixPiAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_w0_local_gradient_mix_pi_abs");
 }
 
 Real ResponseLambdaDynamicMixAAbsAccumulatorHst(MeshData<Real> *md) {
@@ -2725,6 +2740,7 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/response_w0_lambda_eff", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_abs", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_dot_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_grad_abs", 0.0, true);
   pkg->AddParam<bool>("diag/response_lambda_initialized", false, true);
   pkg->AddParam<double>("diag/response_lambda_fraction", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_dot", 0.0, true);
@@ -2747,6 +2763,8 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_response_lambda_power_net", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_dynamic_mix_a_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_dynamic_mix_pi_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_a_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_pi_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_lambda_dynamic_mix_a_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_lambda_dynamic_mix_pi_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_ay_mode0_w0_response", 0.0, true);
@@ -3030,6 +3048,9 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum, ResponseW0LocalDotAbsHst,
       "m4d_response_w0_local_dot_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalGradAbsHst,
+      "m4d_response_w0_local_grad_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseLambdaFractionHst,
       "m4d_response_lambda_fraction"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
@@ -3089,6 +3110,14 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0DynamicMixPiAbsAccumulatorHst,
       "m4d_int_response_w0_dynamic_mix_pi_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      ResponseW0LocalGradientMixAAbsAccumulatorHst,
+      "m4d_int_response_w0_local_gradient_mix_a_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      ResponseW0LocalGradientMixPiAbsAccumulatorHst,
+      "m4d_int_response_w0_local_gradient_mix_pi_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseLambdaDynamicMixAAbsAccumulatorHst,
       "m4d_int_response_lambda_dynamic_mix_a_abs"));

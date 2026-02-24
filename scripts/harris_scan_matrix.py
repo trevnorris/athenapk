@@ -612,6 +612,7 @@ def analyze_case(
     response_w0_lambda_eff = maybe_col(cols, "m4d_response_w0_lambda_eff")
     response_w0_local_abs = maybe_col(cols, "m4d_response_w0_local_abs")
     response_w0_local_dot_abs = maybe_col(cols, "m4d_response_w0_local_dot_abs")
+    response_w0_local_grad_abs = maybe_col(cols, "m4d_response_w0_local_grad_abs")
     response_lambda_fraction = maybe_col(cols, "m4d_response_lambda_fraction")
     response_lambda_dot = maybe_col(cols, "m4d_response_lambda_dot")
     response_lambda_drive = maybe_col(cols, "m4d_response_lambda_drive")
@@ -645,6 +646,12 @@ def analyze_case(
     )
     int_response_w0_dynamic_mix_pi_abs = maybe_col(
         cols, "m4d_int_response_w0_dynamic_mix_pi_abs"
+    )
+    int_response_w0_local_gradient_mix_a_abs = maybe_col(
+        cols, "m4d_int_response_w0_local_gradient_mix_a_abs"
+    )
+    int_response_w0_local_gradient_mix_pi_abs = maybe_col(
+        cols, "m4d_int_response_w0_local_gradient_mix_pi_abs"
     )
     int_response_lambda_dynamic_mix_a_abs = maybe_col(
         cols, "m4d_int_response_lambda_dynamic_mix_a_abs"
@@ -1689,6 +1696,9 @@ def analyze_case(
         "final_response_w0_local_dot_abs": response_w0_local_dot_abs[-1]
         if response_w0_local_dot_abs is not None
         else math.nan,
+        "final_response_w0_local_grad_abs": response_w0_local_grad_abs[-1]
+        if response_w0_local_grad_abs is not None
+        else math.nan,
         "final_response_lambda_fraction": response_lambda_fraction[-1]
         if response_lambda_fraction is not None
         else math.nan,
@@ -1748,6 +1758,16 @@ def analyze_case(
         else math.nan,
         "final_int_response_w0_dynamic_mix_pi_abs": int_response_w0_dynamic_mix_pi_abs[-1]
         if int_response_w0_dynamic_mix_pi_abs is not None
+        else math.nan,
+        "final_int_response_w0_local_gradient_mix_a_abs": int_response_w0_local_gradient_mix_a_abs[
+            -1
+        ]
+        if int_response_w0_local_gradient_mix_a_abs is not None
+        else math.nan,
+        "final_int_response_w0_local_gradient_mix_pi_abs": int_response_w0_local_gradient_mix_pi_abs[
+            -1
+        ]
+        if int_response_w0_local_gradient_mix_pi_abs is not None
         else math.nan,
         "final_int_response_lambda_dynamic_mix_a_abs": int_response_lambda_dynamic_mix_a_abs[
             -1
@@ -2188,6 +2208,8 @@ def print_table(results):
         "final_response_w0_drive_reservoir",
         "final_response_w0_drive_bridge",
         "final_response_w0_drive_parity",
+        "final_response_w0_drive_work",
+        "final_response_w0_drive_leak",
         "final_response_w0_force",
         "final_response_w0_energy",
         "final_response_w0_geometry_center",
@@ -2195,11 +2217,14 @@ def print_table(results):
         "final_response_w0_lambda_eff",
         "final_response_w0_local_abs",
         "final_response_w0_local_dot_abs",
+        "final_response_w0_local_grad_abs",
         "final_response_lambda_fraction",
         "final_response_lambda_dot",
         "final_response_lambda_drive",
         "final_response_lambda_drive_reservoir",
         "final_response_lambda_drive_bridge",
+        "final_response_lambda_drive_work",
+        "final_response_lambda_drive_leak",
         "final_response_lambda_force",
         "final_response_lambda_energy",
         "final_projection_center_w",
@@ -2213,6 +2238,8 @@ def print_table(results):
         "final_int_response_lambda_power_net",
         "final_int_response_w0_dynamic_mix_a_abs",
         "final_int_response_w0_dynamic_mix_pi_abs",
+        "final_int_response_w0_local_gradient_mix_a_abs",
+        "final_int_response_w0_local_gradient_mix_pi_abs",
         "final_int_response_lambda_dynamic_mix_a_abs",
         "final_int_response_lambda_dynamic_mix_pi_abs",
         "final_int_rhs_ay_mode0_w0_response",
