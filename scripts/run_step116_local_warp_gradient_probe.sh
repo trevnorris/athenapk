@@ -194,7 +194,7 @@ run_case() {
   echo "command,${cmd[*]}" >> "${log_file}"
 
   set +e
-  "${cmd[@]}" | tee -a "${log_file}"
+  "${cmd[@]}" 2>&1 | tee -a "${log_file}"
   local rc=${PIPESTATUS[0]}
   set -e
 

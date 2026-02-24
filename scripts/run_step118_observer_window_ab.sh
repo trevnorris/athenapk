@@ -8,7 +8,7 @@ BINARY="${REPO_ROOT}/build-gpu-cuda124-ada89/bin/athenaPK"
 WORKDIR="${REPO_ROOT}"
 CONTROLLED_INPUT="${REPO_ROOT}/inputs/harris_4d_controlled.in"
 FULL_INPUT="${REPO_ROOT}/inputs/harris_4d_full_symbreak.in"
-OUTPUT_ROOT="/projects/fluid-engine/out/step117_local_warp_gradient_long_$(date +%Y%m%d_%H%M%S)"
+OUTPUT_ROOT="/projects/fluid-engine/out/step118_observer_window_ab_$(date +%Y%m%d_%H%M%S)"
 
 NX1="128"
 NX2="64"
@@ -22,14 +22,14 @@ NLIM="120000"
 
 usage() {
   cat <<'USAGE'
-Run Step-117 long-horizon local warp gradient-mixing campaign.
+Run Step-118 observer-window A/B with active local-warp gradient coupling.
 
 Purpose:
-  Re-run the strongest Step-116 local-warp gradient cases at longer horizon to
-  test whether JwEw and S_leak_abs continue rising toward activation floors.
+  Compare fixed-window (Option 2) vs comoving-window (Option 1) observers
+  while keeping the same physical geometry-response configuration.
 
 Usage:
-  ./scripts/run_step117_local_warp_gradient_long.sh [options]
+  ./scripts/run_step118_observer_window_ab.sh [options]
 
 Options:
   --binary PATH            Path to athenaPK binary
@@ -136,9 +136,6 @@ COMMON_FULL_ARGS=(
   "modes4d/response_w0_stiffness=0.0"
   "modes4d/response_w0_damping=0.0"
   "modes4d/response_w0_max_abs=1.0"
-  "modes4d/response_w0_projection_enable=false"
-  "modes4d/response_w0_geometry_shift_enable=false"
-  "modes4d/response_w0_lambda_shift_enable=false"
   "modes4d/response_w0_dynamic_mixing_enable=true"
   "modes4d/response_w0_dynamic_mixing_gain=2.0"
   "modes4d/response_w0_local_enable=true"
@@ -146,14 +143,17 @@ COMMON_FULL_ARGS=(
   "modes4d/response_w0_local_mode1_kx=3.141592653589793"
   "modes4d/response_w0_local_mode1_kz=6.283185307179586"
   "modes4d/response_w0_local_mode1_phase=0.0"
-  "modes4d/response_w0_local_mode1_omega=4.0"
+  "modes4d/response_w0_local_mode1_omega=0.0"
   "modes4d/response_w0_local_mode2_amp=3.0e-2"
   "modes4d/response_w0_local_mode2_kx=6.283185307179586"
   "modes4d/response_w0_local_mode2_kz=12.566370614359172"
   "modes4d/response_w0_local_mode2_phase=1.0471975511965976"
-  "modes4d/response_w0_local_mode2_omega=2.0"
+  "modes4d/response_w0_local_mode2_omega=0.0"
   "modes4d/response_w0_local_gradient_mixing_enable=true"
   "modes4d/response_w0_local_gradient_mixing_gain=4.0"
+  "modes4d/response_w0_geometry_shift_enable=true"
+  "modes4d/response_w0_projection_gain=1.0"
+  "modes4d/response_w0_projection_max_abs=0.0"
 )
 
 run_case() {
@@ -205,22 +205,13 @@ run_case() {
   fi
 }
 
-# Reference from Step-116 (dot-only local warp).
-run_case "local_dual_dotmix_only_long" \
-  "modes4d/response_w0_local_gradient_mixing_enable=false" \
-  "modes4d/response_w0_local_gradient_mixing_gain=0.0"
+# Option 2: fixed observer window (strong anomaly/leakage signature).
+run_case "fixed_window_geomshift" \
+  "modes4d/response_w0_projection_enable=false"
 
-# Strong gradient-mixing case with local dot drive.
-run_case "local_dual_dotmix_grad_g4_long" \
-  "modes4d/response_w0_local_gradient_mixing_enable=true" \
-  "modes4d/response_w0_local_gradient_mixing_gain=4.0"
-
-# Static local warp + strong gradient-mixing.
-run_case "local_dual_static_grad_g4_long" \
-  "modes4d/response_w0_local_mode1_omega=0.0" \
-  "modes4d/response_w0_local_mode2_omega=0.0" \
-  "modes4d/response_w0_local_gradient_mixing_enable=true" \
-  "modes4d/response_w0_local_gradient_mixing_gain=4.0"
+# Option 1: comoving observer window.
+run_case "comoving_window_geomshift" \
+  "modes4d/response_w0_projection_enable=true"
 
 python3 "${REPO_ROOT}/scripts/summarize_transverse_channel_activation.py" \
   --glob "${OUTPUT_ROOT}/*" \
@@ -232,14 +223,14 @@ python3 "${REPO_ROOT}/scripts/summarize_projected_closure.py" \
   --out-csv "${OUTPUT_ROOT}_projected_closure.csv" \
   --out-md "${OUTPUT_ROOT}_projected_closure.md"
 
-python3 "${REPO_ROOT}/scripts/summarize_local_warp_gradient_probe.py" \
+python3 "${REPO_ROOT}/scripts/summarize_step118_observer_window_ab.py" \
   --glob "${OUTPUT_ROOT}/*" \
-  --out-csv "${OUTPUT_ROOT}_local_warp_gradient.csv" \
-  --out-md "${OUTPUT_ROOT}_local_warp_gradient.md"
+  --out-csv "${OUTPUT_ROOT}_observer_ab.csv" \
+  --out-md "${OUTPUT_ROOT}_observer_ab.md"
 
 echo ""
-echo "Step-117 long-horizon local warp gradient-mixing campaign complete."
+echo "Step-118 observer-window A/B complete."
 echo "output_root,${OUTPUT_ROOT}"
 echo "summary_md,${OUTPUT_ROOT}_summary.md"
 echo "projected_closure_md,${OUTPUT_ROOT}_projected_closure.md"
-echo "local_warp_gradient_md,${OUTPUT_ROOT}_local_warp_gradient.md"
+echo "observer_ab_md,${OUTPUT_ROOT}_observer_ab.md"
