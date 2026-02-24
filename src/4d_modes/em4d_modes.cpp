@@ -28,6 +28,7 @@ constexpr int kPlasmaMomY = 2;
 constexpr int kPlasmaMomZ = 3;
 constexpr int kPlasmaMomW = 4;
 constexpr int kPlasmaEnergy = 5;
+constexpr Real kPi = 3.141592653589793238462643383279502884;
 
 Real SpeciesQOM(const int species, const Real qom_ion, const Real qom_electron) {
   return (species == 0) ? qom_ion : qom_electron;
@@ -39,6 +40,100 @@ int EMIndex(const int mode, const int component) {
 
 int PlasmaIndex(const int species, const int mode, const int var, const int n_modes) {
   return (species * kVarsPerModePerSpecies * n_modes) + (mode * kVarsPerModePerSpecies) + var;
+}
+
+void HermitePhysicists(const int n, const Real x, Real *hn, Real *hnm1) {
+  if (n == 0) {
+    *hn = 1.0;
+    *hnm1 = 0.0;
+    return;
+  }
+
+  Real hm2 = 1.0;
+  Real hm1 = 2.0 * x;
+  if (n == 1) {
+    *hn = hm1;
+    *hnm1 = hm2;
+    return;
+  }
+
+  for (int k = 2; k <= n; ++k) {
+    const Real h = (2.0 * x * hm1) - (2.0 * static_cast<Real>(k - 1) * hm2);
+    hm2 = hm1;
+    hm1 = h;
+  }
+
+  *hn = hm1;
+  *hnm1 = hm2;
+}
+
+Real EvaluatePhi(const int n, const Real w, const Real lambda) {
+  const Real x = w / lambda;
+  Real hn = 0.0;
+  Real hnm1 = 0.0;
+  HermitePhysicists(n, x, &hn, &hnm1);
+
+  const Real two_to_n = std::ldexp(1.0, n);
+  const Real n_factorial = std::tgamma(static_cast<Real>(n) + 1.0);
+  const Real norm = std::sqrt(lambda * std::sqrt(kPi) * two_to_n * n_factorial);
+  return hn / norm;
+}
+
+void BuildW0ConnectionMatrix(const int n_modes, const Real lambda,
+                             std::vector<Real> *b_conn) {
+  b_conn->assign(n_modes * n_modes, 0.0);
+  for (int n = 0; n < n_modes; ++n) {
+    if (n > 0) {
+      (*b_conn)[n * n_modes + (n - 1)] =
+          std::sqrt(2.0 * static_cast<Real>(n)) / lambda;
+    }
+    if ((n + 1) < n_modes) {
+      (*b_conn)[n * n_modes + (n + 1)] =
+          -std::sqrt(2.0 * static_cast<Real>(n + 1)) / lambda;
+    }
+  }
+}
+
+void BuildLambdaConnectionMatrix(const ModeTables &tables, const int n_modes,
+                                 const Real lambda, std::vector<Real> *a_raw,
+                                 std::vector<Real> *k_metric,
+                                 std::vector<Real> *b_conn) {
+  a_raw->assign(n_modes * n_modes, 0.0);
+  k_metric->assign(n_modes * n_modes, 0.0);
+  b_conn->assign(n_modes * n_modes, 0.0);
+
+  const auto &nodes = tables.Nodes();
+  const auto &weights = tables.Weights();
+  const int n_q = static_cast<int>(nodes.size());
+  const Real delta = std::max(1.0e-6 * lambda, 1.0e-10);
+  const Real lambda_plus = lambda + delta;
+  const Real lambda_minus = std::max(lambda - delta, 1.0e-8 * lambda);
+  const Real inv_delta = 1.0 / (lambda_plus - lambda_minus);
+
+  for (int n = 0; n < n_modes; ++n) {
+    for (int m = 0; m < n_modes; ++m) {
+      Real a_nm = 0.0;
+      for (int q = 0; q < n_q; ++q) {
+        const Real w = nodes[q];
+        const Real phi_n = tables.Phi(n, q);
+        const Real phi_plus = EvaluatePhi(m, w, lambda_plus);
+        const Real phi_minus = EvaluatePhi(m, w, lambda_minus);
+        const Real dphi_dlambda = (phi_plus - phi_minus) * inv_delta;
+        a_nm += weights[q] * phi_n * dphi_dlambda;
+      }
+      (*a_raw)[n * n_modes + m] = a_nm;
+    }
+  }
+
+  for (int n = 0; n < n_modes; ++n) {
+    for (int m = 0; m < n_modes; ++m) {
+      const Real a_nm = (*a_raw)[n * n_modes + m];
+      const Real a_mn = (*a_raw)[m * n_modes + n];
+      const Real k_nm = -(a_nm + a_mn);
+      (*k_metric)[n * n_modes + m] = k_nm;
+      (*b_conn)[n * n_modes + m] = a_nm + (0.5 * k_nm);
+    }
+  }
 }
 
 } // namespace
@@ -293,6 +388,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   }
 
   const int n_modes = modes_pkg->Param<int>("n_modes");
+  const int n_quadrature = modes_pkg->Param<int>("n_quadrature");
   const Real lambda = modes_pkg->Param<double>("lambda");
   const Real c_wave = modes_pkg->Param<double>("em4d/c_wave");
   const Real damping = modes_pkg->Param<double>("em4d/damping");
@@ -524,6 +620,25 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
           ? (response_w0_geometry_shift_gain * response_w0 * response_w0 * inv_lambda4)
           : 0.0;
   const Real response_local_time = tm.time + (0.5 * dt);
+
+  // Build conservative connection matrices for dynamic-basis mixing.
+  // - w0 path: adjacent-mode antisymmetric connection.
+  // - lambda path: raw overlap A from weighted quadrature, metric correction
+  //   K = -(A + A^T), connection B = A + 0.5*K = 0.5*(A - A^T).
+  std::vector<Real> w0_connection;
+  BuildW0ConnectionMatrix(n_modes, response_w0_lambda, &w0_connection);
+
+  ModeConfig response_mode_config;
+  response_mode_config.n_modes = n_modes;
+  response_mode_config.n_quadrature = std::max(n_quadrature, n_modes);
+  response_mode_config.lambda = response_w0_lambda;
+  const ModeTables response_mode_tables(response_mode_config);
+  std::vector<Real> lambda_overlap_raw;
+  std::vector<Real> lambda_metric_correction;
+  std::vector<Real> lambda_connection;
+  BuildLambdaConnectionMatrix(response_mode_tables, n_modes, response_w0_lambda,
+                              &lambda_overlap_raw, &lambda_metric_correction,
+                              &lambda_connection);
 
   Real diag_jw_ew_step = 0.0;
   Real diag_ja_ea_step = 0.0;
@@ -1631,26 +1746,25 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                 (response_lambda_dynamic_mixing_gain != 0.0) &&
                 (response_lambda_dot != 0.0);
             if (w0_dynamic_mix_active || lambda_dynamic_mix_active) {
-              const Real coupling_lower =
-                  (n > 0) ? (std::sqrt(2.0 * static_cast<Real>(n)) / response_w0_lambda) : 0.0;
-              const int n_prev = n - 1;
-              const int n_next = n + 1;
               const auto mix_component = [&](const int comp, const Real mix_rate,
-                                             const bool use_pi) -> Real {
+                                             const bool use_pi,
+                                             const std::vector<Real> &connection_matrix) -> Real {
                 if (mix_rate == 0.0) {
                   return 0.0;
                 }
-                const Real q_prev =
-                    (n_prev >= 0)
-                        ? (use_pi ? pi_old(EMIndex(n_prev, comp), k, j, i)
-                                  : a_old(EMIndex(n_prev, comp), k, j, i))
-                        : 0.0;
-                const Real q_next =
-                    (n_next < n_modes)
-                        ? (use_pi ? pi_old(EMIndex(n_next, comp), k, j, i)
-                                  : a_old(EMIndex(n_next, comp), k, j, i))
-                        : 0.0;
-                return mix_rate * ((coupling_lower * q_prev) - (coupling_raise * q_next));
+                Real mix_val = 0.0;
+                const int row = n * n_modes;
+                for (int m = 0; m < n_modes; ++m) {
+                  const Real coeff = connection_matrix[row + m];
+                  if (coeff == 0.0) {
+                    continue;
+                  }
+                  const int idx = EMIndex(m, comp);
+                  const Real q_m =
+                      use_pi ? pi_old(idx, k, j, i) : a_old(idx, k, j, i);
+                  mix_val += coeff * q_m;
+                }
+                return mix_rate * mix_val;
               };
               const Real mix_rate_w0 = w0_dynamic_mix_active
                                            ? (response_w0_dynamic_mixing_gain *
@@ -1664,37 +1778,47 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                          response_lambda_dot)
                       : 0.0;
 
-              const Real mix_w0_a0 = mix_component(kCompA0, mix_rate_w0, false);
-              const Real mix_w0_ax = mix_component(kCompAX, mix_rate_w0, false);
-              const Real mix_w0_ay = mix_component(kCompAY, mix_rate_w0, false);
-              const Real mix_w0_az = mix_component(kCompAZ, mix_rate_w0, false);
-              const Real mix_w0_aw = mix_component(kCompAW, mix_rate_w0, false);
-              const Real mix_w0_pi0 = mix_component(kCompA0, mix_rate_w0, true);
-              const Real mix_w0_pix = mix_component(kCompAX, mix_rate_w0, true);
-              const Real mix_w0_piy = mix_component(kCompAY, mix_rate_w0, true);
-              const Real mix_w0_piz = mix_component(kCompAZ, mix_rate_w0, true);
-              const Real mix_w0_piw = mix_component(kCompAW, mix_rate_w0, true);
+              const Real mix_w0_a0 =
+                  mix_component(kCompA0, mix_rate_w0, false, w0_connection);
+              const Real mix_w0_ax =
+                  mix_component(kCompAX, mix_rate_w0, false, w0_connection);
+              const Real mix_w0_ay =
+                  mix_component(kCompAY, mix_rate_w0, false, w0_connection);
+              const Real mix_w0_az =
+                  mix_component(kCompAZ, mix_rate_w0, false, w0_connection);
+              const Real mix_w0_aw =
+                  mix_component(kCompAW, mix_rate_w0, false, w0_connection);
+              const Real mix_w0_pi0 =
+                  mix_component(kCompA0, mix_rate_w0, true, w0_connection);
+              const Real mix_w0_pix =
+                  mix_component(kCompAX, mix_rate_w0, true, w0_connection);
+              const Real mix_w0_piy =
+                  mix_component(kCompAY, mix_rate_w0, true, w0_connection);
+              const Real mix_w0_piz =
+                  mix_component(kCompAZ, mix_rate_w0, true, w0_connection);
+              const Real mix_w0_piw =
+                  mix_component(kCompAW, mix_rate_w0, true, w0_connection);
 
               const Real mix_lambda_a0 =
-                  mix_component(kCompA0, mix_rate_lambda, false);
+                  mix_component(kCompA0, mix_rate_lambda, false, lambda_connection);
               const Real mix_lambda_ax =
-                  mix_component(kCompAX, mix_rate_lambda, false);
+                  mix_component(kCompAX, mix_rate_lambda, false, lambda_connection);
               const Real mix_lambda_ay =
-                  mix_component(kCompAY, mix_rate_lambda, false);
+                  mix_component(kCompAY, mix_rate_lambda, false, lambda_connection);
               const Real mix_lambda_az =
-                  mix_component(kCompAZ, mix_rate_lambda, false);
+                  mix_component(kCompAZ, mix_rate_lambda, false, lambda_connection);
               const Real mix_lambda_aw =
-                  mix_component(kCompAW, mix_rate_lambda, false);
+                  mix_component(kCompAW, mix_rate_lambda, false, lambda_connection);
               const Real mix_lambda_pi0 =
-                  mix_component(kCompA0, mix_rate_lambda, true);
+                  mix_component(kCompA0, mix_rate_lambda, true, lambda_connection);
               const Real mix_lambda_pix =
-                  mix_component(kCompAX, mix_rate_lambda, true);
+                  mix_component(kCompAX, mix_rate_lambda, true, lambda_connection);
               const Real mix_lambda_piy =
-                  mix_component(kCompAY, mix_rate_lambda, true);
+                  mix_component(kCompAY, mix_rate_lambda, true, lambda_connection);
               const Real mix_lambda_piz =
-                  mix_component(kCompAZ, mix_rate_lambda, true);
+                  mix_component(kCompAZ, mix_rate_lambda, true, lambda_connection);
               const Real mix_lambda_piw =
-                  mix_component(kCompAW, mix_rate_lambda, true);
+                  mix_component(kCompAW, mix_rate_lambda, true, lambda_connection);
 
               mix_a0 = mix_w0_a0 + mix_lambda_a0;
               mix_ax = mix_w0_ax + mix_lambda_ax;
