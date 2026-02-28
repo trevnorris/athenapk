@@ -225,11 +225,11 @@ def run_tests(source_root: Path, n_modes: int, n_quad: int, lam: float) -> int:
     diagnostics_cpp = source_root / "src/4d_modes/diagnostics4d.cpp"
     has_point_projection_coeffs = source_has(
         diagnostics_cpp,
-        r'if \(kernel == "point"\)\s*\{\s*return BranePointCoefficients\(tables,\s*n_modes\);\s*\}',
+        r'if \(kernel == "point"\)\s*\{\s*return BranePointCoefficients\(tables,\s*n_modes,\s*center_w\);\s*\}',
     )
     has_psiw0_point_coeffs = source_has(
         diagnostics_cpp,
-        r"Real AyBranePointSpanWithParityHst\(.*?BranePointCoefficients\(tables,\s*n_modes\)",
+        r"Real AyBranePointSpanWithParityHst\(.*?BranePointCoefficients\(tables,\s*n_modes,\s*center_w\)",
     )
     append(
         results,
@@ -240,7 +240,7 @@ def run_tests(source_root: Path, n_modes: int, n_quad: int, lam: float) -> int:
 
     has_matched_definition = source_has(
         diagnostics_cpp,
-        r"Default: matched kernel W = Z / Z_int\.",
+        r"Default:\s*matched kernel W = Z\(w-center_w\) / Z_int\.",
     )
     append(
         results,

@@ -167,6 +167,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddBoolean("modes4d", "response_lambda_apply_mass", true);
   const bool em_conservative_transport =
       pin->GetOrAddBoolean("modes4d", "em_conservative_transport", false);
+  const bool hard_controlled_limit_enable =
+      pin->GetOrAddBoolean("modes4d", "hard_controlled_limit_enable", false);
   const std::string diag_projection_kernel =
       pin->GetOrAddString("modes4d", "diag_projection_kernel", "matched");
   const double diag_projection_sigma_factor =
@@ -371,6 +373,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                         response_lambda_max_abs_frac);
   pkg->AddParam<bool>("em4d/response_lambda_apply_mass", response_lambda_apply_mass);
   pkg->AddParam<bool>("em4d/use_conservative_transport", em_conservative_transport);
+  pkg->AddParam<bool>("em4d/hard_controlled_limit_enable", hard_controlled_limit_enable);
   pkg->AddParam<std::string>("diag/projection_kernel", diag_projection_kernel);
   pkg->AddParam<double>("diag/projection_sigma_factor", diag_projection_sigma_factor);
   pkg->AddParam<double>("plasma4d/qom_ion", plasma_qom_ion);

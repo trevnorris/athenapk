@@ -518,6 +518,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->Param<bool>("em4d/response_lambda_apply_mass");
   const bool use_conservative_transport =
       modes_pkg->Param<bool>("em4d/use_conservative_transport");
+  const bool hard_controlled_limit_enable =
+      modes_pkg->Param<bool>("em4d/hard_controlled_limit_enable");
+  const bool hard_controlled_limit_active =
+      hard_controlled_limit_enable && (n_modes == 1);
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
   const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
   const Real force_source_gain = modes_pkg->Param<double>("plasma4d/force_source_gain");
@@ -532,6 +536,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   const Real gamma = modes_pkg->Param<double>("plasma4d/gamma");
   const Real gm1 = gamma - 1.0;
   const Real pressure_floor = modes_pkg->Param<double>("plasma4d/pressure_floor");
+  const Real momw_source_gain_eff = hard_controlled_limit_active ? 0.0 : momw_source_gain;
+  const Real momw_pressure_source_gain_eff =
+      hard_controlled_limit_active ? 0.0 : momw_pressure_source_gain;
+  const Real w_flux_source_gain_eff =
+      hard_controlled_limit_active ? 0.0 : w_flux_source_gain;
+  const Real em_source_timelike_gain_eff =
+      hard_controlled_limit_active ? 0.0 : em_source_timelike_gain;
   const Real c2 = c_wave * c_wave;
   const Real inv_lambda2_base = 1.0 / (lambda * lambda);
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
@@ -1047,10 +1058,19 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
             bx_nodes[q] = daz_dy_node - day_dz_node;
             by_nodes[q] = dax_dz_node - daz_dx_node;
             bz_nodes[q] = day_dx_node - dax_dy_node;
-            ew_nodes[q] = -piw_node - d_w_a0;
-            cx_nodes[q] = daw_dx_node - d_w_ax;
-            cy_nodes[q] = daw_dy_node - d_w_ay;
-            cz_nodes[q] = daw_dz_node - d_w_az;
+            if (hard_controlled_limit_active) {
+              // Enforce controlled-limit mixed-sector suppression for Nw=1:
+              // F_{mu w} ~= 0, so Ew and C_a channels are clamped off.
+              ew_nodes[q] = 0.0;
+              cx_nodes[q] = 0.0;
+              cy_nodes[q] = 0.0;
+              cz_nodes[q] = 0.0;
+            } else {
+              ew_nodes[q] = -piw_node - d_w_a0;
+              cx_nodes[q] = daw_dx_node - d_w_ax;
+              cy_nodes[q] = daw_dy_node - d_w_ay;
+              cz_nodes[q] = daw_dz_node - d_w_az;
+            }
           }
 
           for (int s = 0; s < kSpeciesCount; ++s) {
@@ -1113,7 +1133,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
               const Real rhs_momy = force_source_gain * qom_s * rho_safe * fy;
               const Real rhs_momz = force_source_gain * qom_s * rho_safe * fz;
               const Real rhs_momw =
-                  (momw_source_gain * force_w) - (momw_damping * momw_node);
+                  (momw_source_gain_eff * force_w) - (momw_damping * momw_node);
               const Real rhs_energy = energy_source_gain * qom_s * rho_safe *
                                       ((vx * ex) + (vy * ey) + (vz * ez) + (vw * ew));
 
@@ -1126,7 +1146,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
               energy_nodes_new[q] = std::max(energy_floor, energy_node + (dt * rhs_energy));
             }
 
-            if (momw_pressure_source_gain != 0.0) {
+            if (momw_pressure_source_gain_eff != 0.0) {
               for (int n = 0; n < n_modes; ++n) {
                 Real projected_pressure = 0.0;
                 for (int q = 0; q < tables.NumQuadrature(); ++q) {
@@ -1138,7 +1158,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                 // Two-fluid transverse momentum closure:
                 // d_t (rho v_w) includes -<phi_n, d_w p>_Z; evaluate by ID-3.
                 momw_pressure_rhs_modes[n] =
-                    -momw_pressure_source_gain * tables.ApplyID3Raising(pressure_modes, n);
+                    -momw_pressure_source_gain_eff * tables.ApplyID3Raising(pressure_modes, n);
               }
             } else {
               for (int n = 0; n < n_modes; ++n) {
@@ -1170,12 +1190,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
               plasma_new(base + kPlasmaMomX, k, j, i) = momx_modes_new[n];
               plasma_new(base + kPlasmaMomY, k, j, i) = momy_modes_new[n];
               plasma_new(base + kPlasmaMomZ, k, j, i) = momz_modes_new[n];
-              plasma_new(base + kPlasmaMomW, k, j, i) = momw_modes_new[n];
+              plasma_new(base + kPlasmaMomW, k, j, i) =
+                  hard_controlled_limit_active ? 0.0 : momw_modes_new[n];
               plasma_new(base + kPlasmaEnergy, k, j, i) = energy_modes_new[n];
             }
           }
 
-          if (w_flux_source_gain != 0.0) {
+          if (w_flux_source_gain_eff != 0.0) {
             // Optional two-fluid closure extension: apply projected w-flux couplings
             // to momentum/energy modes via the same leakage-style mode raising.
             for (int s = 0; s < kSpeciesCount; ++s) {
@@ -1259,14 +1280,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                     (n + 1 < n_modes) ? (-coupling * wflux_momw_modes[n + 1]) : 0.0;
                 const Real leak_energy =
                     (n + 1 < n_modes) ? (-coupling * wflux_energy_modes[n + 1]) : 0.0;
-                plasma_new(base + kPlasmaMomX, k, j, i) += dt * w_flux_source_gain * leak_momx;
-                plasma_new(base + kPlasmaMomY, k, j, i) += dt * w_flux_source_gain * leak_momy;
-                plasma_new(base + kPlasmaMomZ, k, j, i) += dt * w_flux_source_gain * leak_momz;
-                plasma_new(base + kPlasmaMomW, k, j, i) += dt * w_flux_source_gain * leak_momw;
+                plasma_new(base + kPlasmaMomX, k, j, i) += dt * w_flux_source_gain_eff * leak_momx;
+                plasma_new(base + kPlasmaMomY, k, j, i) += dt * w_flux_source_gain_eff * leak_momy;
+                plasma_new(base + kPlasmaMomZ, k, j, i) += dt * w_flux_source_gain_eff * leak_momz;
+                plasma_new(base + kPlasmaMomW, k, j, i) += dt * w_flux_source_gain_eff * leak_momw;
                 plasma_new(base + kPlasmaEnergy, k, j, i) = std::max(
                     energy_floor,
                     plasma_new(base + kPlasmaEnergy, k, j, i) +
-                        dt * w_flux_source_gain * leak_energy);
+                        dt * w_flux_source_gain_eff * leak_energy);
               }
             }
           }
@@ -1505,7 +1526,9 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
             const Real src_ax_current = -em_source_current_gain * (mu0 * jx_modes[n]);
             const Real src_ay_current = -em_source_current_gain * (mu0 * jy_modes[n]);
             const Real src_az_current = -em_source_current_gain * (mu0 * jz_modes[n]);
-            const Real src_aw_current = -em_source_current_gain * (mu0 * jw_modes[n]);
+            const Real src_aw_current =
+                hard_controlled_limit_active ? 0.0
+                                             : (-em_source_current_gain * (mu0 * jw_modes[n]));
 
             const Real src_a0_damping =
                 -em_source_damping_gain * (damping * pi_old(idx_a0, k, j, i));
@@ -1520,10 +1543,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
             const Real src_a0_gauge =
                 -em_source_gauge_gain * (c2 * gauge_residual);
 
-            const Real src_ax_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_x;
-            const Real src_ay_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_y;
-            const Real src_az_spatial_mixed = c2 * coupling_coeff * mixed_grad_aw_z;
-            const Real src_aw_spatial_mixed = -(c2 * mixed_div_a_next);
+            const Real src_ax_spatial_mixed =
+                hard_controlled_limit_active ? 0.0 : (c2 * coupling_coeff * mixed_grad_aw_x);
+            const Real src_ay_spatial_mixed =
+                hard_controlled_limit_active ? 0.0 : (c2 * coupling_coeff * mixed_grad_aw_y);
+            const Real src_az_spatial_mixed =
+                hard_controlled_limit_active ? 0.0 : (c2 * coupling_coeff * mixed_grad_aw_z);
+            const Real src_aw_spatial_mixed =
+                hard_controlled_limit_active ? 0.0 : (-(c2 * mixed_div_a_next));
             Real src_ay_w0_response = 0.0;
             if (response_w0_enable && (response_w0_bridge_gain != 0.0) &&
                 (n + 1 < n_modes)) {
@@ -1564,9 +1591,9 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
             }
 
             const Real rhs_a0_timelike_from_piw =
-                -em_source_timelike_gain * (c2 * coupling_coeff * mixed_dt_aw_prev);
+                -em_source_timelike_gain_eff * (c2 * coupling_coeff * mixed_dt_aw_prev);
             const Real rhs_aw_timelike_from_pi0 =
-                -em_source_timelike_gain * (c2 * coupling_raise * mixed_dt_a0_next);
+                -em_source_timelike_gain_eff * (c2 * coupling_raise * mixed_dt_a0_next);
 
             const Real rhs_a0 = src_a0_lap + src_a0_mass + src_a0_current +
                                 src_a0_damping + src_a0_geometry_shift +
@@ -1964,6 +1991,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                 a_old(idx_az, k, j, i) + (dt * (pi_new(idx_az, k, j, i) + mix_az));
             a_new(idx_aw, k, j, i) =
                 a_old(idx_aw, k, j, i) + (dt * (pi_new(idx_aw, k, j, i) + mix_aw));
+            if (hard_controlled_limit_active) {
+              // Hard controlled-limit clamp: keep mixed-sector potential/momentum off.
+              pi_new(idx_aw, k, j, i) = 0.0;
+              a_new(idx_aw, k, j, i) = 0.0;
+            }
           }
           const Real pi0_mode0_new = pi_new(pi0_mode0_idx, k, j, i);
           const Real pix_mode0_new = pi_new(pix_mode0_idx, k, j, i);
