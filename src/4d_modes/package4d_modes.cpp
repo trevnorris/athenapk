@@ -21,14 +21,23 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   }
 
   const int n_modes = pin->GetOrAddInteger("modes4d", "n_modes", 4);
-  const int n_quadrature =
+  const bool hard_controlled_limit_enable =
+      pin->GetOrAddBoolean("modes4d", "hard_controlled_limit_enable", false);
+  const bool hard_controlled_limit_identity_mode0 =
+      pin->GetOrAddBoolean("modes4d", "hard_controlled_limit_identity_mode0", true);
+  const int n_quadrature_input =
       pin->GetOrAddInteger("modes4d", "n_quadrature", std::max(n_modes, n_modes + 2));
+  const bool hard_controlled_identity_active =
+      hard_controlled_limit_enable && hard_controlled_limit_identity_mode0 && (n_modes == 1);
+  const int n_quadrature = hard_controlled_identity_active ? 1 : n_quadrature_input;
   const double lambda = pin->GetOrAddReal("modes4d", "lambda", 1.0);
   const double em_c_wave = pin->GetOrAddReal("modes4d", "em_c_wave", 1.0);
   const double em_damping = pin->GetOrAddReal("modes4d", "em_damping", 0.0);
   const double em_mu0 = pin->GetOrAddReal("modes4d", "em_mu0", 1.0);
   const double em_source_mass_gain =
       pin->GetOrAddReal("modes4d", "em_source_mass_gain", 1.0);
+  const double em_source_laplacian_gain =
+      pin->GetOrAddReal("modes4d", "em_source_laplacian_gain", 1.0);
   const double em_source_current_gain =
       pin->GetOrAddReal("modes4d", "em_source_current_gain", 1.0);
   const double em_source_damping_gain =
@@ -167,12 +176,14 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddBoolean("modes4d", "response_lambda_apply_mass", true);
   const bool em_conservative_transport =
       pin->GetOrAddBoolean("modes4d", "em_conservative_transport", false);
-  const bool hard_controlled_limit_enable =
-      pin->GetOrAddBoolean("modes4d", "hard_controlled_limit_enable", false);
   const std::string diag_projection_kernel =
       pin->GetOrAddString("modes4d", "diag_projection_kernel", "matched");
   const double diag_projection_sigma_factor =
       pin->GetOrAddReal("modes4d", "diag_projection_sigma_factor", 1.0);
+  const double mode_gram_diag_tol =
+      pin->GetOrAddReal("modes4d", "mode_gram_diag_tol", 5.0e-10);
+  const double mode_gram_offdiag_tol =
+      pin->GetOrAddReal("modes4d", "mode_gram_offdiag_tol", 5.0e-10);
   const double plasma_qom_ion = pin->GetOrAddReal("modes4d", "plasma_qom_ion", 1.0);
   const double plasma_qom_electron =
       pin->GetOrAddReal("modes4d", "plasma_qom_electron", -1.0);
@@ -228,6 +239,10 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                     "modes4d/plasma_pressure_transport_max_mode must be >= 0");
   PARTHENON_REQUIRE(diag_projection_sigma_factor > 0.0,
                     "modes4d/diag_projection_sigma_factor must be > 0");
+  PARTHENON_REQUIRE(mode_gram_diag_tol >= 0.0,
+                    "modes4d/mode_gram_diag_tol must be >= 0");
+  PARTHENON_REQUIRE(mode_gram_offdiag_tol >= 0.0,
+                    "modes4d/mode_gram_offdiag_tol must be >= 0");
   PARTHENON_REQUIRE(response_w0_max_abs >= 0.0,
                     "modes4d/response_w0_max_abs must be >= 0");
   PARTHENON_REQUIRE(response_w0_mass > 0.0,
@@ -261,6 +276,13 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   config.n_modes = n_modes;
   config.n_quadrature = n_quadrature;
   config.lambda = lambda;
+  config.identity_mode0 = hard_controlled_identity_active;
+
+  const ModeTables mode_tables(config);
+  PARTHENON_REQUIRE(mode_tables.GramDiagMaxAbsError() <= mode_gram_diag_tol,
+                    "modes4d discrete basis Gram diag error exceeds configured tolerance");
+  PARTHENON_REQUIRE(mode_tables.GramOffdiagMaxAbs() <= mode_gram_offdiag_tol,
+                    "modes4d discrete basis Gram offdiag error exceeds configured tolerance");
 
   pkg->AddParam<int>("n_modes", n_modes);
   pkg->AddParam<int>("n_quadrature", n_quadrature);
@@ -269,6 +291,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/damping", em_damping);
   pkg->AddParam<double>("em4d/mu0", em_mu0);
   pkg->AddParam<double>("em4d/source_mass_gain", em_source_mass_gain);
+  pkg->AddParam<double>("em4d/source_laplacian_gain", em_source_laplacian_gain);
   pkg->AddParam<double>("em4d/source_current_gain", em_source_current_gain);
   pkg->AddParam<double>("em4d/source_damping_gain", em_source_damping_gain);
   pkg->AddParam<double>("em4d/source_timelike_gain", em_source_timelike_gain);
@@ -374,8 +397,17 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<bool>("em4d/response_lambda_apply_mass", response_lambda_apply_mass);
   pkg->AddParam<bool>("em4d/use_conservative_transport", em_conservative_transport);
   pkg->AddParam<bool>("em4d/hard_controlled_limit_enable", hard_controlled_limit_enable);
+  pkg->AddParam<bool>("em4d/hard_controlled_limit_identity_mode0",
+                      hard_controlled_limit_identity_mode0);
   pkg->AddParam<std::string>("diag/projection_kernel", diag_projection_kernel);
   pkg->AddParam<double>("diag/projection_sigma_factor", diag_projection_sigma_factor);
+  pkg->AddParam<bool>("diag/mode_tables_identity_mode0", hard_controlled_identity_active);
+  pkg->AddParam<double>("diag/mode_gram_diag_tol", mode_gram_diag_tol);
+  pkg->AddParam<double>("diag/mode_gram_offdiag_tol", mode_gram_offdiag_tol);
+  pkg->AddParam<double>("diag/mode_gram_diag_max_abs_error",
+                        mode_tables.GramDiagMaxAbsError());
+  pkg->AddParam<double>("diag/mode_gram_offdiag_max_abs",
+                        mode_tables.GramOffdiagMaxAbs());
   pkg->AddParam<double>("plasma4d/qom_ion", plasma_qom_ion);
   pkg->AddParam<double>("plasma4d/qom_electron", plasma_qom_electron);
   pkg->AddParam<double>("plasma4d/gamma", plasma_gamma);
@@ -403,7 +435,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d_pulse/amplitude", pulse_amp);
   pkg->AddParam<double>("em4d_pulse/sigma", pulse_sigma);
   pkg->AddParam<double>("em4d_pulse/x0", pulse_x0);
-  pkg->AddParam<ModeTables>("mode_tables", ModeTables(config));
+  pkg->AddParam<ModeTables>("mode_tables", mode_tables);
 
   RegisterEMVariables(pkg.get(), n_modes, em_conservative_transport);
   RegisterPlasmaVariables(pkg.get(), n_modes);

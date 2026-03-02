@@ -136,11 +136,29 @@ ModeTables::ModeTables(ModeConfig config) : config_(config) {
   if (config_.n_modes <= 0) {
     throw std::invalid_argument("n_modes must be positive");
   }
-  if (config_.n_quadrature < config_.n_modes) {
-    throw std::invalid_argument("n_quadrature must be >= n_modes");
-  }
   if (config_.lambda <= 0.0) {
     throw std::invalid_argument("lambda must be positive");
+  }
+
+  if (config_.identity_mode0) {
+    if (config_.n_modes != 1) {
+      throw std::invalid_argument("identity_mode0 requires n_modes == 1");
+    }
+    // Hard controlled-limit identity basis:
+    // store mode-0 directly as the physical coefficient with no quadrature
+    // reconstruction/projection scaling.
+    config_.n_quadrature = 1;
+    nodes_ = {0.0};
+    weights_ = {1.0};
+    phi_ = {1.0};
+    dphi_ = {0.0};
+    mass_squared_ = {0.0};
+    ComputeGramErrors();
+    return;
+  }
+
+  if (config_.n_quadrature < config_.n_modes) {
+    throw std::invalid_argument("n_quadrature must be >= n_modes");
   }
 
   BuildGaussHermiteTables();
@@ -151,6 +169,8 @@ ModeTables::ModeTables(ModeConfig config) : config_(config) {
   for (int n = 0; n < config_.n_modes; ++n) {
     mass_squared_[n] = (2.0 * static_cast<double>(n)) / lambda_sq;
   }
+
+  ComputeGramErrors();
 }
 
 void ModeTables::BuildGaussHermiteTables() {
@@ -193,6 +213,26 @@ void ModeTables::BuildBasisTables() {
       } else {
         DPhiAt(n, q) = (std::sqrt(2.0 * static_cast<double>(n)) / config_.lambda) *
                        Phi(n - 1, q);
+      }
+    }
+  }
+}
+
+void ModeTables::ComputeGramErrors() {
+  gram_diag_max_abs_error_ = 0.0;
+  gram_offdiag_max_abs_ = 0.0;
+
+  for (int n = 0; n < config_.n_modes; ++n) {
+    for (int m = 0; m < config_.n_modes; ++m) {
+      double gram_nm = 0.0;
+      for (int q = 0; q < config_.n_quadrature; ++q) {
+        gram_nm += weights_[q] * Phi(n, q) * Phi(m, q);
+      }
+      if (n == m) {
+        gram_diag_max_abs_error_ =
+            std::max(gram_diag_max_abs_error_, std::abs(gram_nm - 1.0));
+      } else {
+        gram_offdiag_max_abs_ = std::max(gram_offdiag_max_abs_, std::abs(gram_nm));
       }
     }
   }

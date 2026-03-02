@@ -18,6 +18,14 @@ if(AthenaPK_ENABLE_4D_MODES_UNIT_TESTS)
       mode_transform.cpp
   )
   target_compile_features(modes4d_unit_tests PRIVATE cxx_std_17)
+
+  add_executable(modes4d_transform_audit
+      mode_tables_audit.cpp
+      mode_tables.cpp
+      mode_transform.cpp
+  )
+  target_compile_features(modes4d_transform_audit PRIVATE cxx_std_17)
+
   if(BUILD_TESTING)
     add_test(NAME modes4d_unit_tests COMMAND modes4d_unit_tests)
   endif()

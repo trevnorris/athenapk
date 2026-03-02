@@ -394,13 +394,20 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   const Real damping = modes_pkg->Param<double>("em4d/damping");
   const Real mu0 = modes_pkg->Param<double>("em4d/mu0");
   const Real em_source_mass_gain = modes_pkg->Param<double>("em4d/source_mass_gain");
+  const Real em_source_laplacian_gain =
+      modes_pkg->Param<double>("em4d/source_laplacian_gain");
   const Real em_source_current_gain = modes_pkg->Param<double>("em4d/source_current_gain");
   const Real em_source_damping_gain = modes_pkg->Param<double>("em4d/source_damping_gain");
   const Real em_source_timelike_gain = modes_pkg->Param<double>("em4d/source_timelike_gain");
   const Real em_source_gauge_gain = modes_pkg->Param<double>("em4d/source_gauge_gain");
   const Real em_source_mode0_even_bridge_gain =
       modes_pkg->Param<double>("em4d/source_mode0_even_bridge_gain");
-  const bool response_w0_enable = modes_pkg->Param<bool>("em4d/response_w0_enable");
+  const bool hard_controlled_limit_enable =
+      modes_pkg->Param<bool>("em4d/hard_controlled_limit_enable");
+  const bool hard_controlled_limit_active =
+      hard_controlled_limit_enable && (n_modes == 1);
+  const bool response_w0_enable =
+      !hard_controlled_limit_active && modes_pkg->Param<bool>("em4d/response_w0_enable");
   const Real response_w0_drive_gain = modes_pkg->Param<double>("em4d/response_w0_drive_gain");
   const Real response_w0_drive_from_bridge_gain =
       modes_pkg->Param<double>("em4d/response_w0_drive_from_bridge_gain");
@@ -479,7 +486,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   const Real response_w0_local_mode2_omega =
       modes_pkg->Param<double>("em4d/response_w0_local_mode2_omega");
   const bool response_lambda_enable =
-      modes_pkg->Param<bool>("em4d/response_lambda_enable");
+      !hard_controlled_limit_active && modes_pkg->Param<bool>("em4d/response_lambda_enable");
   const bool response_lambda_dynamic_mixing_enable =
       modes_pkg->Param<bool>("em4d/response_lambda_dynamic_mixing_enable");
   const Real response_lambda_dynamic_mixing_gain =
@@ -518,10 +525,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->Param<bool>("em4d/response_lambda_apply_mass");
   const bool use_conservative_transport =
       modes_pkg->Param<bool>("em4d/use_conservative_transport");
-  const bool hard_controlled_limit_enable =
-      modes_pkg->Param<bool>("em4d/hard_controlled_limit_enable");
-  const bool hard_controlled_limit_active =
-      hard_controlled_limit_enable && (n_modes == 1);
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
   const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
   const Real force_source_gain = modes_pkg->Param<double>("plasma4d/force_source_gain");
@@ -1462,11 +1465,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
             const Real lap_aw = use_conservative_transport
                                     ? 0.0
                                     : (c2 * laplacian(a_old, idx_aw, k, j, i));
-            const Real src_a0_lap = lap_a0;
-            const Real src_ax_lap = lap_ax;
-            const Real src_ay_lap = lap_ay;
-            const Real src_az_lap = lap_az;
-            const Real src_aw_lap = lap_aw;
+            const Real src_a0_lap = em_source_laplacian_gain * lap_a0;
+            const Real src_ax_lap = em_source_laplacian_gain * lap_ax;
+            const Real src_ay_lap = em_source_laplacian_gain * lap_ay;
+            const Real src_az_lap = em_source_laplacian_gain * lap_az;
+            const Real src_aw_lap = em_source_laplacian_gain * lap_aw;
 
             const Real mass_squared_eff = mass_squared[n] * response_w0_lambda_mass_scale;
             const Real src_a0_mass =

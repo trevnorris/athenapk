@@ -9,6 +9,7 @@ struct ModeConfig {
   int n_modes = 1;
   int n_quadrature = 1;
   double lambda = 1.0;
+  bool identity_mode0 = false;
 };
 
 class ModeTables {
@@ -22,6 +23,8 @@ class ModeTables {
   const std::vector<double> &Nodes() const { return nodes_; }
   const std::vector<double> &Weights() const { return weights_; }
   const std::vector<double> &MassSquared() const { return mass_squared_; }
+  double GramDiagMaxAbsError() const { return gram_diag_max_abs_error_; }
+  double GramOffdiagMaxAbs() const { return gram_offdiag_max_abs_; }
 
   double Phi(int n, int q) const;
   double DPhi(int n, int q) const;
@@ -43,9 +46,12 @@ class ModeTables {
   std::vector<double> phi_;
   std::vector<double> dphi_;
   std::vector<double> mass_squared_;
+  double gram_diag_max_abs_error_ = 0.0;
+  double gram_offdiag_max_abs_ = 0.0;
 
   void BuildGaussHermiteTables();
   void BuildBasisTables();
+  void ComputeGramErrors();
 
   double &PhiAt(int n, int q);
   double &DPhiAt(int n, int q);

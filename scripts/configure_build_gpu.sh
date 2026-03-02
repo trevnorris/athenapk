@@ -121,6 +121,8 @@ if [[ "${RUN_CONFIGURE}" -eq 1 ]]; then
       -DPARTHENON_DISABLE_MPI="${PARTHENON_DISABLE_MPI}" \
       -DCMAKE_CXX_COMPILER="${NVCC_WRAPPER}" \
       -DKokkos_ENABLE_CUDA=ON \
+      -DKokkos_ARCH_AMPERE86=OFF \
+      -DKokkos_ARCH_ADA89=OFF \
       -DKokkos_ARCH_${KOKKOS_ARCH}=ON
 fi
 
