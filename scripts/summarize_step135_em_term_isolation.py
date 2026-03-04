@@ -56,9 +56,38 @@ def last(cols, name, default=math.nan):
 
 
 def safe_ratio(a: float, b: float) -> float:
-    if not math.isfinite(a) or not math.isfinite(b) or b == 0.0:
-        return math.nan
-    return a / b
+  if not math.isfinite(a) or not math.isfinite(b) or b == 0.0:
+    return math.nan
+  return a / b
+
+
+def blank_row(case_name: str, status: str, rc: float, notes: str):
+  return {
+      "case": case_name,
+      "status": status,
+      "exit_code": rc,
+      "final_psi0_span": math.nan,
+      "final_psi_proj_span": math.nan,
+      "final_psi_w0_span": math.nan,
+      "em_u_bulk_initial": math.nan,
+      "em_u_bulk_final": math.nan,
+      "em_u_bulk_growth": math.nan,
+      "em_u_bulk_max": math.nan,
+      "final_rhs_a0_lap": math.nan,
+      "final_rhs_a0_mass": math.nan,
+      "final_rhs_a0_damping": math.nan,
+      "final_rhs_a0_gauge": math.nan,
+      "final_rhs_a0_total": math.nan,
+      "final_rhs_ay_lap": math.nan,
+      "final_rhs_ay_damping": math.nan,
+      "final_rhs_ay_total": math.nan,
+      "final_src_em_laplacian_abs": math.nan,
+      "final_src_em_mass_abs": math.nan,
+      "final_src_em_current_abs": math.nan,
+      "final_src_em_damping_abs": math.nan,
+      "final_src_em_gauge_abs": math.nan,
+      "notes": notes,
+  }
 
 
 def main():
@@ -85,28 +114,7 @@ def main():
 
         hst = latest_hst(case_dir)
         if hst is None:
-            rows.append(
-                {
-                    "case": case_dir.name,
-                    "status": "FAIL_NO_HST",
-                    "exit_code": rc,
-                    "final_psi0_span": math.nan,
-                    "final_psi_proj_span": math.nan,
-                    "final_psi_w0_span": math.nan,
-                    "em_u_bulk_initial": math.nan,
-                    "em_u_bulk_final": math.nan,
-                    "em_u_bulk_growth": math.nan,
-                    "em_u_bulk_max": math.nan,
-                    "final_rhs_a0_mass": math.nan,
-                    "final_rhs_a0_damping": math.nan,
-                    "final_rhs_a0_gauge": math.nan,
-                    "final_rhs_a0_total": math.nan,
-                    "final_src_em_mass_abs": math.nan,
-                    "final_src_em_damping_abs": math.nan,
-                    "final_src_em_gauge_abs": math.nan,
-                    "notes": "missing history file",
-                }
-            )
+            rows.append(blank_row(case_dir.name, "FAIL_NO_HST", rc, "missing history file"))
             continue
 
         try:
@@ -123,39 +131,24 @@ def main():
                 "em_u_bulk_final": em[-1] if em else math.nan,
                 "em_u_bulk_growth": safe_ratio(em[-1], em[0]) if em else math.nan,
                 "em_u_bulk_max": max((abs(v) for v in em), default=math.nan),
+                "final_rhs_a0_lap": last(cols, "m4d_int_rhs_a0_mode0_lap"),
                 "final_rhs_a0_mass": last(cols, "m4d_int_rhs_a0_mode0_mass"),
                 "final_rhs_a0_damping": last(cols, "m4d_int_rhs_a0_mode0_damping"),
                 "final_rhs_a0_gauge": last(cols, "m4d_int_rhs_a0_mode0_gauge"),
                 "final_rhs_a0_total": last(cols, "m4d_int_rhs_a0_mode0_total"),
+                "final_rhs_ay_lap": last(cols, "m4d_int_rhs_ay_mode0_lap"),
+                "final_rhs_ay_damping": last(cols, "m4d_int_rhs_ay_mode0_damping"),
+                "final_rhs_ay_total": last(cols, "m4d_int_rhs_ay_mode0_total"),
+                "final_src_em_laplacian_abs": last(cols, "m4d_int_src_em_laplacian_abs"),
                 "final_src_em_mass_abs": last(cols, "m4d_int_src_em_mass_abs"),
+                "final_src_em_current_abs": last(cols, "m4d_int_src_em_current_abs"),
                 "final_src_em_damping_abs": last(cols, "m4d_int_src_em_damping_abs"),
                 "final_src_em_gauge_abs": last(cols, "m4d_int_src_em_gauge_abs"),
                 "notes": "",
             }
             rows.append(row)
         except Exception as exc:
-            rows.append(
-                {
-                    "case": case_dir.name,
-                    "status": "FAIL_PARSE",
-                    "exit_code": rc,
-                    "final_psi0_span": math.nan,
-                    "final_psi_proj_span": math.nan,
-                    "final_psi_w0_span": math.nan,
-                    "em_u_bulk_initial": math.nan,
-                    "em_u_bulk_final": math.nan,
-                    "em_u_bulk_growth": math.nan,
-                    "em_u_bulk_max": math.nan,
-                    "final_rhs_a0_mass": math.nan,
-                    "final_rhs_a0_damping": math.nan,
-                    "final_rhs_a0_gauge": math.nan,
-                    "final_rhs_a0_total": math.nan,
-                    "final_src_em_mass_abs": math.nan,
-                    "final_src_em_damping_abs": math.nan,
-                    "final_src_em_gauge_abs": math.nan,
-                    "notes": str(exc),
-                }
-            )
+            rows.append(blank_row(case_dir.name, "FAIL_PARSE", rc, str(exc)))
 
     rows.sort(key=lambda r: r["case"])
     baseline = next((r for r in rows if r["case"] == args.baseline_case), None)
@@ -178,11 +171,17 @@ def main():
         "em_u_bulk_final",
         "em_u_bulk_growth",
         "em_u_bulk_max",
+        "final_rhs_a0_lap",
         "final_rhs_a0_mass",
         "final_rhs_a0_damping",
         "final_rhs_a0_gauge",
         "final_rhs_a0_total",
+        "final_rhs_ay_lap",
+        "final_rhs_ay_damping",
+        "final_rhs_ay_total",
+        "final_src_em_laplacian_abs",
         "final_src_em_mass_abs",
+        "final_src_em_current_abs",
         "final_src_em_damping_abs",
         "final_src_em_gauge_abs",
         "emmax_vs_baseline",
@@ -202,19 +201,27 @@ def main():
         f"- cases: `{len(rows)}`",
         f"- baseline_case: `{args.baseline_case}`",
         "",
-        "| case | status | final psi0 | em_u_bulk growth | em_u_bulk max | rhs_a0(mass/damp/gauge/total) | emmax vs baseline |",
-        "|---|---|---:|---:|---:|---:|---:|",
+        "| case | status | final psi0 | em_u_bulk growth | em_u_bulk max | src_lap_abs | rhs_ay(lap/damp/total) | rhs_a0(lap/mass/damp/gauge/total) | emmax vs baseline |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for r in rows:
-        rhs = (
+        rhs_a0 = (
+            f"{r['final_rhs_a0_lap']:.3e}/"
             f"{r['final_rhs_a0_mass']:.3e}/"
             f"{r['final_rhs_a0_damping']:.3e}/"
             f"{r['final_rhs_a0_gauge']:.3e}/"
             f"{r['final_rhs_a0_total']:.3e}"
         )
+        rhs_ay = (
+            f"{r['final_rhs_ay_lap']:.3e}/"
+            f"{r['final_rhs_ay_damping']:.3e}/"
+            f"{r['final_rhs_ay_total']:.3e}"
+        )
         lines.append(
             f"| {r['case']} | {r['status']} | {r['final_psi0_span']:.6e} | "
-            f"{r['em_u_bulk_growth']:.6e} | {r['em_u_bulk_max']:.6e} | {rhs} | "
+            f"{r['em_u_bulk_growth']:.6e} | {r['em_u_bulk_max']:.6e} | "
+            f"{r['final_src_em_laplacian_abs']:.6e} | "
+            f"{rhs_ay} | {rhs_a0} | "
             f"{r['emmax_vs_baseline']:.6e} |"
         )
     out_md.write_text("\n".join(lines) + "\n", encoding="utf-8")

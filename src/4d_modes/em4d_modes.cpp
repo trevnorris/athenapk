@@ -404,8 +404,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->Param<double>("em4d/source_mode0_even_bridge_gain");
   const bool hard_controlled_limit_enable =
       modes_pkg->Param<bool>("em4d/hard_controlled_limit_enable");
+  const bool hard_controlled_limit_strict_solver_path =
+      modes_pkg->Param<bool>("em4d/hard_controlled_limit_strict_solver_path");
   const bool hard_controlled_limit_active =
       hard_controlled_limit_enable && (n_modes == 1);
+  const bool hard_controlled_limit_strict_active =
+      hard_controlled_limit_active && hard_controlled_limit_strict_solver_path;
   const bool response_w0_enable =
       !hard_controlled_limit_active && modes_pkg->Param<bool>("em4d/response_w0_enable");
   const Real response_w0_drive_gain = modes_pkg->Param<double>("em4d/response_w0_drive_gain");
@@ -524,7 +528,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   const bool response_lambda_apply_mass =
       modes_pkg->Param<bool>("em4d/response_lambda_apply_mass");
   const bool use_conservative_transport =
-      modes_pkg->Param<bool>("em4d/use_conservative_transport");
+      modes_pkg->Param<bool>("em4d/use_conservative_transport") ||
+      hard_controlled_limit_strict_active;
   const Real qom_ion = modes_pkg->Param<double>("plasma4d/qom_ion");
   const Real qom_electron = modes_pkg->Param<double>("plasma4d/qom_electron");
   const Real force_source_gain = modes_pkg->Param<double>("plasma4d/force_source_gain");

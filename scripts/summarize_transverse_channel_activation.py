@@ -51,18 +51,22 @@ def parse_arg_from_log(log_path: Path, key: str) -> float:
         return math.nan
     pattern = re.compile(rf"{re.escape(key)}=([^\s,]+)")
     try:
-        with log_path.open("r", encoding="utf-8", errors="ignore") as f:
-            for _ in range(24):
-                line = f.readline()
-                if not line:
-                    break
-                m = pattern.search(line)
-                if m is not None:
-                    try:
-                        return float(m.group(1))
-                    except ValueError:
-                        return math.nan
+        text = log_path.read_text(encoding="utf-8", errors="ignore")
     except OSError:
+        return math.nan
+    matches = list(pattern.finditer(text))
+    if not matches:
+        return math.nan
+    # Use the last match so explicit per-case overrides take precedence.
+    raw = matches[-1].group(1)
+    low = raw.strip().lower()
+    if low in {"true", "on", "yes"}:
+        return 1.0
+    if low in {"false", "off", "no"}:
+        return 0.0
+    try:
+        return float(raw)
+    except ValueError:
         return math.nan
     return math.nan
 

@@ -154,6 +154,7 @@ ModeTables::ModeTables(ModeConfig config) : config_(config) {
     dphi_ = {0.0};
     mass_squared_ = {0.0};
     ComputeGramErrors();
+    BuildGramAndInverse();
     return;
   }
 
@@ -171,6 +172,7 @@ ModeTables::ModeTables(ModeConfig config) : config_(config) {
   }
 
   ComputeGramErrors();
+  BuildGramAndInverse();
 }
 
 void ModeTables::BuildGaussHermiteTables() {
@@ -238,6 +240,80 @@ void ModeTables::ComputeGramErrors() {
   }
 }
 
+void ModeTables::BuildGramAndInverse() {
+  const int n_modes = config_.n_modes;
+  gram_.assign(n_modes * n_modes, 0.0);
+
+  for (int n = 0; n < n_modes; ++n) {
+    for (int m = 0; m < n_modes; ++m) {
+      double gram_nm = 0.0;
+      for (int q = 0; q < config_.n_quadrature; ++q) {
+        gram_nm += weights_[q] * Phi(n, q) * Phi(m, q);
+      }
+      gram_[n * n_modes + m] = gram_nm;
+    }
+  }
+
+  if (!config_.mass_matrix_projection) {
+    gram_inv_.clear();
+    gram_inv_valid_ = false;
+    return;
+  }
+
+  // Gauss-Jordan inverse for dense small matrix.
+  std::vector<double> a = gram_;
+  gram_inv_.assign(n_modes * n_modes, 0.0);
+  for (int i = 0; i < n_modes; ++i) {
+    gram_inv_[i * n_modes + i] = 1.0;
+  }
+
+  constexpr double kPivotTol = 1.0e-14;
+  for (int col = 0; col < n_modes; ++col) {
+    int pivot_row = col;
+    double pivot_abs = std::abs(a[col * n_modes + col]);
+    for (int r = col + 1; r < n_modes; ++r) {
+      const double cand_abs = std::abs(a[r * n_modes + col]);
+      if (cand_abs > pivot_abs) {
+        pivot_abs = cand_abs;
+        pivot_row = r;
+      }
+    }
+
+    if (pivot_abs < kPivotTol) {
+      throw std::runtime_error("ModeTables Gram matrix is singular in mass-matrix projection");
+    }
+
+    if (pivot_row != col) {
+      for (int c = 0; c < n_modes; ++c) {
+        std::swap(a[col * n_modes + c], a[pivot_row * n_modes + c]);
+        std::swap(gram_inv_[col * n_modes + c], gram_inv_[pivot_row * n_modes + c]);
+      }
+    }
+
+    const double pivot = a[col * n_modes + col];
+    for (int c = 0; c < n_modes; ++c) {
+      a[col * n_modes + c] /= pivot;
+      gram_inv_[col * n_modes + c] /= pivot;
+    }
+
+    for (int r = 0; r < n_modes; ++r) {
+      if (r == col) {
+        continue;
+      }
+      const double factor = a[r * n_modes + col];
+      if (factor == 0.0) {
+        continue;
+      }
+      for (int c = 0; c < n_modes; ++c) {
+        a[r * n_modes + c] -= factor * a[col * n_modes + c];
+        gram_inv_[r * n_modes + c] -= factor * gram_inv_[col * n_modes + c];
+      }
+    }
+  }
+
+  gram_inv_valid_ = true;
+}
+
 double ModeTables::Phi(const int n, const int q) const {
   if (n < 0 || n >= config_.n_modes) {
     throw std::out_of_range("mode index n out of range in Phi(n,q)");
@@ -289,7 +365,20 @@ std::vector<double> ModeTables::NodesToModes(
     }
     mode_values[n] = value;
   }
-  return mode_values;
+
+  if (!config_.mass_matrix_projection || !gram_inv_valid_) {
+    return mode_values;
+  }
+
+  std::vector<double> corrected(config_.n_modes, 0.0);
+  for (int n = 0; n < config_.n_modes; ++n) {
+    double value = 0.0;
+    for (int m = 0; m < config_.n_modes; ++m) {
+      value += gram_inv_[n * config_.n_modes + m] * mode_values[m];
+    }
+    corrected[n] = value;
+  }
+  return corrected;
 }
 
 double ModeTables::ApplyID3Raising(const std::vector<double> &mode_values,

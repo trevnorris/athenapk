@@ -25,10 +25,17 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddBoolean("modes4d", "hard_controlled_limit_enable", false);
   const bool hard_controlled_limit_identity_mode0 =
       pin->GetOrAddBoolean("modes4d", "hard_controlled_limit_identity_mode0", true);
+  const bool hard_controlled_limit_strict_solver_path =
+      pin->GetOrAddBoolean("modes4d", "hard_controlled_limit_strict_solver_path", true);
+  const bool hard_controlled_limit_active =
+      hard_controlled_limit_enable && (n_modes == 1);
+  const bool hard_controlled_limit_strict_active =
+      hard_controlled_limit_active && hard_controlled_limit_strict_solver_path;
   const int n_quadrature_input =
       pin->GetOrAddInteger("modes4d", "n_quadrature", std::max(n_modes, n_modes + 2));
   const bool hard_controlled_identity_active =
-      hard_controlled_limit_enable && hard_controlled_limit_identity_mode0 && (n_modes == 1);
+      hard_controlled_limit_active &&
+      (hard_controlled_limit_identity_mode0 || hard_controlled_limit_strict_active);
   const int n_quadrature = hard_controlled_identity_active ? 1 : n_quadrature_input;
   const double lambda = pin->GetOrAddReal("modes4d", "lambda", 1.0);
   const double em_c_wave = pin->GetOrAddReal("modes4d", "em_c_wave", 1.0);
@@ -174,8 +181,14 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "response_lambda_max_abs_frac", 0.5);
   const bool response_lambda_apply_mass =
       pin->GetOrAddBoolean("modes4d", "response_lambda_apply_mass", true);
-  const bool em_conservative_transport =
+  const bool em_conservative_transport_input =
       pin->GetOrAddBoolean("modes4d", "em_conservative_transport", false);
+  // Strict controlled-limit path:
+  // For Nw=1 controlled runs, force conservative EM transport so we bypass the
+  // explicit source-Laplacian update channel that is known to destabilize
+  // controlled-vacuum long horizons.
+  const bool em_conservative_transport =
+      em_conservative_transport_input || hard_controlled_limit_strict_active;
   const std::string diag_projection_kernel =
       pin->GetOrAddString("modes4d", "diag_projection_kernel", "matched");
   const double diag_projection_sigma_factor =
@@ -184,6 +197,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "mode_gram_diag_tol", 5.0e-10);
   const double mode_gram_offdiag_tol =
       pin->GetOrAddReal("modes4d", "mode_gram_offdiag_tol", 5.0e-10);
+  const bool mass_matrix_projection_enable =
+      pin->GetOrAddBoolean("modes4d", "mass_matrix_projection_enable", false);
   const double plasma_qom_ion = pin->GetOrAddReal("modes4d", "plasma_qom_ion", 1.0);
   const double plasma_qom_electron =
       pin->GetOrAddReal("modes4d", "plasma_qom_electron", -1.0);
@@ -277,6 +292,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   config.n_quadrature = n_quadrature;
   config.lambda = lambda;
   config.identity_mode0 = hard_controlled_identity_active;
+  config.mass_matrix_projection = mass_matrix_projection_enable;
 
   const ModeTables mode_tables(config);
   PARTHENON_REQUIRE(mode_tables.GramDiagMaxAbsError() <= mode_gram_diag_tol,
@@ -287,6 +303,7 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<int>("n_modes", n_modes);
   pkg->AddParam<int>("n_quadrature", n_quadrature);
   pkg->AddParam<double>("lambda", lambda);
+  pkg->AddParam<bool>("mass_matrix_projection_enable", mass_matrix_projection_enable);
   pkg->AddParam<double>("em4d/c_wave", em_c_wave);
   pkg->AddParam<double>("em4d/damping", em_damping);
   pkg->AddParam<double>("em4d/mu0", em_mu0);
@@ -399,6 +416,15 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<bool>("em4d/hard_controlled_limit_enable", hard_controlled_limit_enable);
   pkg->AddParam<bool>("em4d/hard_controlled_limit_identity_mode0",
                       hard_controlled_limit_identity_mode0);
+  pkg->AddParam<bool>("em4d/hard_controlled_limit_strict_solver_path",
+                      hard_controlled_limit_strict_solver_path);
+  pkg->AddParam<bool>("diag/hard_controlled_limit_active", hard_controlled_limit_active);
+  pkg->AddParam<bool>("diag/hard_controlled_limit_strict_active",
+                      hard_controlled_limit_strict_active);
+  pkg->AddParam<bool>("diag/em_conservative_transport_input",
+                      em_conservative_transport_input);
+  pkg->AddParam<bool>("diag/em_conservative_transport_effective",
+                      em_conservative_transport);
   pkg->AddParam<std::string>("diag/projection_kernel", diag_projection_kernel);
   pkg->AddParam<double>("diag/projection_sigma_factor", diag_projection_sigma_factor);
   pkg->AddParam<bool>("diag/mode_tables_identity_mode0", hard_controlled_identity_active);
