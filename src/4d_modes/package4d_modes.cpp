@@ -47,6 +47,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "em_source_laplacian_gain", 1.0);
   const double em_source_current_gain =
       pin->GetOrAddReal("modes4d", "em_source_current_gain", 1.0);
+  const bool continuity_consistent_current_projection_enable = pin->GetOrAddBoolean(
+      "modes4d", "continuity_consistent_current_projection_enable", false);
   const double em_source_damping_gain =
       pin->GetOrAddReal("modes4d", "em_source_damping_gain", 1.0);
   const double em_source_timelike_gain =
@@ -310,6 +312,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/source_mass_gain", em_source_mass_gain);
   pkg->AddParam<double>("em4d/source_laplacian_gain", em_source_laplacian_gain);
   pkg->AddParam<double>("em4d/source_current_gain", em_source_current_gain);
+  pkg->AddParam<bool>("em4d/continuity_consistent_current_projection_enable",
+                      continuity_consistent_current_projection_enable);
   pkg->AddParam<double>("em4d/source_damping_gain", em_source_damping_gain);
   pkg->AddParam<double>("em4d/source_timelike_gain", em_source_timelike_gain);
   pkg->AddParam<double>("em4d/source_gauge_gain", em_source_gauge_gain);

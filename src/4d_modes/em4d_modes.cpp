@@ -397,6 +397,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   const Real em_source_laplacian_gain =
       modes_pkg->Param<double>("em4d/source_laplacian_gain");
   const Real em_source_current_gain = modes_pkg->Param<double>("em4d/source_current_gain");
+  const bool continuity_consistent_current_projection_enable =
+      modes_pkg->Param<bool>("em4d/continuity_consistent_current_projection_enable");
   const Real em_source_damping_gain = modes_pkg->Param<double>("em4d/source_damping_gain");
   const Real em_source_timelike_gain = modes_pkg->Param<double>("em4d/source_timelike_gain");
   const Real em_source_gauge_gain = modes_pkg->Param<double>("em4d/source_gauge_gain");
@@ -1357,6 +1359,19 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
             jy_modes[n] = (qom_ion * momy_ion) + (qom_electron * momy_electron);
             jz_modes[n] = (qom_ion * momz_ion) + (qom_electron * momz_electron);
             jw_modes[n] = (qom_ion * momw_ion) + (qom_electron * momw_electron);
+          }
+
+          if (continuity_consistent_current_projection_enable) {
+            // Optional diagnostic path: project j0 onto the source-step
+            // continuity relation using charge at the beginning of the step.
+            for (int n = 0; n < n_modes; ++n) {
+              const Real coupling =
+                  (n + 1 < n_modes)
+                      ? (std::sqrt(2.0 * static_cast<Real>(n + 1)) / response_w0_lambda)
+                      : 0.0;
+              const Real jw_np1 = (n + 1 < n_modes) ? jw_modes[n + 1] : 0.0;
+              j0_modes[n] = charge_modes_old[n] - (dt * coupling * jw_np1);
+            }
           }
 
           for (int n = 0; n < n_modes; ++n) {
