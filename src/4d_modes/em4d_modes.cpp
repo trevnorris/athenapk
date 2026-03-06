@@ -681,10 +681,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_srcmomw_mode0_step = 0.0;
   Real diag_srcenergy_mode0_step = 0.0;
   Real diag_srcpi0_mode0_step = 0.0;
+  Real diag_srcpi0_mode0_rhs_step = 0.0;
+  Real diag_srcpi0_mode0_mix_step = 0.0;
   Real diag_srcpix_mode0_step = 0.0;
   Real diag_srcpiy_mode0_step = 0.0;
+  Real diag_srcpiy_mode0_rhs_step = 0.0;
+  Real diag_srcpiy_mode0_mix_step = 0.0;
   Real diag_srcpiz_mode0_step = 0.0;
   Real diag_srcpiw_mode0_step = 0.0;
+  Real diag_srcpiw_mode0_rhs_step = 0.0;
+  Real diag_srcpiw_mode0_mix_step = 0.0;
   Real diag_src_timelike_a0_from_piw_step = 0.0;
   Real diag_src_timelike_a0_from_piw_abs_step = 0.0;
   Real diag_src_timelike_aw_from_pi0_step = 0.0;
@@ -1692,6 +1698,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                   dt * cell_volume * rhs_a0_timelike_from_piw;
               diag_rhs_a0_mode0_gauge_step += dt * cell_volume * src_a0_gauge;
               diag_rhs_a0_mode0_total_step += dt * cell_volume * rhs_a0;
+              diag_srcpi0_mode0_rhs_step += dt * cell_volume * rhs_a0;
               diag_rhs_ay_mode0_lap_step += dt * cell_volume * src_ay_lap;
               diag_rhs_ay_mode0_mass_step += dt * cell_volume * src_ay_mass;
               diag_rhs_ay_mode0_current_step += dt * cell_volume * src_ay_current;
@@ -1731,6 +1738,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
               diag_geometry_shift_power_mode0_abs_step +=
                   dt * cell_volume * std::abs(geometry_shift_power_mode0);
               diag_rhs_ay_mode0_total_step += dt * cell_volume * rhs_ay;
+              diag_srcpiy_mode0_rhs_step += dt * cell_volume * rhs_ay;
               diag_rhs_aw_mode0_lap_step += dt * cell_volume * src_aw_lap;
               diag_rhs_aw_mode0_current_step += dt * cell_volume * src_aw_current;
               diag_rhs_aw_mode0_damping_step += dt * cell_volume * src_aw_damping;
@@ -1739,6 +1747,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
               diag_rhs_aw_mode0_timelike_step +=
                   dt * cell_volume * rhs_aw_timelike_from_pi0;
               diag_rhs_aw_mode0_total_step += dt * cell_volume * rhs_aw;
+              diag_srcpiw_mode0_rhs_step += dt * cell_volume * rhs_aw;
             }
             if (n == 2) {
               diag_rhs_aw_mode2_even_bridge_step +=
@@ -1996,6 +2005,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                      std::abs(mix_lambda_piy) + std::abs(mix_lambda_piz) +
                      std::abs(mix_lambda_piw));
               }
+            }
+            if (n == 0) {
+              diag_srcpi0_mode0_mix_step += dt * cell_volume * mix_pi0;
+              diag_srcpiy_mode0_mix_step += dt * cell_volume * mix_piy;
+              diag_srcpiw_mode0_mix_step += dt * cell_volume * mix_piw;
             }
 
             pi_new(idx_a0, k, j, i) = pi_old(idx_a0, k, j, i) + (dt * (rhs_a0 + mix_pi0));
@@ -2296,10 +2310,22 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   auto *diag_srcenergy_mode0 =
       modes_pkg->MutableParam<double>("diag/int_srcenergy_mode0");
   auto *diag_srcpi0_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpi0_mode0");
+  auto *diag_srcpi0_mode0_rhs =
+      modes_pkg->MutableParam<double>("diag/int_srcpi0_mode0_rhs");
+  auto *diag_srcpi0_mode0_mix =
+      modes_pkg->MutableParam<double>("diag/int_srcpi0_mode0_mix");
   auto *diag_srcpix_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpix_mode0");
   auto *diag_srcpiy_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiy_mode0");
+  auto *diag_srcpiy_mode0_rhs =
+      modes_pkg->MutableParam<double>("diag/int_srcpiy_mode0_rhs");
+  auto *diag_srcpiy_mode0_mix =
+      modes_pkg->MutableParam<double>("diag/int_srcpiy_mode0_mix");
   auto *diag_srcpiz_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiz_mode0");
   auto *diag_srcpiw_mode0 = modes_pkg->MutableParam<double>("diag/int_srcpiw_mode0");
+  auto *diag_srcpiw_mode0_rhs =
+      modes_pkg->MutableParam<double>("diag/int_srcpiw_mode0_rhs");
+  auto *diag_srcpiw_mode0_mix =
+      modes_pkg->MutableParam<double>("diag/int_srcpiw_mode0_mix");
   auto *diag_src_timelike_a0_from_piw =
       modes_pkg->MutableParam<double>("diag/int_src_timelike_a0_from_piw");
   auto *diag_src_timelike_a0_from_piw_abs =
@@ -2518,10 +2544,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   *diag_srcmomw_mode0 += diag_srcmomw_mode0_step;
   *diag_srcenergy_mode0 += diag_srcenergy_mode0_step;
   *diag_srcpi0_mode0 += diag_srcpi0_mode0_step;
+  *diag_srcpi0_mode0_rhs += diag_srcpi0_mode0_rhs_step;
+  *diag_srcpi0_mode0_mix += diag_srcpi0_mode0_mix_step;
   *diag_srcpix_mode0 += diag_srcpix_mode0_step;
   *diag_srcpiy_mode0 += diag_srcpiy_mode0_step;
+  *diag_srcpiy_mode0_rhs += diag_srcpiy_mode0_rhs_step;
+  *diag_srcpiy_mode0_mix += diag_srcpiy_mode0_mix_step;
   *diag_srcpiz_mode0 += diag_srcpiz_mode0_step;
   *diag_srcpiw_mode0 += diag_srcpiw_mode0_step;
+  *diag_srcpiw_mode0_rhs += diag_srcpiw_mode0_rhs_step;
+  *diag_srcpiw_mode0_mix += diag_srcpiw_mode0_mix_step;
   *diag_src_timelike_a0_from_piw += diag_src_timelike_a0_from_piw_step;
   *diag_src_timelike_a0_from_piw_abs += diag_src_timelike_a0_from_piw_abs_step;
   *diag_src_timelike_aw_from_pi0 += diag_src_timelike_aw_from_pi0_step;

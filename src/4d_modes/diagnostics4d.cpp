@@ -214,6 +214,16 @@ Real SrcPi0Mode0AccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_srcpi0_mode0");
 }
 
+Real SrcPi0Mode0RhsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpi0_mode0_rhs");
+}
+
+Real SrcPi0Mode0MixAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpi0_mode0_mix");
+}
+
 Real SrcPixMode0AccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_srcpix_mode0");
@@ -224,6 +234,16 @@ Real SrcPiyMode0AccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_srcpiy_mode0");
 }
 
+Real SrcPiyMode0RhsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpiy_mode0_rhs");
+}
+
+Real SrcPiyMode0MixAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpiy_mode0_mix");
+}
+
 Real SrcPizMode0AccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_srcpiz_mode0");
@@ -232,6 +252,16 @@ Real SrcPizMode0AccumulatorHst(MeshData<Real> *md) {
 Real SrcPiwMode0AccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_srcpiw_mode0");
+}
+
+Real SrcPiwMode0RhsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpiw_mode0_rhs");
+}
+
+Real SrcPiwMode0MixAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_srcpiw_mode0_mix");
 }
 
 Real SrcTimelikeA0FromPiwAccumulatorHst(MeshData<Real> *md) {
@@ -2680,10 +2710,16 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_srcmomw_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcenergy_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcpi0_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpi0_mode0_rhs", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpi0_mode0_mix", 0.0, true);
   pkg->AddParam<double>("diag/int_srcpix_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcpiy_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpiy_mode0_rhs", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpiy_mode0_mix", 0.0, true);
   pkg->AddParam<double>("diag/int_srcpiz_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_srcpiw_mode0", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpiw_mode0_rhs", 0.0, true);
+  pkg->AddParam<double>("diag/int_srcpiw_mode0_mix", 0.0, true);
   pkg->AddParam<double>("diag/int_src_timelike_a0_from_piw", 0.0, true);
   pkg->AddParam<double>("diag/int_src_timelike_a0_from_piw_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_src_timelike_aw_from_pi0", 0.0, true);
@@ -2868,18 +2904,36 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     SrcPi0Mode0AccumulatorHst,
                                                     "m4d_int_srcpi0_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcPi0Mode0RhsAccumulatorHst,
+      "m4d_int_srcpi0_mode0_rhs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcPi0Mode0MixAccumulatorHst,
+      "m4d_int_srcpi0_mode0_mix"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     SrcPixMode0AccumulatorHst,
                                                     "m4d_int_srcpix_mode0"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     SrcPiyMode0AccumulatorHst,
                                                     "m4d_int_srcpiy_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcPiyMode0RhsAccumulatorHst,
+      "m4d_int_srcpiy_mode0_rhs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcPiyMode0MixAccumulatorHst,
+      "m4d_int_srcpiy_mode0_mix"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     SrcPizMode0AccumulatorHst,
                                                     "m4d_int_srcpiz_mode0"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     SrcPiwMode0AccumulatorHst,
                                                     "m4d_int_srcpiw_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcPiwMode0RhsAccumulatorHst,
+      "m4d_int_srcpiw_mode0_rhs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, SrcPiwMode0MixAccumulatorHst,
+      "m4d_int_srcpiw_mode0_mix"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, SrcTimelikeA0FromPiwAccumulatorHst,
       "m4d_int_src_timelike_a0_from_piw"));

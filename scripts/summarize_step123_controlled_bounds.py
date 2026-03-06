@@ -87,6 +87,12 @@ def main() -> None:
                 {
                     "case_name": case_name,
                     "status": "FAIL_PARSE",
+                    "exit_code": "",
+                    "controlled_final_psi0_span": "nan",
+                    "controlled_final_psi_proj_span": "nan",
+                    "controlled_final_psi_w0_span": "nan",
+                    "full_final_psi0_span": "nan",
+                    "ratio_full_over_controlled_psi0_from_log": "nan",
                     "error": str(exc),
                 }
             )
