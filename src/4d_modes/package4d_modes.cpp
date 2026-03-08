@@ -123,6 +123,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       "modes4d", "response_w0_local_gradient_mixing_enable", false);
   const double response_w0_local_gradient_mixing_gain =
       pin->GetOrAddReal("modes4d", "response_w0_local_gradient_mixing_gain", 0.0);
+  const std::string response_w0_local_gradient_norm_form = pin->GetOrAddString(
+      "modes4d", "response_w0_local_gradient_norm_form", "combined");
   const bool response_w0_local_enable =
       pin->GetOrAddBoolean("modes4d", "response_w0_local_enable", false);
   const double response_w0_local_mode1_amp =
@@ -375,6 +377,8 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
                       response_w0_local_gradient_mixing_enable);
   pkg->AddParam<double>("em4d/response_w0_local_gradient_mixing_gain",
                         response_w0_local_gradient_mixing_gain);
+  pkg->AddParam<std::string>("em4d/response_w0_local_gradient_norm_form",
+                             response_w0_local_gradient_norm_form);
   pkg->AddParam<bool>("em4d/response_w0_local_enable", response_w0_local_enable);
   pkg->AddParam<double>("em4d/response_w0_local_mode1_amp", response_w0_local_mode1_amp);
   pkg->AddParam<double>("em4d/response_w0_local_mode1_kx", response_w0_local_mode1_kx);

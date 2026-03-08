@@ -469,6 +469,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->Param<bool>("em4d/response_w0_local_gradient_mixing_enable");
   const Real response_w0_local_gradient_mixing_gain =
       modes_pkg->Param<double>("em4d/response_w0_local_gradient_mixing_gain");
+  const std::string response_w0_local_gradient_norm_form =
+      modes_pkg->Param<std::string>("em4d/response_w0_local_gradient_norm_form");
   const bool response_w0_local_enable =
       modes_pkg->Param<bool>("em4d/response_w0_local_enable");
   const Real response_w0_local_mode1_amp =
@@ -766,8 +768,22 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_response_lambda_dynamic_mix_a_abs_step = 0.0;
   Real diag_response_lambda_dynamic_mix_pi_abs_step = 0.0;
   Real diag_response_w0_local_abs_volume_step = 0.0;
+  Real diag_response_w0_local_mode1_abs_volume_step = 0.0;
+  Real diag_response_w0_local_mode2_abs_volume_step = 0.0;
   Real diag_response_w0_local_dot_abs_volume_step = 0.0;
+  Real diag_response_w0_local_dx_abs_volume_step = 0.0;
+  Real diag_response_w0_local_dz_abs_volume_step = 0.0;
+  Real diag_response_w0_local_mode1_dx_abs_volume_step = 0.0;
+  Real diag_response_w0_local_mode1_dz_abs_volume_step = 0.0;
+  Real diag_response_w0_local_mode1_grad_abs_volume_step = 0.0;
+  Real diag_response_w0_local_mode2_dx_abs_volume_step = 0.0;
+  Real diag_response_w0_local_mode2_dz_abs_volume_step = 0.0;
+  Real diag_response_w0_local_mode2_grad_abs_volume_step = 0.0;
+  Real diag_response_w0_local_grad_quadrature_abs_volume_step = 0.0;
+  Real diag_response_w0_local_grad_overlap_signed_volume_step = 0.0;
+  Real diag_response_w0_local_grad_overlap_abs_volume_step = 0.0;
   Real diag_response_w0_local_grad_abs_volume_step = 0.0;
+  Real diag_response_w0_local_gradient_mix_rate_abs_step = 0.0;
   Real diag_response_w0_local_volume_step = 0.0;
   Real diag_rhs_ay_mode0_total_step = 0.0;
   Real diag_rhs_aw_mode0_lap_step = 0.0;
@@ -933,7 +949,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
         for (int i = ib.s; i <= ib.e; ++i) {
           const Real cell_volume = coords.CellVolume(k, j, i);
           Real response_w0_local = 0.0;
+          Real response_w0_local_mode1 = 0.0;
+          Real response_w0_local_mode2 = 0.0;
           Real response_w0_local_dot = 0.0;
+          Real response_w0_local_mode1_dx = 0.0;
+          Real response_w0_local_mode1_dz = 0.0;
+          Real response_w0_local_mode2_dx = 0.0;
+          Real response_w0_local_mode2_dz = 0.0;
           Real response_w0_local_dx = 0.0;
           Real response_w0_local_dz = 0.0;
           if (response_w0_local_enable) {
@@ -947,31 +969,88 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                                 (response_w0_local_mode2_kz * z) +
                                 response_w0_local_mode2_phase +
                                 (response_w0_local_mode2_omega * response_local_time);
-            response_w0_local = (response_w0_local_mode1_amp * std::sin(phase1)) +
-                                (response_w0_local_mode2_amp * std::sin(phase2));
+            response_w0_local_mode1 = response_w0_local_mode1_amp * std::sin(phase1);
+            response_w0_local_mode2 = response_w0_local_mode2_amp * std::sin(phase2);
+            response_w0_local = response_w0_local_mode1 + response_w0_local_mode2;
             response_w0_local_dot =
                 (response_w0_local_mode1_amp * response_w0_local_mode1_omega *
                  std::cos(phase1)) +
                 (response_w0_local_mode2_amp * response_w0_local_mode2_omega *
                  std::cos(phase2));
+            response_w0_local_mode1_dx =
+                response_w0_local_mode1_amp * response_w0_local_mode1_kx *
+                std::cos(phase1);
+            response_w0_local_mode1_dz =
+                response_w0_local_mode1_amp * response_w0_local_mode1_kz *
+                std::cos(phase1);
+            response_w0_local_mode2_dx =
+                response_w0_local_mode2_amp * response_w0_local_mode2_kx *
+                std::cos(phase2);
+            response_w0_local_mode2_dz =
+                response_w0_local_mode2_amp * response_w0_local_mode2_kz *
+                std::cos(phase2);
             response_w0_local_dx =
-                (response_w0_local_mode1_amp * response_w0_local_mode1_kx *
-                 std::cos(phase1)) +
-                (response_w0_local_mode2_amp * response_w0_local_mode2_kx *
-                 std::cos(phase2));
+                response_w0_local_mode1_dx + response_w0_local_mode2_dx;
             response_w0_local_dz =
-                (response_w0_local_mode1_amp * response_w0_local_mode1_kz *
-                 std::cos(phase1)) +
-                (response_w0_local_mode2_amp * response_w0_local_mode2_kz *
-                 std::cos(phase2));
+                response_w0_local_mode1_dz + response_w0_local_mode2_dz;
           }
-          const Real response_w0_local_grad_abs =
+          const Real response_w0_local_mode1_grad_abs =
+              std::sqrt((response_w0_local_mode1_dx * response_w0_local_mode1_dx) +
+                        (response_w0_local_mode1_dz * response_w0_local_mode1_dz));
+          const Real response_w0_local_mode2_grad_abs =
+              std::sqrt((response_w0_local_mode2_dx * response_w0_local_mode2_dx) +
+                        (response_w0_local_mode2_dz * response_w0_local_mode2_dz));
+          const Real response_w0_local_grad_quadrature_abs =
+              std::sqrt((response_w0_local_mode1_dx * response_w0_local_mode1_dx) +
+                        (response_w0_local_mode1_dz * response_w0_local_mode1_dz) +
+                        (response_w0_local_mode2_dx * response_w0_local_mode2_dx) +
+                        (response_w0_local_mode2_dz * response_w0_local_mode2_dz));
+          const Real response_w0_local_grad_overlap =
+              (response_w0_local_mode1_dx * response_w0_local_mode2_dx) +
+              (response_w0_local_mode1_dz * response_w0_local_mode2_dz);
+          const Real response_w0_local_grad_combined_abs =
               std::sqrt((response_w0_local_dx * response_w0_local_dx) +
                         (response_w0_local_dz * response_w0_local_dz));
+          Real response_w0_local_grad_abs = response_w0_local_grad_combined_abs;
+          if (response_w0_local_gradient_norm_form == "quadrature") {
+            response_w0_local_grad_abs = response_w0_local_grad_quadrature_abs;
+          } else if (response_w0_local_gradient_norm_form == "l1_modes") {
+            response_w0_local_grad_abs =
+                response_w0_local_mode1_grad_abs + response_w0_local_mode2_grad_abs;
+          } else if (response_w0_local_gradient_norm_form != "combined") {
+            PARTHENON_FAIL("Unknown response_w0_local_gradient_norm_form. "
+                           "Options: combined, quadrature, l1_modes");
+          }
           diag_response_w0_local_abs_volume_step +=
               cell_volume * std::abs(response_w0_local);
+          diag_response_w0_local_mode1_abs_volume_step +=
+              cell_volume * std::abs(response_w0_local_mode1);
+          diag_response_w0_local_mode2_abs_volume_step +=
+              cell_volume * std::abs(response_w0_local_mode2);
           diag_response_w0_local_dot_abs_volume_step +=
               cell_volume * std::abs(response_w0_local_dot);
+          diag_response_w0_local_dx_abs_volume_step +=
+              cell_volume * std::abs(response_w0_local_dx);
+          diag_response_w0_local_dz_abs_volume_step +=
+              cell_volume * std::abs(response_w0_local_dz);
+          diag_response_w0_local_mode1_dx_abs_volume_step +=
+              cell_volume * std::abs(response_w0_local_mode1_dx);
+          diag_response_w0_local_mode1_dz_abs_volume_step +=
+              cell_volume * std::abs(response_w0_local_mode1_dz);
+          diag_response_w0_local_mode1_grad_abs_volume_step +=
+              cell_volume * response_w0_local_mode1_grad_abs;
+          diag_response_w0_local_mode2_dx_abs_volume_step +=
+              cell_volume * std::abs(response_w0_local_mode2_dx);
+          diag_response_w0_local_mode2_dz_abs_volume_step +=
+              cell_volume * std::abs(response_w0_local_mode2_dz);
+          diag_response_w0_local_mode2_grad_abs_volume_step +=
+              cell_volume * response_w0_local_mode2_grad_abs;
+          diag_response_w0_local_grad_quadrature_abs_volume_step +=
+              cell_volume * response_w0_local_grad_quadrature_abs;
+          diag_response_w0_local_grad_overlap_signed_volume_step +=
+              cell_volume * response_w0_local_grad_overlap;
+          diag_response_w0_local_grad_overlap_abs_volume_step +=
+              cell_volume * std::abs(response_w0_local_grad_overlap);
           diag_response_w0_local_grad_abs_volume_step +=
               cell_volume * response_w0_local_grad_abs;
           diag_response_w0_local_volume_step += cell_volume;
@@ -1875,6 +1954,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                       ? (response_w0_local_gradient_mixing_gain * c_wave *
                          response_w0_local_grad_abs)
                       : 0.0;
+              if (w0_dynamic_mix_grad_active) {
+                diag_response_w0_local_gradient_mix_rate_abs_step +=
+                    dt * cell_volume * std::abs(mix_rate_w0_grad);
+              }
               // response_lambda_dot is the time derivative of fractional width:
               // lambda_dot = lambda_eff * d(lambda_frac)/dt.
               const Real mix_rate_lambda =
@@ -2477,8 +2560,34 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/response_w0_lambda_eff");
   auto *diag_response_w0_local_abs =
       modes_pkg->MutableParam<double>("diag/response_w0_local_abs");
+  auto *diag_response_w0_local_mode1_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_mode1_abs");
+  auto *diag_response_w0_local_mode2_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_mode2_abs");
   auto *diag_response_w0_local_dot_abs =
       modes_pkg->MutableParam<double>("diag/response_w0_local_dot_abs");
+  auto *diag_response_w0_local_dx_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_dx_abs");
+  auto *diag_response_w0_local_dz_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_dz_abs");
+  auto *diag_response_w0_local_mode1_dx_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_mode1_dx_abs");
+  auto *diag_response_w0_local_mode1_dz_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_mode1_dz_abs");
+  auto *diag_response_w0_local_mode1_grad_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_mode1_grad_abs");
+  auto *diag_response_w0_local_mode2_dx_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_mode2_dx_abs");
+  auto *diag_response_w0_local_mode2_dz_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_mode2_dz_abs");
+  auto *diag_response_w0_local_mode2_grad_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_mode2_grad_abs");
+  auto *diag_response_w0_local_grad_quadrature_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_grad_quadrature_abs");
+  auto *diag_response_w0_local_grad_overlap =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_grad_overlap");
+  auto *diag_response_w0_local_grad_overlap_abs =
+      modes_pkg->MutableParam<double>("diag/response_w0_local_grad_overlap_abs");
   auto *diag_response_w0_local_grad_abs =
       modes_pkg->MutableParam<double>("diag/response_w0_local_grad_abs");
   auto *diag_response_lambda_initialized =
@@ -2527,6 +2636,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/int_response_w0_local_gradient_mix_a_abs");
   auto *diag_response_w0_local_gradient_mix_pi_abs =
       modes_pkg->MutableParam<double>("diag/int_response_w0_local_gradient_mix_pi_abs");
+  auto *diag_response_w0_local_gradient_mix_rate_abs =
+      modes_pkg->MutableParam<double>("diag/int_response_w0_local_gradient_mix_rate_abs");
   auto *diag_response_lambda_dynamic_mix_a_abs =
       modes_pkg->MutableParam<double>("diag/int_response_lambda_dynamic_mix_a_abs");
   auto *diag_response_lambda_dynamic_mix_pi_abs =
@@ -2671,13 +2782,57 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   if (diag_response_w0_local_volume_step > 0.0) {
     *diag_response_w0_local_abs =
         diag_response_w0_local_abs_volume_step / diag_response_w0_local_volume_step;
+    *diag_response_w0_local_mode1_abs =
+        diag_response_w0_local_mode1_abs_volume_step / diag_response_w0_local_volume_step;
+    *diag_response_w0_local_mode2_abs =
+        diag_response_w0_local_mode2_abs_volume_step / diag_response_w0_local_volume_step;
     *diag_response_w0_local_dot_abs =
         diag_response_w0_local_dot_abs_volume_step / diag_response_w0_local_volume_step;
+    *diag_response_w0_local_dx_abs =
+        diag_response_w0_local_dx_abs_volume_step / diag_response_w0_local_volume_step;
+    *diag_response_w0_local_dz_abs =
+        diag_response_w0_local_dz_abs_volume_step / diag_response_w0_local_volume_step;
+    *diag_response_w0_local_mode1_dx_abs =
+        diag_response_w0_local_mode1_dx_abs_volume_step / diag_response_w0_local_volume_step;
+    *diag_response_w0_local_mode1_dz_abs =
+        diag_response_w0_local_mode1_dz_abs_volume_step / diag_response_w0_local_volume_step;
+    *diag_response_w0_local_mode1_grad_abs =
+        diag_response_w0_local_mode1_grad_abs_volume_step /
+        diag_response_w0_local_volume_step;
+    *diag_response_w0_local_mode2_dx_abs =
+        diag_response_w0_local_mode2_dx_abs_volume_step / diag_response_w0_local_volume_step;
+    *diag_response_w0_local_mode2_dz_abs =
+        diag_response_w0_local_mode2_dz_abs_volume_step / diag_response_w0_local_volume_step;
+    *diag_response_w0_local_mode2_grad_abs =
+        diag_response_w0_local_mode2_grad_abs_volume_step /
+        diag_response_w0_local_volume_step;
+    *diag_response_w0_local_grad_quadrature_abs =
+        diag_response_w0_local_grad_quadrature_abs_volume_step /
+        diag_response_w0_local_volume_step;
+    *diag_response_w0_local_grad_overlap =
+        diag_response_w0_local_grad_overlap_signed_volume_step /
+        diag_response_w0_local_volume_step;
+    *diag_response_w0_local_grad_overlap_abs =
+        diag_response_w0_local_grad_overlap_abs_volume_step /
+        diag_response_w0_local_volume_step;
     *diag_response_w0_local_grad_abs =
         diag_response_w0_local_grad_abs_volume_step / diag_response_w0_local_volume_step;
   } else {
     *diag_response_w0_local_abs = 0.0;
+    *diag_response_w0_local_mode1_abs = 0.0;
+    *diag_response_w0_local_mode2_abs = 0.0;
     *diag_response_w0_local_dot_abs = 0.0;
+    *diag_response_w0_local_dx_abs = 0.0;
+    *diag_response_w0_local_dz_abs = 0.0;
+    *diag_response_w0_local_mode1_dx_abs = 0.0;
+    *diag_response_w0_local_mode1_dz_abs = 0.0;
+    *diag_response_w0_local_mode1_grad_abs = 0.0;
+    *diag_response_w0_local_mode2_dx_abs = 0.0;
+    *diag_response_w0_local_mode2_dz_abs = 0.0;
+    *diag_response_w0_local_mode2_grad_abs = 0.0;
+    *diag_response_w0_local_grad_quadrature_abs = 0.0;
+    *diag_response_w0_local_grad_overlap = 0.0;
+    *diag_response_w0_local_grad_overlap_abs = 0.0;
     *diag_response_w0_local_grad_abs = 0.0;
   }
   *diag_response_lambda_initialized = response_lambda_initialized;
@@ -2705,6 +2860,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       diag_response_w0_local_gradient_mix_a_abs_step;
   *diag_response_w0_local_gradient_mix_pi_abs +=
       diag_response_w0_local_gradient_mix_pi_abs_step;
+  *diag_response_w0_local_gradient_mix_rate_abs +=
+      diag_response_w0_local_gradient_mix_rate_abs_step;
   *diag_response_lambda_dynamic_mix_a_abs +=
       diag_response_lambda_dynamic_mix_a_abs_step;
   *diag_response_lambda_dynamic_mix_pi_abs +=

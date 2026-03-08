@@ -37,7 +37,15 @@ enum class BraneMixedQuantity {
   BraneB2,
   BraneEParallel2,
   MixedEw2,
-  MixedC2
+  MixedC2,
+  MixedCx2,
+  MixedCy2,
+  MixedCz2,
+  MixedCzDawDz2,
+  MixedCzDawDz2ModeDiag,
+  MixedCzDawDz2ModeCross,
+  MixedCzDwAz2,
+  MixedCzCross
 };
 
 enum class SpillbackEMFQuantity {
@@ -584,9 +592,74 @@ Real ResponseW0LocalAbsHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/response_w0_local_abs");
 }
 
+Real ResponseW0LocalMode1AbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_mode1_abs");
+}
+
+Real ResponseW0LocalMode2AbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_mode2_abs");
+}
+
 Real ResponseW0LocalDotAbsHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/response_w0_local_dot_abs");
+}
+
+Real ResponseW0LocalDxAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_dx_abs");
+}
+
+Real ResponseW0LocalDzAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_dz_abs");
+}
+
+Real ResponseW0LocalMode1DxAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_mode1_dx_abs");
+}
+
+Real ResponseW0LocalMode1DzAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_mode1_dz_abs");
+}
+
+Real ResponseW0LocalMode1GradAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_mode1_grad_abs");
+}
+
+Real ResponseW0LocalMode2DxAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_mode2_dx_abs");
+}
+
+Real ResponseW0LocalMode2DzAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_mode2_dz_abs");
+}
+
+Real ResponseW0LocalMode2GradAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_mode2_grad_abs");
+}
+
+Real ResponseW0LocalGradQuadratureAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_grad_quadrature_abs");
+}
+
+Real ResponseW0LocalGradOverlapHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_grad_overlap");
+}
+
+Real ResponseW0LocalGradOverlapAbsHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_grad_overlap_abs");
 }
 
 Real ResponseW0LocalGradAbsHst(MeshData<Real> *md) {
@@ -697,6 +770,11 @@ Real ResponseW0LocalGradientMixAAbsAccumulatorHst(MeshData<Real> *md) {
 Real ResponseW0LocalGradientMixPiAbsAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_response_w0_local_gradient_mix_pi_abs");
+}
+
+Real ResponseW0LocalGradientMixRateAbsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_w0_local_gradient_mix_rate_abs");
 }
 
 Real ResponseLambdaDynamicMixAAbsAccumulatorHst(MeshData<Real> *md) {
@@ -1064,6 +1142,14 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
 
           Real ew2_int = 0.0;
           Real c2_int = 0.0;
+          Real cx2_int = 0.0;
+          Real cy2_int = 0.0;
+          Real cz2_int = 0.0;
+          Real cz_daw_dz2_int = 0.0;
+          Real cz_daw_dz2_mode_diag_int = 0.0;
+          Real cz_daw_dz2_mode_cross_int = 0.0;
+          Real cz_dw_az2_int = 0.0;
+          Real cz_cross_int = 0.0;
           for (int q = 0; q < n_quad; ++q) {
             Real d_w_a0 = 0.0;
             Real d_w_ax = 0.0;
@@ -1073,6 +1159,7 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
             Real daw_dx_node = 0.0;
             Real daw_dy_node = 0.0;
             Real daw_dz_node = 0.0;
+            Real daw_dz_mode_diag = 0.0;
 
             for (int n = 0; n < n_modes; ++n) {
               const Real phi_nq = tables.Phi(n, q);
@@ -1084,9 +1171,13 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
               d_w_az += az_modes[n] * dphi_nq;
 
               piw_node += piw_modes[n] * phi_nq;
-              daw_dx_node += daw_dx_modes[n] * phi_nq;
-              daw_dy_node += daw_dy_modes[n] * phi_nq;
-              daw_dz_node += daw_dz_modes[n] * phi_nq;
+              const Real daw_dx_mode = daw_dx_modes[n] * phi_nq;
+              const Real daw_dy_mode = daw_dy_modes[n] * phi_nq;
+              const Real daw_dz_mode = daw_dz_modes[n] * phi_nq;
+              daw_dx_node += daw_dx_mode;
+              daw_dy_node += daw_dy_mode;
+              daw_dz_node += daw_dz_mode;
+              daw_dz_mode_diag += daw_dz_mode * daw_dz_mode;
             }
 
             const Real ew = -piw_node - d_w_a0;
@@ -1095,7 +1186,22 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
             const Real cz = daw_dz_node - d_w_az;
 
             ew2_int += weights[q] * (ew * ew);
-            c2_int += weights[q] * ((cx * cx) + (cy * cy) + (cz * cz));
+            const Real cx2 = cx * cx;
+            const Real cy2 = cy * cy;
+            const Real cz_daw_dz2 = daw_dz_node * daw_dz_node;
+            const Real cz_daw_dz2_mode_cross = cz_daw_dz2 - daw_dz_mode_diag;
+            const Real cz_dw_az2 = d_w_az * d_w_az;
+            const Real cz_cross = -2.0 * daw_dz_node * d_w_az;
+            const Real cz2 = cz_daw_dz2 + cz_dw_az2 + cz_cross;
+            cx2_int += weights[q] * cx2;
+            cy2_int += weights[q] * cy2;
+            cz2_int += weights[q] * cz2;
+            cz_daw_dz2_int += weights[q] * cz_daw_dz2;
+            cz_daw_dz2_mode_diag_int += weights[q] * daw_dz_mode_diag;
+            cz_daw_dz2_mode_cross_int += weights[q] * cz_daw_dz2_mode_cross;
+            cz_dw_az2_int += weights[q] * cz_dw_az2;
+            cz_cross_int += weights[q] * cz_cross;
+            c2_int += weights[q] * (cx2 + cy2 + cz2);
           }
 
           const Real vol = coords.CellVolume(k, j, i);
@@ -1108,8 +1214,24 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
             val = epar2;
           } else if (quantity == BraneMixedQuantity::MixedEw2) {
             val = 0.5 * ew2_int;
-          } else {
+          } else if (quantity == BraneMixedQuantity::MixedC2) {
             val = 0.5 * c2_int;
+          } else if (quantity == BraneMixedQuantity::MixedCx2) {
+            val = 0.5 * cx2_int;
+          } else if (quantity == BraneMixedQuantity::MixedCy2) {
+            val = 0.5 * cy2_int;
+          } else if (quantity == BraneMixedQuantity::MixedCz2) {
+            val = 0.5 * cz2_int;
+          } else if (quantity == BraneMixedQuantity::MixedCzDawDz2) {
+            val = 0.5 * cz_daw_dz2_int;
+          } else if (quantity == BraneMixedQuantity::MixedCzDawDz2ModeDiag) {
+            val = 0.5 * cz_daw_dz2_mode_diag_int;
+          } else if (quantity == BraneMixedQuantity::MixedCzDawDz2ModeCross) {
+            val = 0.5 * cz_daw_dz2_mode_cross_int;
+          } else if (quantity == BraneMixedQuantity::MixedCzDwAz2) {
+            val = 0.5 * cz_dw_az2_int;
+          } else {
+            val = 0.5 * cz_cross_int;
           }
           integral += val * vol;
         }
@@ -2180,6 +2302,38 @@ Real MixedC2Hst(MeshData<Real> *md) {
   return BraneMixedIntegral(md, BraneMixedQuantity::MixedC2);
 }
 
+Real MixedCx2Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCx2);
+}
+
+Real MixedCy2Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCy2);
+}
+
+Real MixedCz2Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCz2);
+}
+
+Real MixedCzDawDz2Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDawDz2);
+}
+
+Real MixedCzDawDz2ModeDiagHst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDawDz2ModeDiag);
+}
+
+Real MixedCzDawDz2ModeCrossHst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDawDz2ModeCross);
+}
+
+Real MixedCzDwAz2Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDwAz2);
+}
+
+Real MixedCzCrossHst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzCross);
+}
+
 Real Ay0SpanHst(MeshData<Real> *md) {
   Real ay0_min = std::numeric_limits<Real>::max();
   Real ay0_max = std::numeric_limits<Real>::lowest();
@@ -2829,7 +2983,20 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/response_w0_lambda_fraction", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_lambda_eff", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_mode1_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_mode2_abs", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_dot_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_dx_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_dz_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_mode1_dx_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_mode1_dz_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_mode1_grad_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_mode2_dx_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_mode2_dz_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_mode2_grad_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_grad_quadrature_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_grad_overlap", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_grad_overlap_abs", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_grad_abs", 0.0, true);
   pkg->AddParam<bool>("diag/response_lambda_initialized", false, true);
   pkg->AddParam<double>("diag/response_lambda_fraction", 0.0, true);
@@ -2855,6 +3022,7 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_response_w0_dynamic_mix_pi_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_a_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_pi_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_rate_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_lambda_dynamic_mix_a_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_lambda_dynamic_mix_pi_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_ay_mode0_w0_response", 0.0, true);
@@ -3183,8 +3351,47 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum, ResponseW0LocalAbsHst,
       "m4d_response_w0_local_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalMode1AbsHst,
+      "m4d_response_w0_local_mode1_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalMode2AbsHst,
+      "m4d_response_w0_local_mode2_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0LocalDotAbsHst,
       "m4d_response_w0_local_dot_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalDxAbsHst,
+      "m4d_response_w0_local_dx_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalDzAbsHst,
+      "m4d_response_w0_local_dz_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalMode1DxAbsHst,
+      "m4d_response_w0_local_mode1_dx_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalMode1DzAbsHst,
+      "m4d_response_w0_local_mode1_dz_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalMode1GradAbsHst,
+      "m4d_response_w0_local_mode1_grad_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalMode2DxAbsHst,
+      "m4d_response_w0_local_mode2_dx_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalMode2DzAbsHst,
+      "m4d_response_w0_local_mode2_dz_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalMode2GradAbsHst,
+      "m4d_response_w0_local_mode2_grad_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalGradQuadratureAbsHst,
+      "m4d_response_w0_local_grad_quadrature_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalGradOverlapHst,
+      "m4d_response_w0_local_grad_overlap"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalGradOverlapAbsHst,
+      "m4d_response_w0_local_grad_overlap_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0LocalGradAbsHst,
       "m4d_response_w0_local_grad_abs"));
@@ -3256,6 +3463,10 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum,
       ResponseW0LocalGradientMixPiAbsAccumulatorHst,
       "m4d_int_response_w0_local_gradient_mix_pi_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      ResponseW0LocalGradientMixRateAbsAccumulatorHst,
+      "m4d_int_response_w0_local_gradient_mix_rate_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseLambdaDynamicMixAAbsAccumulatorHst,
       "m4d_int_response_lambda_dynamic_mix_a_abs"));
@@ -3374,6 +3585,27 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
                                                     MixedEw2Hst, "m4d_mixed_ew2"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     MixedC2Hst, "m4d_mixed_c2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCx2Hst, "m4d_mixed_cx2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCy2Hst, "m4d_mixed_cy2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCz2Hst, "m4d_mixed_cz2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCzDawDz2Hst,
+                                                    "m4d_mixed_cz_daw_dz2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCzDawDz2ModeDiagHst,
+                                                    "m4d_mixed_cz_daw_dz2_mode_diag"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCzDawDz2ModeCrossHst,
+                                                    "m4d_mixed_cz_daw_dz2_mode_cross"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCzDwAz2Hst,
+                                                    "m4d_mixed_cz_dw_az2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCzCrossHst,
+                                                    "m4d_mixed_cz_cross"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     BulkEMEnergyHst,
                                                     "m4d_em_u_bulk"));
