@@ -747,6 +747,22 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_rhs_ay_mode0_w0_response_abs_step = 0.0;
   Real diag_rhs_aw_mode1_w0_response_step = 0.0;
   Real diag_rhs_aw_mode1_w0_response_abs_step = 0.0;
+  Real diag_aw_mode1_pi_drive_step = 0.0;
+  Real diag_aw_mode1_rhs_step = 0.0;
+  Real diag_aw_mode1_mix_pi_step = 0.0;
+  Real diag_aw_mode1_mix_a_step = 0.0;
+  Real diag_aw_mode1_da_dt_step = 0.0;
+  Real diag_aw_mode1_gradz_power_pi_drive_step = 0.0;
+  Real diag_aw_mode1_gradz_power_mix_a_step = 0.0;
+  Real diag_aw_mode1_gradz_power_da_dt_step = 0.0;
+  Real diag_aw_mode2_pi_drive_step = 0.0;
+  Real diag_aw_mode2_rhs_step = 0.0;
+  Real diag_aw_mode2_mix_pi_step = 0.0;
+  Real diag_aw_mode2_mix_a_step = 0.0;
+  Real diag_aw_mode2_da_dt_step = 0.0;
+  Real diag_aw_mode2_gradz_power_pi_drive_step = 0.0;
+  Real diag_aw_mode2_gradz_power_mix_a_step = 0.0;
+  Real diag_aw_mode2_gradz_power_da_dt_step = 0.0;
   Real diag_response_bridge_power_mode0_step = 0.0;
   Real diag_response_bridge_power_mode0_abs_step = 0.0;
   Real diag_response_bridge_power_mode1_step = 0.0;
@@ -841,11 +857,19 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       const Real dy = coords.Dxc<2>(j);
       return (field(idx, k, j + 1, i) - field(idx, k, j - 1, i)) / (2.0 * dy);
     };
-    auto gradient_z = [&](const auto &field, const int idx, const int k, const int j,
-                          const int i) -> Real {
+  auto gradient_z = [&](const auto &field, const int idx, const int k, const int j,
+                        const int i) -> Real {
       if (!has_z) return 0.0;
       const Real dz = coords.Dxc<3>(k);
       return (field(idx, k + 1, j, i) - field(idx, k - 1, j, i)) / (2.0 * dz);
+    };
+    auto second_z = [&](const auto &field, const int idx, const int k, const int j,
+                        const int i) -> Real {
+      if (!has_z) return 0.0;
+      const Real dz = coords.Dxc<3>(k);
+      return (field(idx, k + 1, j, i) - (2.0 * field(idx, k, j, i)) +
+              field(idx, k - 1, j, i)) /
+             (dz * dz);
     };
     auto laplacian = [&](const auto &field, const int idx, const int k, const int j,
                          const int i) -> Real {
@@ -2138,6 +2162,44 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                 a_old(idx_az, k, j, i) + (dt * (pi_new(idx_az, k, j, i) + mix_az));
             a_new(idx_aw, k, j, i) =
                 a_old(idx_aw, k, j, i) + (dt * (pi_new(idx_aw, k, j, i) + mix_aw));
+            if (n == 1 || n == 2) {
+              const Real aw_pi_drive = pi_new(idx_aw, k, j, i);
+              const Real aw_da_dt = aw_pi_drive + mix_aw;
+              const Real aw_dzz_old = second_z(a_old, idx_aw, k, j, i);
+              const Real aw_gradz_power_pi_drive =
+                  -dt * cell_volume * aw_pi_drive * aw_dzz_old;
+              const Real aw_gradz_power_mix_a =
+                  -dt * cell_volume * mix_aw * aw_dzz_old;
+              const Real aw_gradz_power_da_dt =
+                  -dt * cell_volume * aw_da_dt * aw_dzz_old;
+              Real *diag_pi_drive_step =
+                  (n == 1) ? &diag_aw_mode1_pi_drive_step : &diag_aw_mode2_pi_drive_step;
+              Real *diag_rhs_step =
+                  (n == 1) ? &diag_aw_mode1_rhs_step : &diag_aw_mode2_rhs_step;
+              Real *diag_mix_pi_step =
+                  (n == 1) ? &diag_aw_mode1_mix_pi_step : &diag_aw_mode2_mix_pi_step;
+              Real *diag_mix_a_step =
+                  (n == 1) ? &diag_aw_mode1_mix_a_step : &diag_aw_mode2_mix_a_step;
+              Real *diag_da_dt_step =
+                  (n == 1) ? &diag_aw_mode1_da_dt_step : &diag_aw_mode2_da_dt_step;
+              Real *diag_gradz_power_pi_drive_step =
+                  (n == 1) ? &diag_aw_mode1_gradz_power_pi_drive_step
+                           : &diag_aw_mode2_gradz_power_pi_drive_step;
+              Real *diag_gradz_power_mix_a_step =
+                  (n == 1) ? &diag_aw_mode1_gradz_power_mix_a_step
+                           : &diag_aw_mode2_gradz_power_mix_a_step;
+              Real *diag_gradz_power_da_dt_step =
+                  (n == 1) ? &diag_aw_mode1_gradz_power_da_dt_step
+                           : &diag_aw_mode2_gradz_power_da_dt_step;
+              *diag_pi_drive_step += dt * cell_volume * aw_pi_drive;
+              *diag_rhs_step += dt * cell_volume * rhs_aw;
+              *diag_mix_pi_step += dt * cell_volume * mix_piw;
+              *diag_mix_a_step += dt * cell_volume * mix_aw;
+              *diag_da_dt_step += dt * cell_volume * aw_da_dt;
+              *diag_gradz_power_pi_drive_step += aw_gradz_power_pi_drive;
+              *diag_gradz_power_mix_a_step += aw_gradz_power_mix_a;
+              *diag_gradz_power_da_dt_step += aw_gradz_power_da_dt;
+            }
             if (hard_controlled_limit_active) {
               // Hard controlled-limit clamp: keep mixed-sector potential/momentum off.
               pi_new(idx_aw, k, j, i) = 0.0;
@@ -2650,6 +2712,38 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode1_w0_response");
   auto *diag_rhs_aw_mode1_w0_response_abs =
       modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode1_w0_response_abs");
+  auto *diag_aw_mode1_pi_drive =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode1_pi_drive");
+  auto *diag_aw_mode1_rhs =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode1_rhs");
+  auto *diag_aw_mode1_mix_pi =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode1_mix_pi");
+  auto *diag_aw_mode1_mix_a =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode1_mix_a");
+  auto *diag_aw_mode1_da_dt =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode1_da_dt");
+  auto *diag_aw_mode1_gradz_power_pi_drive =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode1_gradz_power_pi_drive");
+  auto *diag_aw_mode1_gradz_power_mix_a =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode1_gradz_power_mix_a");
+  auto *diag_aw_mode1_gradz_power_da_dt =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode1_gradz_power_da_dt");
+  auto *diag_aw_mode2_pi_drive =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode2_pi_drive");
+  auto *diag_aw_mode2_rhs =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode2_rhs");
+  auto *diag_aw_mode2_mix_pi =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode2_mix_pi");
+  auto *diag_aw_mode2_mix_a =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode2_mix_a");
+  auto *diag_aw_mode2_da_dt =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode2_da_dt");
+  auto *diag_aw_mode2_gradz_power_pi_drive =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode2_gradz_power_pi_drive");
+  auto *diag_aw_mode2_gradz_power_mix_a =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode2_gradz_power_mix_a");
+  auto *diag_aw_mode2_gradz_power_da_dt =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode2_gradz_power_da_dt");
   auto *diag_response_bridge_power_mode0 =
       modes_pkg->MutableParam<double>("diag/int_response_bridge_power_mode0");
   auto *diag_response_bridge_power_mode0_abs =
@@ -2870,6 +2964,22 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   *diag_rhs_ay_mode0_w0_response_abs += diag_rhs_ay_mode0_w0_response_abs_step;
   *diag_rhs_aw_mode1_w0_response += diag_rhs_aw_mode1_w0_response_step;
   *diag_rhs_aw_mode1_w0_response_abs += diag_rhs_aw_mode1_w0_response_abs_step;
+  *diag_aw_mode1_pi_drive += diag_aw_mode1_pi_drive_step;
+  *diag_aw_mode1_rhs += diag_aw_mode1_rhs_step;
+  *diag_aw_mode1_mix_pi += diag_aw_mode1_mix_pi_step;
+  *diag_aw_mode1_mix_a += diag_aw_mode1_mix_a_step;
+  *diag_aw_mode1_da_dt += diag_aw_mode1_da_dt_step;
+  *diag_aw_mode1_gradz_power_pi_drive += diag_aw_mode1_gradz_power_pi_drive_step;
+  *diag_aw_mode1_gradz_power_mix_a += diag_aw_mode1_gradz_power_mix_a_step;
+  *diag_aw_mode1_gradz_power_da_dt += diag_aw_mode1_gradz_power_da_dt_step;
+  *diag_aw_mode2_pi_drive += diag_aw_mode2_pi_drive_step;
+  *diag_aw_mode2_rhs += diag_aw_mode2_rhs_step;
+  *diag_aw_mode2_mix_pi += diag_aw_mode2_mix_pi_step;
+  *diag_aw_mode2_mix_a += diag_aw_mode2_mix_a_step;
+  *diag_aw_mode2_da_dt += diag_aw_mode2_da_dt_step;
+  *diag_aw_mode2_gradz_power_pi_drive += diag_aw_mode2_gradz_power_pi_drive_step;
+  *diag_aw_mode2_gradz_power_mix_a += diag_aw_mode2_gradz_power_mix_a_step;
+  *diag_aw_mode2_gradz_power_da_dt += diag_aw_mode2_gradz_power_da_dt_step;
   *diag_response_bridge_power_mode0 += diag_response_bridge_power_mode0_step;
   *diag_response_bridge_power_mode0_abs += diag_response_bridge_power_mode0_abs_step;
   *diag_response_bridge_power_mode1 += diag_response_bridge_power_mode1_step;

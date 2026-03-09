@@ -1,5 +1,6 @@
 #include "diagnostics4d.hpp"
 
+#include <array>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -42,6 +43,10 @@ enum class BraneMixedQuantity {
   MixedCy2,
   MixedCz2,
   MixedCzDawDz2,
+  MixedCzDawDz2Mode0,
+  MixedCzDawDz2Mode1,
+  MixedCzDawDz2Mode2,
+  MixedCzDawDz2Mode3,
   MixedCzDawDz2ModeDiag,
   MixedCzDawDz2ModeCross,
   MixedCzDwAz2,
@@ -807,6 +812,86 @@ Real RHSAwMode1W0ResponseAbsAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_rhs_aw_mode1_w0_response_abs");
 }
 
+Real AwMode1PiDriveAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_pi_drive");
+}
+
+Real AwMode1RhsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_rhs");
+}
+
+Real AwMode1MixPiAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_mix_pi");
+}
+
+Real AwMode1MixAAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_mix_a");
+}
+
+Real AwMode1DaDtAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_da_dt");
+}
+
+Real AwMode1GradzPowerPiDriveAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_pi_drive");
+}
+
+Real AwMode1GradzPowerMixAAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_a");
+}
+
+Real AwMode1GradzPowerDaDtAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_da_dt");
+}
+
+Real AwMode2PiDriveAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_pi_drive");
+}
+
+Real AwMode2RhsAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_rhs");
+}
+
+Real AwMode2MixPiAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_mix_pi");
+}
+
+Real AwMode2MixAAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_mix_a");
+}
+
+Real AwMode2DaDtAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_da_dt");
+}
+
+Real AwMode2GradzPowerPiDriveAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_pi_drive");
+}
+
+Real AwMode2GradzPowerMixAAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_a");
+}
+
+Real AwMode2GradzPowerDaDtAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_da_dt");
+}
+
 Real ResponseBridgePowerMode0AccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_response_bridge_power_mode0");
@@ -1146,6 +1231,7 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
           Real cy2_int = 0.0;
           Real cz2_int = 0.0;
           Real cz_daw_dz2_int = 0.0;
+          std::array<Real, 4> cz_daw_dz2_mode_ints{};
           Real cz_daw_dz2_mode_diag_int = 0.0;
           Real cz_daw_dz2_mode_cross_int = 0.0;
           Real cz_dw_az2_int = 0.0;
@@ -1178,6 +1264,9 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
               daw_dy_node += daw_dy_mode;
               daw_dz_node += daw_dz_mode;
               daw_dz_mode_diag += daw_dz_mode * daw_dz_mode;
+              if (n < static_cast<int>(cz_daw_dz2_mode_ints.size())) {
+                cz_daw_dz2_mode_ints[n] += weights[q] * daw_dz_mode * daw_dz_mode;
+              }
             }
 
             const Real ew = -piw_node - d_w_a0;
@@ -1224,6 +1313,14 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
             val = 0.5 * cz2_int;
           } else if (quantity == BraneMixedQuantity::MixedCzDawDz2) {
             val = 0.5 * cz_daw_dz2_int;
+          } else if (quantity == BraneMixedQuantity::MixedCzDawDz2Mode0) {
+            val = 0.5 * cz_daw_dz2_mode_ints[0];
+          } else if (quantity == BraneMixedQuantity::MixedCzDawDz2Mode1) {
+            val = 0.5 * cz_daw_dz2_mode_ints[1];
+          } else if (quantity == BraneMixedQuantity::MixedCzDawDz2Mode2) {
+            val = 0.5 * cz_daw_dz2_mode_ints[2];
+          } else if (quantity == BraneMixedQuantity::MixedCzDawDz2Mode3) {
+            val = 0.5 * cz_daw_dz2_mode_ints[3];
           } else if (quantity == BraneMixedQuantity::MixedCzDawDz2ModeDiag) {
             val = 0.5 * cz_daw_dz2_mode_diag_int;
           } else if (quantity == BraneMixedQuantity::MixedCzDawDz2ModeCross) {
@@ -2318,6 +2415,22 @@ Real MixedCzDawDz2Hst(MeshData<Real> *md) {
   return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDawDz2);
 }
 
+Real MixedCzDawDz2Mode0Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDawDz2Mode0);
+}
+
+Real MixedCzDawDz2Mode1Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDawDz2Mode1);
+}
+
+Real MixedCzDawDz2Mode2Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDawDz2Mode2);
+}
+
+Real MixedCzDawDz2Mode3Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDawDz2Mode3);
+}
+
 Real MixedCzDawDz2ModeDiagHst(MeshData<Real> *md) {
   return BraneMixedIntegral(md, BraneMixedQuantity::MixedCzDawDz2ModeDiag);
 }
@@ -3029,6 +3142,22 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_rhs_ay_mode0_w0_response_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_aw_mode1_w0_response", 0.0, true);
   pkg->AddParam<double>("diag/int_rhs_aw_mode1_w0_response_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_pi_drive", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_rhs", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_mix_pi", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_mix_a", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_da_dt", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_pi_drive", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_a", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_da_dt", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_pi_drive", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_rhs", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_mix_pi", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_mix_a", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_da_dt", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_pi_drive", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_a", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_da_dt", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode0_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode1", 0.0, true);
@@ -3486,6 +3615,54 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum, RHSAwMode1W0ResponseAbsAccumulatorHst,
       "m4d_int_rhs_aw_mode1_w0_response_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1PiDriveAccumulatorHst,
+      "m4d_int_aw_mode1_pi_drive"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1RhsAccumulatorHst,
+      "m4d_int_aw_mode1_rhs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1MixPiAccumulatorHst,
+      "m4d_int_aw_mode1_mix_pi"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1MixAAccumulatorHst,
+      "m4d_int_aw_mode1_mix_a"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1DaDtAccumulatorHst,
+      "m4d_int_aw_mode1_da_dt"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerPiDriveAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_pi_drive"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerMixAAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_a"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerDaDtAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_da_dt"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2PiDriveAccumulatorHst,
+      "m4d_int_aw_mode2_pi_drive"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2RhsAccumulatorHst,
+      "m4d_int_aw_mode2_rhs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2MixPiAccumulatorHst,
+      "m4d_int_aw_mode2_mix_pi"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2MixAAccumulatorHst,
+      "m4d_int_aw_mode2_mix_a"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2DaDtAccumulatorHst,
+      "m4d_int_aw_mode2_da_dt"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerPiDriveAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_pi_drive"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerMixAAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_a"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerDaDtAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_da_dt"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseBridgePowerMode0AccumulatorHst,
       "m4d_int_response_bridge_power_mode0"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
@@ -3594,6 +3771,18 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     MixedCzDawDz2Hst,
                                                     "m4d_mixed_cz_daw_dz2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCzDawDz2Mode0Hst,
+                                                    "m4d_mixed_cz_daw_dz2_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCzDawDz2Mode1Hst,
+                                                    "m4d_mixed_cz_daw_dz2_mode1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCzDawDz2Mode2Hst,
+                                                    "m4d_mixed_cz_daw_dz2_mode2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCzDawDz2Mode3Hst,
+                                                    "m4d_mixed_cz_daw_dz2_mode3"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     MixedCzDawDz2ModeDiagHst,
                                                     "m4d_mixed_cz_daw_dz2_mode_diag"));
