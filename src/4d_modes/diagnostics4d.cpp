@@ -852,6 +852,58 @@ Real AwMode1GradzPowerDaDtAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_aw_mode1_gradz_power_da_dt");
 }
 
+Real AwMode1GradzPowerMixW0DynamicAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_w0_dynamic");
+}
+
+Real AwMode1GradzPowerMixW0LocalGradientAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_gradient");
+}
+
+Real AwMode1GradzPowerMixLambdaAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_lambda");
+}
+
+Real AwMode1GradzPowerMixW0LocalMode1AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_mode1");
+}
+
+Real AwMode1GradzPowerMixW0LocalMode2AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_mode2");
+}
+
+Real AwMode1GradzPowerMixW0LocalDxAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dx");
+}
+
+Real AwMode1GradzPowerMixW0LocalDzAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dz");
+}
+
+Real AwMode1GradzPowerMixW0LocalDzSignedAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dz_signed");
+}
+
+Real AwMode1GradzPowerMixW0LocalDzSignedMode1AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>(
+      "diag/int_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode1");
+}
+
+Real AwMode1GradzPowerMixW0LocalDzSignedMode2AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>(
+      "diag/int_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode2");
+}
+
 Real AwMode2PiDriveAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_aw_mode2_pi_drive");
@@ -890,6 +942,58 @@ Real AwMode2GradzPowerMixAAccumulatorHst(MeshData<Real> *md) {
 Real AwMode2GradzPowerDaDtAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_aw_mode2_gradz_power_da_dt");
+}
+
+Real AwMode2GradzPowerMixW0DynamicAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_w0_dynamic");
+}
+
+Real AwMode2GradzPowerMixW0LocalGradientAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_gradient");
+}
+
+Real AwMode2GradzPowerMixLambdaAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_lambda");
+}
+
+Real AwMode2GradzPowerMixW0LocalMode1AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_mode1");
+}
+
+Real AwMode2GradzPowerMixW0LocalMode2AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_mode2");
+}
+
+Real AwMode2GradzPowerMixW0LocalDxAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dx");
+}
+
+Real AwMode2GradzPowerMixW0LocalDzAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dz");
+}
+
+Real AwMode2GradzPowerMixW0LocalDzSignedAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dz_signed");
+}
+
+Real AwMode2GradzPowerMixW0LocalDzSignedMode1AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>(
+      "diag/int_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode1");
+}
+
+Real AwMode2GradzPowerMixW0LocalDzSignedMode2AccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>(
+      "diag/int_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode2");
 }
 
 Real ResponseBridgePowerMode0AccumulatorHst(MeshData<Real> *md) {
@@ -3150,6 +3254,18 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_pi_drive", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_a", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_da_dt", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_dynamic", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_gradient", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_lambda", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_mode1", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_mode2", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dx", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dz", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dz_signed", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode1", 0.0,
+                        true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode2", 0.0,
+                        true);
   pkg->AddParam<double>("diag/int_aw_mode2_pi_drive", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode2_rhs", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode2_mix_pi", 0.0, true);
@@ -3158,6 +3274,18 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_pi_drive", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_a", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_da_dt", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_dynamic", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_gradient", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_lambda", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_mode1", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_mode2", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dx", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dz", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dz_signed", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode1", 0.0,
+                        true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode2", 0.0,
+                        true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode0_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode1", 0.0, true);
@@ -3639,6 +3767,38 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum, AwMode1GradzPowerDaDtAccumulatorHst,
       "m4d_int_aw_mode1_gradz_power_da_dt"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerMixW0DynamicAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_w0_dynamic"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerMixW0LocalGradientAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_w0_local_gradient"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerMixLambdaAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_lambda"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerMixW0LocalMode1AccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_w0_local_mode1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerMixW0LocalMode2AccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_w0_local_mode2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerMixW0LocalDxAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_w0_local_dx"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerMixW0LocalDzAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_w0_local_dz"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerMixW0LocalDzSignedAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_w0_local_dz_signed"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      AwMode1GradzPowerMixW0LocalDzSignedMode1AccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      AwMode1GradzPowerMixW0LocalDzSignedMode2AccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, AwMode2PiDriveAccumulatorHst,
       "m4d_int_aw_mode2_pi_drive"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
@@ -3662,6 +3822,38 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, AwMode2GradzPowerDaDtAccumulatorHst,
       "m4d_int_aw_mode2_gradz_power_da_dt"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerMixW0DynamicAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_w0_dynamic"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerMixW0LocalGradientAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_w0_local_gradient"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerMixLambdaAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_lambda"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerMixW0LocalMode1AccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_w0_local_mode1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerMixW0LocalMode2AccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_w0_local_mode2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerMixW0LocalDxAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_w0_local_dx"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerMixW0LocalDzAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_w0_local_dz"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerMixW0LocalDzSignedAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_w0_local_dz_signed"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      AwMode2GradzPowerMixW0LocalDzSignedMode1AccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      AwMode2GradzPowerMixW0LocalDzSignedMode2AccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode2"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseBridgePowerMode0AccumulatorHst,
       "m4d_int_response_bridge_power_mode0"));
