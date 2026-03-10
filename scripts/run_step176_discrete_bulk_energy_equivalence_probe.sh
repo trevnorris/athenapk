@@ -8,7 +8,7 @@ BINARY="${REPO_ROOT}/build-gpu-cuda124-ada89/bin/athenaPK"
 WORKDIR="${REPO_ROOT}"
 CONTROLLED_INPUT="${REPO_ROOT}/inputs/harris_4d_controlled.in"
 FULL_INPUT="${REPO_ROOT}/inputs/harris_4d_full_symbreak.in"
-OUTPUT_ROOT="/projects/fluid-engine/out/step175_em_bulk_awsum_probe_local"
+OUTPUT_ROOT="/projects/fluid-engine/out/step176_discrete_bulk_energy_equivalence_probe_local"
 
 NX1="128"
 NX2="64"
@@ -23,14 +23,14 @@ RESUME="true"
 
 usage() {
   cat <<'USAGE'
-Run Step-175 full EM-bulk ledger vs all-mode discrete A_w gradient-power probe.
+Run Step-176 discrete bulk-energy equivalence probe on the corrected quadrature baseline.
 
 Goal:
-  Check whether summing the discrete full A_w update-power channels over modes 0..3
-  closes the surviving EM bulk ledger residual under the corrected quadrature baseline.
+  Compare the current EM bulk energy ledger against alternate solver-consistent discrete
+  bulk-energy replacements for the dominant (d_z a_w)^2 channel.
 
 Usage:
-  ./scripts/run_step175_em_bulk_awsum_probe.sh [options]
+  ./scripts/run_step176_discrete_bulk_energy_equivalence_probe.sh [options]
 USAGE
 }
 
@@ -257,10 +257,10 @@ python3 "${REPO_ROOT}/scripts/summarize_step147_transport_ledger.py" \
   --out-csv "${OUTPUT_ROOT}_transport_ledger.csv" \
   --out-md "${OUTPUT_ROOT}_transport_ledger.md"
 
-python3 "${REPO_ROOT}/scripts/summarize_step175_em_bulk_awsum.py" \
+python3 "${REPO_ROOT}/scripts/summarize_step176_discrete_bulk_energy_equivalence.py" \
   --glob "${OUTPUT_ROOT}/*" \
-  --out-csv "${OUTPUT_ROOT}_em_bulk_awsum.csv" \
-  --out-md "${OUTPUT_ROOT}_em_bulk_awsum.md"
+  --out-csv "${OUTPUT_ROOT}_discrete_bulk_equivalence.csv" \
+  --out-md "${OUTPUT_ROOT}_discrete_bulk_equivalence.md"
 
 printf 'output_root,%s\n' "${OUTPUT_ROOT}"
 printf 'summary_md,%s\n' "${OUTPUT_ROOT}_summary.md"
@@ -271,4 +271,4 @@ printf 'tradeoff_md,%s\n' "${OUTPUT_ROOT}_tradeoff.md"
 printf 'solver_equivalence_md,%s\n' "${OUTPUT_ROOT}_solver_equivalence.md"
 printf 'mode0_terms_md,%s\n' "${OUTPUT_ROOT}_mode0_terms.md"
 printf 'transport_ledger_md,%s\n' "${OUTPUT_ROOT}_transport_ledger.md"
-printf 'em_bulk_awsum_md,%s\n' "${OUTPUT_ROOT}_em_bulk_awsum.md"
+printf 'discrete_bulk_equivalence_md,%s\n' "${OUTPUT_ROOT}_discrete_bulk_equivalence.md"

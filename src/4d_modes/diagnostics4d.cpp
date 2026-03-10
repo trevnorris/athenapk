@@ -2021,6 +2021,56 @@ Real BulkEMEnergyIntegral(MeshData<Real> *md) {
 
 Real BulkEMEnergyHst(MeshData<Real> *md) { return BulkEMEnergyIntegral(md); }
 
+Real BulkEMEnergyDiscreteAwDzIntegral(MeshData<Real> *md, const int mode_min,
+                                      const int mode_max_inclusive) {
+  auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const int n_modes = modes_pkg->Param<int>("n_modes");
+  const Real mu0 = modes_pkg->Param<double>("em4d/mu0");
+
+  Real integral = 0.0;
+  for (int b = 0; b < md->NumBlocks(); ++b) {
+    auto &bd = md->GetBlockData(b);
+    auto *pmb = bd->GetBlockPointer();
+    auto &coords = pmb->coords;
+
+    auto a = bd->Get("em4d_a").data.GetHostMirrorAndCopy();
+
+    IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
+    IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
+    IndexRange kb = bd->GetBoundsK(IndexDomain::interior);
+    const bool has_z = (kb.e > kb.s);
+    if (!has_z) {
+      continue;
+    }
+
+    for (int k = kb.s; k <= kb.e; ++k) {
+      for (int j = jb.s; j <= jb.e; ++j) {
+        for (int i = ib.s; i <= ib.e; ++i) {
+          const Real dz = coords.Dxc<3>(k);
+          Real local = 0.0;
+          for (int n = std::max(0, mode_min);
+               n < n_modes && n <= mode_max_inclusive; ++n) {
+            const int idx_aw = 5 * n + kCompAW;
+            const Real daw_dz =
+                (a(idx_aw, k + 1, j, i) - a(idx_aw, k - 1, j, i)) / (2.0 * dz);
+            local += daw_dz * daw_dz;
+          }
+          integral += (0.5 / mu0) * local * coords.CellVolume(k, j, i);
+        }
+      }
+    }
+  }
+  return integral;
+}
+
+Real BulkEMEnergyDiscreteAwDzModes12Hst(MeshData<Real> *md) {
+  return BulkEMEnergyDiscreteAwDzIntegral(md, 1, 2);
+}
+
+Real BulkEMEnergyDiscreteAwDzModes0123Hst(MeshData<Real> *md) {
+  return BulkEMEnergyDiscreteAwDzIntegral(md, 0, 3);
+}
+
 Real ResolvedEMEnergyIntegral(MeshData<Real> *md) {
   auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   const int n_modes = modes_pkg->Param<int>("n_modes");
@@ -4088,6 +4138,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     BulkEMEnergyHst,
                                                     "m4d_em_u_bulk"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, BulkEMEnergyDiscreteAwDzModes12Hst,
+      "m4d_em_u_bulk_discrete_aw_modes12"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, BulkEMEnergyDiscreteAwDzModes0123Hst,
+      "m4d_em_u_bulk_discrete_aw_modes0123"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     ResolvedEMEnergyHst,
                                                     "m4d_em_u_resolved"));
