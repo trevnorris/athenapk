@@ -1064,12 +1064,31 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
           Real response_w0_local_grad_abs = response_w0_local_grad_combined_abs;
           if (response_w0_local_gradient_norm_form == "quadrature") {
             response_w0_local_grad_abs = response_w0_local_grad_quadrature_abs;
+          } else if (response_w0_local_gradient_norm_form == "dz_signed_total_bounded") {
+            response_w0_local_grad_abs =
+                ((response_w0_local_dz >= 0.0) ? 1.0 : -1.0) *
+                response_w0_local_grad_quadrature_abs;
+          } else if (response_w0_local_gradient_norm_form == "dz_signed_mode2_bounded") {
+            response_w0_local_grad_abs =
+                ((response_w0_local_mode2_dz >= 0.0) ? 1.0 : -1.0) *
+                response_w0_local_grad_quadrature_abs;
+          } else if (response_w0_local_gradient_norm_form == "dz_signed_mode2_dzquad") {
+            response_w0_local_grad_abs =
+                ((response_w0_local_mode2_dz >= 0.0) ? 1.0 : -1.0) *
+                response_w0_local_dz_quadrature_abs;
+          } else if (response_w0_local_gradient_norm_form == "dz_signed_total") {
+            response_w0_local_grad_abs = response_w0_local_dz;
+          } else if (response_w0_local_gradient_norm_form == "dz_signed_mode2") {
+            response_w0_local_grad_abs = response_w0_local_mode2_dz;
           } else if (response_w0_local_gradient_norm_form == "l1_modes") {
             response_w0_local_grad_abs =
                 response_w0_local_mode1_grad_abs + response_w0_local_mode2_grad_abs;
           } else if (response_w0_local_gradient_norm_form != "combined") {
             PARTHENON_FAIL("Unknown response_w0_local_gradient_norm_form. "
-                           "Options: combined, quadrature, l1_modes");
+                           "Options: combined, quadrature, "
+                           "dz_signed_total_bounded, dz_signed_mode2_bounded, "
+                           "dz_signed_mode2_dzquad, dz_signed_total, "
+                           "dz_signed_mode2, l1_modes");
           }
           diag_response_w0_local_abs_volume_step +=
               cell_volume * std::abs(response_w0_local);

@@ -8,7 +8,7 @@ BINARY="${REPO_ROOT}/build-gpu-cuda124-ada89/bin/athenaPK"
 WORKDIR="${REPO_ROOT}"
 CONTROLLED_INPUT="${REPO_ROOT}/inputs/harris_4d_controlled.in"
 FULL_INPUT="${REPO_ROOT}/inputs/harris_4d_full_symbreak.in"
-OUTPUT_ROOT="/projects/fluid-engine/out/step168_local_gradient_dz_signed_probe_local"
+OUTPUT_ROOT="/projects/fluid-engine/out/step170_local_gradient_bounded_signed_ab_local"
 
 NX1="128"
 NX2="64"
@@ -23,17 +23,20 @@ RESUME="true"
 
 usage() {
   cat <<'USAGE'
-Run Step-168 local-gradient dz signed probe on the corrected quadrature baseline.
+Run Step-170 local-gradient bounded signed A/B on the corrected baseline.
 
 Goal:
-  Compare the dominant dz local-gradient mix_a gradient-power channel against
-  signed dz constructions built from mode1, mode2, and total signed dz rates.
+  Test bounded, sign-aware local-gradient dz operators against the corrected
+  quadrature baseline.
 
 Case matrix:
   - baseline_quadrature
+  - dz_signed_total_bounded
+  - dz_signed_mode2_bounded
+  - dz_signed_mode2_dzquad
 
 Usage:
-  ./scripts/run_step168_local_gradient_dz_signed_probe.sh [options]
+  ./scripts/run_step169_local_gradient_signed_ab.sh [options]
 USAGE
 }
 
@@ -150,7 +153,6 @@ FULL_BASE_ARGS=(
   "modes4d/response_w0_local_mode2_omega=0.0"
   "modes4d/response_w0_local_gradient_mixing_enable=true"
   "modes4d/response_w0_local_gradient_mixing_gain=7.0"
-  "modes4d/response_w0_local_gradient_norm_form=quadrature"
   "modes4d/response_w0_geometry_shift_enable=true"
   "modes4d/response_w0_projection_enable=false"
   "modes4d/response_w0_projection_gain=1.0"
@@ -200,6 +202,9 @@ run_case() {
   for arg in "${FULL_BASE_ARGS[@]}"; do
     cmd+=(--full-arg "${arg}")
   done
+  for arg in "$@"; do
+    cmd+=(--full-arg "${arg}")
+  done
 
   echo "=== ${case_name} ===" | tee "${log_file}"
   echo "command,${cmd[*]}" >> "${log_file}"
@@ -217,7 +222,10 @@ run_case() {
   fi
 }
 
-run_case "baseline_quadrature"
+run_case "baseline_quadrature" "modes4d/response_w0_local_gradient_norm_form=quadrature"
+run_case "dz_signed_total_bounded" "modes4d/response_w0_local_gradient_norm_form=dz_signed_total_bounded"
+run_case "dz_signed_mode2_bounded" "modes4d/response_w0_local_gradient_norm_form=dz_signed_mode2_bounded"
+run_case "dz_signed_mode2_dzquad" "modes4d/response_w0_local_gradient_norm_form=dz_signed_mode2_dzquad"
 
 python3 "${REPO_ROOT}/scripts/summarize_transverse_channel_activation.py" \
   --glob "${OUTPUT_ROOT}/*" \
@@ -247,6 +255,7 @@ python3 "${REPO_ROOT}/scripts/summarize_step124_tradeoff.py" \
 
 python3 "${REPO_ROOT}/scripts/summarize_step132_solver_equivalence.py" \
   --glob "${OUTPUT_ROOT}/*" \
+  --baseline-case "baseline_quadrature" \
   --out-csv "${OUTPUT_ROOT}_solver_equivalence.csv" \
   --out-md "${OUTPUT_ROOT}_solver_equivalence.md"
 
@@ -260,10 +269,11 @@ python3 "${REPO_ROOT}/scripts/summarize_step147_transport_ledger.py" \
   --out-csv "${OUTPUT_ROOT}_transport_ledger.csv" \
   --out-md "${OUTPUT_ROOT}_transport_ledger.md"
 
-python3 "${REPO_ROOT}/scripts/summarize_step168_local_gradient_dz_signed.py" \
+python3 "${REPO_ROOT}/scripts/summarize_step170_local_gradient_bounded_signed_ab.py" \
   --glob "${OUTPUT_ROOT}/*" \
-  --out-csv "${OUTPUT_ROOT}_local_gradient_dz_signed.csv" \
-  --out-md "${OUTPUT_ROOT}_local_gradient_dz_signed.md"
+  --baseline-case "baseline_quadrature" \
+  --out-csv "${OUTPUT_ROOT}_local_gradient_bounded_signed_ab.csv" \
+  --out-md "${OUTPUT_ROOT}_local_gradient_bounded_signed_ab.md"
 
 cat <<OUT
 output_root,${OUTPUT_ROOT}
@@ -275,5 +285,5 @@ tradeoff_md,${OUTPUT_ROOT}_tradeoff.md
 solver_equivalence_md,${OUTPUT_ROOT}_solver_equivalence.md
 mode0_terms_md,${OUTPUT_ROOT}_mode0_terms.md
 transport_ledger_md,${OUTPUT_ROOT}_transport_ledger.md
-local_gradient_dz_signed_md,${OUTPUT_ROOT}_local_gradient_dz_signed.md
+local_gradient_bounded_signed_ab_md,${OUTPUT_ROOT}_local_gradient_bounded_signed_ab.md
 OUT
