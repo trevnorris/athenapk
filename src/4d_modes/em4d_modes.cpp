@@ -765,6 +765,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_aw_mode1_gradz_power_mix_w0_local_dz_signed_step = 0.0;
   Real diag_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode1_step = 0.0;
   Real diag_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode2_step = 0.0;
+  Real diag_aw_mode1_gradz_power_mix_w0_local_gradient_discrete_step = 0.0;
+  Real diag_aw_mode1_gradz_power_mix_w0_local_dz_discrete_step = 0.0;
   Real diag_aw_mode2_pi_drive_step = 0.0;
   Real diag_aw_mode2_rhs_step = 0.0;
   Real diag_aw_mode2_mix_pi_step = 0.0;
@@ -783,6 +785,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_aw_mode2_gradz_power_mix_w0_local_dz_signed_step = 0.0;
   Real diag_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode1_step = 0.0;
   Real diag_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode2_step = 0.0;
+  Real diag_aw_mode2_gradz_power_mix_w0_local_gradient_discrete_step = 0.0;
+  Real diag_aw_mode2_gradz_power_mix_w0_local_dz_discrete_step = 0.0;
   Real diag_response_bridge_power_mode0_step = 0.0;
   Real diag_response_bridge_power_mode0_abs_step = 0.0;
   Real diag_response_bridge_power_mode1_step = 0.0;
@@ -877,7 +881,7 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       const Real dy = coords.Dxc<2>(j);
       return (field(idx, k, j + 1, i) - field(idx, k, j - 1, i)) / (2.0 * dy);
     };
-  auto gradient_z = [&](const auto &field, const int idx, const int k, const int j,
+    auto gradient_z = [&](const auto &field, const int idx, const int k, const int j,
                         const int i) -> Real {
       if (!has_z) return 0.0;
       const Real dz = coords.Dxc<3>(k);
@@ -1125,6 +1129,90 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
           diag_response_w0_local_volume_step += cell_volume;
           const Real response_w0_dot_local_total =
               response_w0_dot + response_w0_local_dot;
+          auto eval_local_grad_mix_aw_at_cell = [&](const int mode_eval, const int kk,
+                                                    const int jj, const int ii,
+                                                    Real *mix_aw_total,
+                                                    Real *mix_aw_dz) {
+            *mix_aw_total = 0.0;
+            *mix_aw_dz = 0.0;
+            if (!(response_w0_enable && response_w0_local_enable &&
+                  response_w0_local_gradient_mixing_enable &&
+                  (response_w0_local_gradient_mixing_gain != 0.0))) {
+              return;
+            }
+
+            const Real x_eval = coords.Xc<1>(ii);
+            const Real z_eval = has_z ? coords.Xc<3>(kk) : 0.0;
+            const Real phase1_eval = (response_w0_local_mode1_kx * x_eval) +
+                                     (response_w0_local_mode1_kz * z_eval) +
+                                     response_w0_local_mode1_phase +
+                                     (response_w0_local_mode1_omega * response_local_time);
+            const Real phase2_eval = (response_w0_local_mode2_kx * x_eval) +
+                                     (response_w0_local_mode2_kz * z_eval) +
+                                     response_w0_local_mode2_phase +
+                                     (response_w0_local_mode2_omega * response_local_time);
+            const Real mode1_dx_eval =
+                response_w0_local_mode1_amp * response_w0_local_mode1_kx *
+                std::cos(phase1_eval);
+            const Real mode1_dz_eval =
+                response_w0_local_mode1_amp * response_w0_local_mode1_kz *
+                std::cos(phase1_eval);
+            const Real mode2_dx_eval =
+                response_w0_local_mode2_amp * response_w0_local_mode2_kx *
+                std::cos(phase2_eval);
+            const Real mode2_dz_eval =
+                response_w0_local_mode2_amp * response_w0_local_mode2_kz *
+                std::cos(phase2_eval);
+            const Real total_dx_eval = mode1_dx_eval + mode2_dx_eval;
+            const Real total_dz_eval = mode1_dz_eval + mode2_dz_eval;
+            const Real mode1_grad_abs_eval =
+                std::sqrt((mode1_dx_eval * mode1_dx_eval) + (mode1_dz_eval * mode1_dz_eval));
+            const Real mode2_grad_abs_eval =
+                std::sqrt((mode2_dx_eval * mode2_dx_eval) + (mode2_dz_eval * mode2_dz_eval));
+            const Real grad_quadrature_abs_eval =
+                std::sqrt((mode1_dx_eval * mode1_dx_eval) +
+                          (mode1_dz_eval * mode1_dz_eval) +
+                          (mode2_dx_eval * mode2_dx_eval) +
+                          (mode2_dz_eval * mode2_dz_eval));
+            const Real dx_quadrature_abs_eval =
+                std::sqrt((mode1_dx_eval * mode1_dx_eval) + (mode2_dx_eval * mode2_dx_eval));
+            const Real dz_quadrature_abs_eval =
+                std::sqrt((mode1_dz_eval * mode1_dz_eval) + (mode2_dz_eval * mode2_dz_eval));
+            Real grad_abs_eval =
+                std::sqrt((total_dx_eval * total_dx_eval) + (total_dz_eval * total_dz_eval));
+            if (response_w0_local_gradient_norm_form == "quadrature") {
+              grad_abs_eval = grad_quadrature_abs_eval;
+            } else if (response_w0_local_gradient_norm_form == "dz_signed_total_bounded") {
+              grad_abs_eval = ((total_dz_eval >= 0.0) ? 1.0 : -1.0) * grad_quadrature_abs_eval;
+            } else if (response_w0_local_gradient_norm_form == "dz_signed_mode2_bounded") {
+              grad_abs_eval = ((mode2_dz_eval >= 0.0) ? 1.0 : -1.0) * grad_quadrature_abs_eval;
+            } else if (response_w0_local_gradient_norm_form == "dz_signed_mode2_dzquad") {
+              grad_abs_eval =
+                  ((mode2_dz_eval >= 0.0) ? 1.0 : -1.0) * dz_quadrature_abs_eval;
+            } else if (response_w0_local_gradient_norm_form == "dz_signed_total") {
+              grad_abs_eval = total_dz_eval;
+            } else if (response_w0_local_gradient_norm_form == "dz_signed_mode2") {
+              grad_abs_eval = mode2_dz_eval;
+            } else if (response_w0_local_gradient_norm_form == "l1_modes") {
+              grad_abs_eval = mode1_grad_abs_eval + mode2_grad_abs_eval;
+            }
+
+            const Real mix_rate_total_eval =
+                response_w0_local_gradient_mixing_gain * c_wave * grad_abs_eval;
+            const Real mix_rate_dz_eval =
+                response_w0_local_gradient_mixing_gain * c_wave * dz_quadrature_abs_eval;
+            const int row = mode_eval * n_modes;
+            Real aw_mix_basis_eval = 0.0;
+            for (int m = 0; m < n_modes; ++m) {
+              const Real coeff = w0_connection[row + m];
+              if (coeff == 0.0) {
+                continue;
+              }
+              aw_mix_basis_eval += coeff * a_old(EMIndex(m, kCompAW), kk, jj, ii);
+            }
+            *mix_aw_total = mix_rate_total_eval * aw_mix_basis_eval;
+            *mix_aw_dz = mix_rate_dz_eval * aw_mix_basis_eval;
+          };
 
           for (int n = 0; n < n_modes; ++n) {
             const int ion_base = PlasmaIndex(0, n, 0, n_modes);
@@ -2308,6 +2396,28 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                   -dt * cell_volume * mix_w0_grad_aw_dz_signed_mode1_term * aw_dzz_old;
               const Real aw_gradz_power_mix_w0_local_dz_signed_mode2 =
                   -dt * cell_volume * mix_w0_grad_aw_dz_signed_mode2_term * aw_dzz_old;
+              Real aw_gradz_power_mix_w0_local_gradient_discrete = 0.0;
+              Real aw_gradz_power_mix_w0_local_dz_discrete = 0.0;
+              if (has_z) {
+                const Real dz = coords.Dxc<3>(k);
+                Real mix_aw_total_plus = 0.0;
+                Real mix_aw_total_minus = 0.0;
+                Real mix_aw_dz_plus = 0.0;
+                Real mix_aw_dz_minus = 0.0;
+                eval_local_grad_mix_aw_at_cell(n, k + 1, j, i, &mix_aw_total_plus,
+                                               &mix_aw_dz_plus);
+                eval_local_grad_mix_aw_at_cell(n, k - 1, j, i, &mix_aw_total_minus,
+                                               &mix_aw_dz_minus);
+                const Real mix_aw_total_gradz =
+                    (mix_aw_total_plus - mix_aw_total_minus) / (2.0 * dz);
+                const Real mix_aw_dz_gradz =
+                    (mix_aw_dz_plus - mix_aw_dz_minus) / (2.0 * dz);
+                const Real aw_dz_old = daw_dz_modes[n];
+                aw_gradz_power_mix_w0_local_gradient_discrete =
+                    dt * cell_volume * aw_dz_old * mix_aw_total_gradz;
+                aw_gradz_power_mix_w0_local_dz_discrete =
+                    dt * cell_volume * aw_dz_old * mix_aw_dz_gradz;
+              }
               Real *diag_pi_drive_step =
                   (n == 1) ? &diag_aw_mode1_pi_drive_step : &diag_aw_mode2_pi_drive_step;
               Real *diag_rhs_step =
@@ -2357,6 +2467,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
               Real *diag_gradz_power_mix_w0_local_dz_signed_mode2_step =
                   (n == 1) ? &diag_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode2_step
                            : &diag_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode2_step;
+              Real *diag_gradz_power_mix_w0_local_gradient_discrete_step =
+                  (n == 1) ? &diag_aw_mode1_gradz_power_mix_w0_local_gradient_discrete_step
+                           : &diag_aw_mode2_gradz_power_mix_w0_local_gradient_discrete_step;
+              Real *diag_gradz_power_mix_w0_local_dz_discrete_step =
+                  (n == 1) ? &diag_aw_mode1_gradz_power_mix_w0_local_dz_discrete_step
+                           : &diag_aw_mode2_gradz_power_mix_w0_local_dz_discrete_step;
               *diag_pi_drive_step += dt * cell_volume * aw_pi_drive;
               *diag_rhs_step += dt * cell_volume * rhs_aw;
               *diag_mix_pi_step += dt * cell_volume * mix_piw;
@@ -2379,6 +2495,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                   aw_gradz_power_mix_w0_local_dz_signed_mode1;
               *diag_gradz_power_mix_w0_local_dz_signed_mode2_step +=
                   aw_gradz_power_mix_w0_local_dz_signed_mode2;
+              *diag_gradz_power_mix_w0_local_gradient_discrete_step +=
+                  aw_gradz_power_mix_w0_local_gradient_discrete;
+              *diag_gradz_power_mix_w0_local_dz_discrete_step +=
+                  aw_gradz_power_mix_w0_local_dz_discrete;
             }
             if (hard_controlled_limit_active) {
               // Hard controlled-limit clamp: keep mixed-sector potential/momentum off.
@@ -2930,6 +3050,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   auto *diag_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode2 =
       modes_pkg->MutableParam<double>(
           "diag/int_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode2");
+  auto *diag_aw_mode1_gradz_power_mix_w0_local_gradient_discrete =
+      modes_pkg->MutableParam<double>(
+          "diag/int_aw_mode1_gradz_power_mix_w0_local_gradient_discrete");
+  auto *diag_aw_mode1_gradz_power_mix_w0_local_dz_discrete =
+      modes_pkg->MutableParam<double>(
+          "diag/int_aw_mode1_gradz_power_mix_w0_local_dz_discrete");
   auto *diag_aw_mode2_pi_drive =
       modes_pkg->MutableParam<double>("diag/int_aw_mode2_pi_drive");
   auto *diag_aw_mode2_rhs =
@@ -2968,6 +3094,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   auto *diag_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode2 =
       modes_pkg->MutableParam<double>(
           "diag/int_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode2");
+  auto *diag_aw_mode2_gradz_power_mix_w0_local_gradient_discrete =
+      modes_pkg->MutableParam<double>(
+          "diag/int_aw_mode2_gradz_power_mix_w0_local_gradient_discrete");
+  auto *diag_aw_mode2_gradz_power_mix_w0_local_dz_discrete =
+      modes_pkg->MutableParam<double>(
+          "diag/int_aw_mode2_gradz_power_mix_w0_local_dz_discrete");
   auto *diag_response_bridge_power_mode0 =
       modes_pkg->MutableParam<double>("diag/int_response_bridge_power_mode0");
   auto *diag_response_bridge_power_mode0_abs =
@@ -3214,6 +3346,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       diag_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode1_step;
   *diag_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode2 +=
       diag_aw_mode1_gradz_power_mix_w0_local_dz_signed_mode2_step;
+  *diag_aw_mode1_gradz_power_mix_w0_local_gradient_discrete +=
+      diag_aw_mode1_gradz_power_mix_w0_local_gradient_discrete_step;
+  *diag_aw_mode1_gradz_power_mix_w0_local_dz_discrete +=
+      diag_aw_mode1_gradz_power_mix_w0_local_dz_discrete_step;
   *diag_aw_mode2_pi_drive += diag_aw_mode2_pi_drive_step;
   *diag_aw_mode2_rhs += diag_aw_mode2_rhs_step;
   *diag_aw_mode2_mix_pi += diag_aw_mode2_mix_pi_step;
@@ -3240,6 +3376,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       diag_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode1_step;
   *diag_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode2 +=
       diag_aw_mode2_gradz_power_mix_w0_local_dz_signed_mode2_step;
+  *diag_aw_mode2_gradz_power_mix_w0_local_gradient_discrete +=
+      diag_aw_mode2_gradz_power_mix_w0_local_gradient_discrete_step;
+  *diag_aw_mode2_gradz_power_mix_w0_local_dz_discrete +=
+      diag_aw_mode2_gradz_power_mix_w0_local_dz_discrete_step;
   *diag_response_bridge_power_mode0 += diag_response_bridge_power_mode0_step;
   *diag_response_bridge_power_mode0_abs += diag_response_bridge_power_mode0_abs_step;
   *diag_response_bridge_power_mode1 += diag_response_bridge_power_mode1_step;
