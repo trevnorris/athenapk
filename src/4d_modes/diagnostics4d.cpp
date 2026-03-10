@@ -915,6 +915,16 @@ Real AwMode1GradzPowerMixW0LocalDzDiscreteAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dz_discrete");
 }
 
+Real AwMode1GradzPowerPiDriveDiscreteAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_pi_drive_discrete");
+}
+
+Real AwMode1GradzPowerDaDtDiscreteAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode1_gradz_power_da_dt_discrete");
+}
+
 Real AwMode2PiDriveAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_aw_mode2_pi_drive");
@@ -1016,6 +1026,16 @@ Real AwMode2GradzPowerMixW0LocalGradientDiscreteAccumulatorHst(MeshData<Real> *m
 Real AwMode2GradzPowerMixW0LocalDzDiscreteAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dz_discrete");
+}
+
+Real AwMode2GradzPowerPiDriveDiscreteAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_pi_drive_discrete");
+}
+
+Real AwMode2GradzPowerDaDtDiscreteAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_mode2_gradz_power_da_dt_discrete");
 }
 
 Real ResponseBridgePowerMode0AccumulatorHst(MeshData<Real> *md) {
@@ -3291,6 +3311,8 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_gradient_discrete", 0.0,
                         true);
   pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_mix_w0_local_dz_discrete", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_pi_drive_discrete", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode1_gradz_power_da_dt_discrete", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode2_pi_drive", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode2_rhs", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode2_mix_pi", 0.0, true);
@@ -3314,6 +3336,8 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_gradient_discrete", 0.0,
                         true);
   pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_mix_w0_local_dz_discrete", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_pi_drive_discrete", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_mode2_gradz_power_da_dt_discrete", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode0_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode1", 0.0, true);
@@ -3835,6 +3859,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       AwMode1GradzPowerMixW0LocalDzDiscreteAccumulatorHst,
       "m4d_int_aw_mode1_gradz_power_mix_w0_local_dz_discrete"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerPiDriveDiscreteAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_pi_drive_discrete"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode1GradzPowerDaDtDiscreteAccumulatorHst,
+      "m4d_int_aw_mode1_gradz_power_da_dt_discrete"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, AwMode2PiDriveAccumulatorHst,
       "m4d_int_aw_mode2_pi_drive"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
@@ -3898,6 +3928,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum,
       AwMode2GradzPowerMixW0LocalDzDiscreteAccumulatorHst,
       "m4d_int_aw_mode2_gradz_power_mix_w0_local_dz_discrete"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerPiDriveDiscreteAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_pi_drive_discrete"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwMode2GradzPowerDaDtDiscreteAccumulatorHst,
+      "m4d_int_aw_mode2_gradz_power_da_dt_discrete"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseBridgePowerMode0AccumulatorHst,
       "m4d_int_response_bridge_power_mode0"));
