@@ -40,6 +40,15 @@ enum class BraneMixedQuantity {
   MixedEw2,
   MixedC2,
   MixedCx2,
+  MixedCxDawDx2,
+  MixedCxDawDx2Mode0,
+  MixedCxDawDx2Mode1,
+  MixedCxDawDx2Mode2,
+  MixedCxDawDx2Mode3,
+  MixedCxDawDx2ModeDiag,
+  MixedCxDawDx2ModeCross,
+  MixedCxDwAx2,
+  MixedCxCross,
   MixedCy2,
   MixedCz2,
   MixedCzDawDz2,
@@ -1424,6 +1433,12 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
           Real ew2_int = 0.0;
           Real c2_int = 0.0;
           Real cx2_int = 0.0;
+          Real cx_daw_dx2_int = 0.0;
+          std::array<Real, 4> cx_daw_dx2_mode_ints{};
+          Real cx_daw_dx2_mode_diag_int = 0.0;
+          Real cx_daw_dx2_mode_cross_int = 0.0;
+          Real cx_dw_ax2_int = 0.0;
+          Real cx_cross_int = 0.0;
           Real cy2_int = 0.0;
           Real cz2_int = 0.0;
           Real cz_daw_dz2_int = 0.0;
@@ -1441,6 +1456,7 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
             Real daw_dx_node = 0.0;
             Real daw_dy_node = 0.0;
             Real daw_dz_node = 0.0;
+            Real daw_dx_mode_diag = 0.0;
             Real daw_dz_mode_diag = 0.0;
 
             for (int n = 0; n < n_modes; ++n) {
@@ -1459,7 +1475,11 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
               daw_dx_node += daw_dx_mode;
               daw_dy_node += daw_dy_mode;
               daw_dz_node += daw_dz_mode;
+              daw_dx_mode_diag += daw_dx_mode * daw_dx_mode;
               daw_dz_mode_diag += daw_dz_mode * daw_dz_mode;
+              if (n < static_cast<int>(cx_daw_dx2_mode_ints.size())) {
+                cx_daw_dx2_mode_ints[n] += weights[q] * daw_dx_mode * daw_dx_mode;
+              }
               if (n < static_cast<int>(cz_daw_dz2_mode_ints.size())) {
                 cz_daw_dz2_mode_ints[n] += weights[q] * daw_dz_mode * daw_dz_mode;
               }
@@ -1471,7 +1491,11 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
             const Real cz = daw_dz_node - d_w_az;
 
             ew2_int += weights[q] * (ew * ew);
-            const Real cx2 = cx * cx;
+            const Real cx_daw_dx2 = daw_dx_node * daw_dx_node;
+            const Real cx_daw_dx2_mode_cross = cx_daw_dx2 - daw_dx_mode_diag;
+            const Real cx_dw_ax2 = d_w_ax * d_w_ax;
+            const Real cx_cross = -2.0 * daw_dx_node * d_w_ax;
+            const Real cx2 = cx_daw_dx2 + cx_dw_ax2 + cx_cross;
             const Real cy2 = cy * cy;
             const Real cz_daw_dz2 = daw_dz_node * daw_dz_node;
             const Real cz_daw_dz2_mode_cross = cz_daw_dz2 - daw_dz_mode_diag;
@@ -1479,6 +1503,11 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
             const Real cz_cross = -2.0 * daw_dz_node * d_w_az;
             const Real cz2 = cz_daw_dz2 + cz_dw_az2 + cz_cross;
             cx2_int += weights[q] * cx2;
+            cx_daw_dx2_int += weights[q] * cx_daw_dx2;
+            cx_daw_dx2_mode_diag_int += weights[q] * daw_dx_mode_diag;
+            cx_daw_dx2_mode_cross_int += weights[q] * cx_daw_dx2_mode_cross;
+            cx_dw_ax2_int += weights[q] * cx_dw_ax2;
+            cx_cross_int += weights[q] * cx_cross;
             cy2_int += weights[q] * cy2;
             cz2_int += weights[q] * cz2;
             cz_daw_dz2_int += weights[q] * cz_daw_dz2;
@@ -1503,6 +1532,24 @@ Real BraneMixedIntegral(MeshData<Real> *md, BraneMixedQuantity quantity) {
             val = 0.5 * c2_int;
           } else if (quantity == BraneMixedQuantity::MixedCx2) {
             val = 0.5 * cx2_int;
+          } else if (quantity == BraneMixedQuantity::MixedCxDawDx2) {
+            val = 0.5 * cx_daw_dx2_int;
+          } else if (quantity == BraneMixedQuantity::MixedCxDawDx2Mode0) {
+            val = 0.5 * cx_daw_dx2_mode_ints[0];
+          } else if (quantity == BraneMixedQuantity::MixedCxDawDx2Mode1) {
+            val = 0.5 * cx_daw_dx2_mode_ints[1];
+          } else if (quantity == BraneMixedQuantity::MixedCxDawDx2Mode2) {
+            val = 0.5 * cx_daw_dx2_mode_ints[2];
+          } else if (quantity == BraneMixedQuantity::MixedCxDawDx2Mode3) {
+            val = 0.5 * cx_daw_dx2_mode_ints[3];
+          } else if (quantity == BraneMixedQuantity::MixedCxDawDx2ModeDiag) {
+            val = 0.5 * cx_daw_dx2_mode_diag_int;
+          } else if (quantity == BraneMixedQuantity::MixedCxDawDx2ModeCross) {
+            val = 0.5 * cx_daw_dx2_mode_cross_int;
+          } else if (quantity == BraneMixedQuantity::MixedCxDwAx2) {
+            val = 0.5 * cx_dw_ax2_int;
+          } else if (quantity == BraneMixedQuantity::MixedCxCross) {
+            val = 0.5 * cx_cross_int;
           } else if (quantity == BraneMixedQuantity::MixedCy2) {
             val = 0.5 * cy2_int;
           } else if (quantity == BraneMixedQuantity::MixedCz2) {
@@ -2647,6 +2694,42 @@ Real MixedC2Hst(MeshData<Real> *md) {
 
 Real MixedCx2Hst(MeshData<Real> *md) {
   return BraneMixedIntegral(md, BraneMixedQuantity::MixedCx2);
+}
+
+Real MixedCxDawDx2Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCxDawDx2);
+}
+
+Real MixedCxDawDx2Mode0Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCxDawDx2Mode0);
+}
+
+Real MixedCxDawDx2Mode1Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCxDawDx2Mode1);
+}
+
+Real MixedCxDawDx2Mode2Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCxDawDx2Mode2);
+}
+
+Real MixedCxDawDx2Mode3Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCxDawDx2Mode3);
+}
+
+Real MixedCxDawDx2ModeDiagHst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCxDawDx2ModeDiag);
+}
+
+Real MixedCxDawDx2ModeCrossHst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCxDawDx2ModeCross);
+}
+
+Real MixedCxDwAx2Hst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCxDwAx2);
+}
+
+Real MixedCxCrossHst(MeshData<Real> *md) {
+  return BraneMixedIntegral(md, BraneMixedQuantity::MixedCxCross);
 }
 
 Real MixedCy2Hst(MeshData<Real> *md) {
@@ -4184,6 +4267,24 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
                                                     MixedC2Hst, "m4d_mixed_c2"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     MixedCx2Hst, "m4d_mixed_cx2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCxDawDx2Hst, "m4d_mixed_cx_daw_dx2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCxDawDx2Mode0Hst, "m4d_mixed_cx_daw_dx2_mode0"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCxDawDx2Mode1Hst, "m4d_mixed_cx_daw_dx2_mode1"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCxDawDx2Mode2Hst, "m4d_mixed_cx_daw_dx2_mode2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCxDawDx2Mode3Hst, "m4d_mixed_cx_daw_dx2_mode3"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCxDawDx2ModeDiagHst, "m4d_mixed_cx_daw_dx2_mode_diag"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCxDawDx2ModeCrossHst, "m4d_mixed_cx_daw_dx2_mode_cross"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCxDwAx2Hst, "m4d_mixed_cx_dw_ax2"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    MixedCxCrossHst, "m4d_mixed_cx_cross"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     MixedCy2Hst, "m4d_mixed_cy2"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
