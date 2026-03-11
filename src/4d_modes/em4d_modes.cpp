@@ -805,6 +805,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_aw_mode3_gradx_power_da_dt_discrete_step = 0.0;
   Real diag_aw_mode3_gradz_energy_delta_exact_discrete_step = 0.0;
   Real diag_aw_mode3_gradz_energy_delta_quadratic_discrete_step = 0.0;
+  Real diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum_step = 0.0;
+  Real diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum_step = 0.0;
   Real diag_response_bridge_power_mode0_step = 0.0;
   Real diag_response_bridge_power_mode0_abs_step = 0.0;
   Real diag_response_bridge_power_mode1_step = 0.0;
@@ -2439,8 +2441,24 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                   -dt * cell_volume * mix_w0_grad_aw_dz_signed_mode1_term * aw_dzz_old;
               const Real aw_gradz_power_mix_w0_local_dz_signed_mode2 =
                   -dt * cell_volume * mix_w0_grad_aw_dz_signed_mode2_term * aw_dzz_old;
+              Real aw_gradx_power_mix_w0_local_gradient_discrete = 0.0;
               Real aw_gradz_power_mix_w0_local_gradient_discrete = 0.0;
               Real aw_gradz_power_mix_w0_local_dz_discrete = 0.0;
+              if (has_x) {
+                const Real dx = coords.Dxc<1>(i);
+                Real mix_aw_total_plus = 0.0;
+                Real mix_aw_total_minus = 0.0;
+                Real mix_aw_dummy = 0.0;
+                eval_local_grad_mix_aw_at_cell(n, k, j, i + 1, &mix_aw_total_plus,
+                                               &mix_aw_dummy);
+                eval_local_grad_mix_aw_at_cell(n, k, j, i - 1, &mix_aw_total_minus,
+                                               &mix_aw_dummy);
+                const Real mix_aw_total_gradx =
+                    (mix_aw_total_plus - mix_aw_total_minus) / (2.0 * dx);
+                const Real aw_dx_old = daw_dx_modes[n];
+                aw_gradx_power_mix_w0_local_gradient_discrete =
+                    dt * cell_volume * aw_dx_old * mix_aw_total_gradx;
+              }
               if (has_z) {
                 const Real dz = coords.Dxc<3>(k);
                 Real mix_aw_total_plus = 0.0;
@@ -2542,6 +2560,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                   aw_gradz_power_mix_w0_local_gradient_discrete;
               *diag_gradz_power_mix_w0_local_dz_discrete_step +=
                   aw_gradz_power_mix_w0_local_dz_discrete;
+              diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum_step +=
+                  aw_gradx_power_mix_w0_local_gradient_discrete;
+              diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum_step +=
+                  aw_gradz_power_mix_w0_local_gradient_discrete;
             }
             if (hard_controlled_limit_active) {
               // Hard controlled-limit clamp: keep mixed-sector potential/momentum off.
@@ -3313,6 +3335,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       "diag/int_aw_mode3_gradz_energy_delta_exact_discrete");
   auto *diag_aw_mode3_gradz_energy_delta_quadratic_discrete = modes_pkg->MutableParam<double>(
       "diag/int_aw_mode3_gradz_energy_delta_quadratic_discrete");
+  auto *diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum = modes_pkg->MutableParam<double>(
+      "diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum");
+  auto *diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum = modes_pkg->MutableParam<double>(
+      "diag/int_aw_gradz_power_mix_w0_local_gradient_discrete_sum");
   auto *diag_response_bridge_power_mode0 =
       modes_pkg->MutableParam<double>("diag/int_response_bridge_power_mode0");
   auto *diag_response_bridge_power_mode0_abs =
@@ -3629,6 +3655,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       diag_aw_mode3_gradz_energy_delta_exact_discrete_step;
   *diag_aw_mode3_gradz_energy_delta_quadratic_discrete +=
       diag_aw_mode3_gradz_energy_delta_quadratic_discrete_step;
+  *diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum +=
+      diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum_step;
+  *diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum +=
+      diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum_step;
   *diag_response_bridge_power_mode0 += diag_response_bridge_power_mode0_step;
   *diag_response_bridge_power_mode0_abs += diag_response_bridge_power_mode0_abs_step;
   *diag_response_bridge_power_mode1 += diag_response_bridge_power_mode1_step;

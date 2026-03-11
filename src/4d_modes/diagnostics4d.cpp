@@ -1107,6 +1107,16 @@ Real AwMode3GradxPowerDaDtDiscreteAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_aw_mode3_gradx_power_da_dt_discrete");
 }
 
+Real AwGradxPowerMixW0LocalGradientDiscreteSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum");
+}
+
+Real AwGradzPowerMixW0LocalGradientDiscreteSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_gradz_power_mix_w0_local_gradient_discrete_sum");
+}
+
 Real AwMode3GradzEnergyDeltaExactDiscreteAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_aw_mode3_gradz_energy_delta_exact_discrete");
@@ -3555,6 +3565,10 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_aw_mode3_gradx_power_da_dt_discrete", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode3_gradz_energy_delta_exact_discrete", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_mode3_gradz_energy_delta_quadratic_discrete", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum", 0.0,
+                        true);
+  pkg->AddParam<double>("diag/int_aw_gradz_power_mix_w0_local_gradient_discrete_sum", 0.0,
+                        true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode0", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode0_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_bridge_power_mode1", 0.0, true);
@@ -4193,6 +4207,14 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, AwMode3GradxPowerDaDtDiscreteAccumulatorHst,
       "m4d_int_aw_mode3_gradx_power_da_dt_discrete"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      AwGradxPowerMixW0LocalGradientDiscreteSumAccumulatorHst,
+      "m4d_int_aw_gradx_power_mix_w0_local_gradient_discrete_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      AwGradzPowerMixW0LocalGradientDiscreteSumAccumulatorHst,
+      "m4d_int_aw_gradz_power_mix_w0_local_gradient_discrete_sum"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum,
       AwMode3GradzEnergyDeltaExactDiscreteAccumulatorHst,
