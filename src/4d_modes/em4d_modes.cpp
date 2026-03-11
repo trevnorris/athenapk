@@ -768,10 +768,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_aw_mode1_gradz_power_mix_w0_local_gradient_discrete_step = 0.0;
   Real diag_aw_mode1_gradz_power_mix_w0_local_dz_discrete_step = 0.0;
   Real diag_aw_mode0_gradz_power_da_dt_discrete_step = 0.0;
+  Real diag_aw_mode0_gradx_power_da_dt_discrete_step = 0.0;
   Real diag_aw_mode0_gradz_energy_delta_exact_discrete_step = 0.0;
   Real diag_aw_mode0_gradz_energy_delta_quadratic_discrete_step = 0.0;
   Real diag_aw_mode1_gradz_power_pi_drive_discrete_step = 0.0;
   Real diag_aw_mode1_gradz_power_da_dt_discrete_step = 0.0;
+  Real diag_aw_mode1_gradx_power_da_dt_discrete_step = 0.0;
   Real diag_aw_mode1_gradz_energy_delta_exact_discrete_step = 0.0;
   Real diag_aw_mode1_gradz_energy_delta_quadratic_discrete_step = 0.0;
   Real diag_aw_mode2_pi_drive_step = 0.0;
@@ -796,9 +798,11 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_aw_mode2_gradz_power_mix_w0_local_dz_discrete_step = 0.0;
   Real diag_aw_mode2_gradz_power_pi_drive_discrete_step = 0.0;
   Real diag_aw_mode2_gradz_power_da_dt_discrete_step = 0.0;
+  Real diag_aw_mode2_gradx_power_da_dt_discrete_step = 0.0;
   Real diag_aw_mode2_gradz_energy_delta_exact_discrete_step = 0.0;
   Real diag_aw_mode2_gradz_energy_delta_quadratic_discrete_step = 0.0;
   Real diag_aw_mode3_gradz_power_da_dt_discrete_step = 0.0;
+  Real diag_aw_mode3_gradx_power_da_dt_discrete_step = 0.0;
   Real diag_aw_mode3_gradz_energy_delta_exact_discrete_step = 0.0;
   Real diag_aw_mode3_gradz_energy_delta_quadratic_discrete_step = 0.0;
   Real diag_response_bridge_power_mode0_step = 0.0;
@@ -2618,17 +2622,41 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                (2.0 * dz);
       };
 
+      auto x_grad_stored = [&](const std::vector<Real> &field, const int kk, const int jj,
+                               const int ii) -> Real {
+        const int idx = flat_cell_index(kk, jj, ii);
+        if (ni <= 1) return 0.0;
+        if (ii == ib.s) {
+          const Real dx = coords.Dxc<1>(ii);
+          return (field[flat_cell_index(kk, jj, ii + 1)] - field[idx]) / dx;
+        }
+        if (ii == ib.e) {
+          const Real dx = coords.Dxc<1>(ii);
+          return (field[idx] - field[flat_cell_index(kk, jj, ii - 1)]) / dx;
+        }
+        const Real dx = coords.Dxc<1>(ii);
+        return (field[flat_cell_index(kk, jj, ii + 1)] -
+                field[flat_cell_index(kk, jj, ii - 1)]) /
+               (2.0 * dx);
+      };
+
       for (int k = kb.s; k <= kb.e; ++k) {
         for (int j = jb.s; j <= jb.e; ++j) {
           for (int i = ib.s; i <= ib.e; ++i) {
             const Real cell_volume = coords.CellVolume(k, j, i);
 
             if (n_modes > 0) {
+              const Real aw_mode0_dx_old =
+                  gradient_x(a_old, EMIndex(0, kCompAW), k, j, i);
               const Real aw_mode0_dz_old =
                   gradient_z(a_old, EMIndex(0, kCompAW), k, j, i);
+              const Real aw_mode0_da_dt_gradx =
+                  x_grad_stored(aw_mode0_da_dt_cells, k, j, i);
               const Real aw_mode0_da_dt_gradz =
                   z_grad_stored(aw_mode0_da_dt_cells, k, j, i);
               const Real aw_mode0_dg = dt * aw_mode0_da_dt_gradz;
+              diag_aw_mode0_gradx_power_da_dt_discrete_step +=
+                  dt * cell_volume * aw_mode0_dx_old * aw_mode0_da_dt_gradx;
               diag_aw_mode0_gradz_power_da_dt_discrete_step +=
                   dt * cell_volume * aw_mode0_dz_old * aw_mode0_da_dt_gradz;
               diag_aw_mode0_gradz_energy_delta_exact_discrete_step +=
@@ -2638,13 +2666,19 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
             }
 
             if (n_modes > 1) {
+              const Real aw_mode1_dx_old =
+                  gradient_x(a_old, EMIndex(1, kCompAW), k, j, i);
               const Real aw_mode1_dz_old =
                   gradient_z(a_old, EMIndex(1, kCompAW), k, j, i);
+              const Real aw_mode1_da_dt_gradx =
+                  x_grad_stored(aw_mode1_da_dt_cells, k, j, i);
               const Real aw_mode1_pi_drive_gradz =
                   z_grad_stored(aw_mode1_pi_drive_cells, k, j, i);
               const Real aw_mode1_da_dt_gradz =
                   z_grad_stored(aw_mode1_da_dt_cells, k, j, i);
               const Real aw_mode1_dg = dt * aw_mode1_da_dt_gradz;
+              diag_aw_mode1_gradx_power_da_dt_discrete_step +=
+                  dt * cell_volume * aw_mode1_dx_old * aw_mode1_da_dt_gradx;
               diag_aw_mode1_gradz_power_pi_drive_discrete_step +=
                   dt * cell_volume * aw_mode1_dz_old * aw_mode1_pi_drive_gradz;
               diag_aw_mode1_gradz_power_da_dt_discrete_step +=
@@ -2656,13 +2690,19 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
             }
 
             if (n_modes > 2) {
+              const Real aw_mode2_dx_old =
+                  gradient_x(a_old, EMIndex(2, kCompAW), k, j, i);
               const Real aw_mode2_dz_old =
                   gradient_z(a_old, EMIndex(2, kCompAW), k, j, i);
+              const Real aw_mode2_da_dt_gradx =
+                  x_grad_stored(aw_mode2_da_dt_cells, k, j, i);
               const Real aw_mode2_pi_drive_gradz =
                   z_grad_stored(aw_mode2_pi_drive_cells, k, j, i);
               const Real aw_mode2_da_dt_gradz =
                   z_grad_stored(aw_mode2_da_dt_cells, k, j, i);
               const Real aw_mode2_dg = dt * aw_mode2_da_dt_gradz;
+              diag_aw_mode2_gradx_power_da_dt_discrete_step +=
+                  dt * cell_volume * aw_mode2_dx_old * aw_mode2_da_dt_gradx;
               diag_aw_mode2_gradz_power_pi_drive_discrete_step +=
                   dt * cell_volume * aw_mode2_dz_old * aw_mode2_pi_drive_gradz;
               diag_aw_mode2_gradz_power_da_dt_discrete_step +=
@@ -2674,11 +2714,17 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
             }
 
             if (n_modes > 3) {
+              const Real aw_mode3_dx_old =
+                  gradient_x(a_old, EMIndex(3, kCompAW), k, j, i);
               const Real aw_mode3_dz_old =
                   gradient_z(a_old, EMIndex(3, kCompAW), k, j, i);
+              const Real aw_mode3_da_dt_gradx =
+                  x_grad_stored(aw_mode3_da_dt_cells, k, j, i);
               const Real aw_mode3_da_dt_gradz =
                   z_grad_stored(aw_mode3_da_dt_cells, k, j, i);
               const Real aw_mode3_dg = dt * aw_mode3_da_dt_gradz;
+              diag_aw_mode3_gradx_power_da_dt_discrete_step +=
+                  dt * cell_volume * aw_mode3_dx_old * aw_mode3_da_dt_gradx;
               diag_aw_mode3_gradz_power_da_dt_discrete_step +=
                   dt * cell_volume * aw_mode3_dz_old * aw_mode3_da_dt_gradz;
               diag_aw_mode3_gradz_energy_delta_exact_discrete_step +=
@@ -3145,6 +3191,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/int_rhs_aw_mode1_w0_response_abs");
   auto *diag_aw_mode0_gradz_power_da_dt_discrete =
       modes_pkg->MutableParam<double>("diag/int_aw_mode0_gradz_power_da_dt_discrete");
+  auto *diag_aw_mode0_gradx_power_da_dt_discrete =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode0_gradx_power_da_dt_discrete");
   auto *diag_aw_mode0_gradz_energy_delta_exact_discrete = modes_pkg->MutableParam<double>(
       "diag/int_aw_mode0_gradz_energy_delta_exact_discrete");
   auto *diag_aw_mode0_gradz_energy_delta_quadratic_discrete = modes_pkg->MutableParam<double>(
@@ -3197,6 +3245,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/int_aw_mode1_gradz_power_pi_drive_discrete");
   auto *diag_aw_mode1_gradz_power_da_dt_discrete =
       modes_pkg->MutableParam<double>("diag/int_aw_mode1_gradz_power_da_dt_discrete");
+  auto *diag_aw_mode1_gradx_power_da_dt_discrete =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode1_gradx_power_da_dt_discrete");
   auto *diag_aw_mode1_gradz_energy_delta_exact_discrete = modes_pkg->MutableParam<double>(
       "diag/int_aw_mode1_gradz_energy_delta_exact_discrete");
   auto *diag_aw_mode1_gradz_energy_delta_quadratic_discrete = modes_pkg->MutableParam<double>(
@@ -3249,12 +3299,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/int_aw_mode2_gradz_power_pi_drive_discrete");
   auto *diag_aw_mode2_gradz_power_da_dt_discrete =
       modes_pkg->MutableParam<double>("diag/int_aw_mode2_gradz_power_da_dt_discrete");
+  auto *diag_aw_mode2_gradx_power_da_dt_discrete =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode2_gradx_power_da_dt_discrete");
   auto *diag_aw_mode2_gradz_energy_delta_exact_discrete = modes_pkg->MutableParam<double>(
       "diag/int_aw_mode2_gradz_energy_delta_exact_discrete");
   auto *diag_aw_mode2_gradz_energy_delta_quadratic_discrete = modes_pkg->MutableParam<double>(
       "diag/int_aw_mode2_gradz_energy_delta_quadratic_discrete");
   auto *diag_aw_mode3_gradz_power_da_dt_discrete =
       modes_pkg->MutableParam<double>("diag/int_aw_mode3_gradz_power_da_dt_discrete");
+  auto *diag_aw_mode3_gradx_power_da_dt_discrete =
+      modes_pkg->MutableParam<double>("diag/int_aw_mode3_gradx_power_da_dt_discrete");
   auto *diag_aw_mode3_gradz_energy_delta_exact_discrete = modes_pkg->MutableParam<double>(
       "diag/int_aw_mode3_gradz_energy_delta_exact_discrete");
   auto *diag_aw_mode3_gradz_energy_delta_quadratic_discrete = modes_pkg->MutableParam<double>(
@@ -3481,6 +3535,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   *diag_rhs_aw_mode1_w0_response_abs += diag_rhs_aw_mode1_w0_response_abs_step;
   *diag_aw_mode0_gradz_power_da_dt_discrete +=
       diag_aw_mode0_gradz_power_da_dt_discrete_step;
+  *diag_aw_mode0_gradx_power_da_dt_discrete +=
+      diag_aw_mode0_gradx_power_da_dt_discrete_step;
   *diag_aw_mode0_gradz_energy_delta_exact_discrete +=
       diag_aw_mode0_gradz_energy_delta_exact_discrete_step;
   *diag_aw_mode0_gradz_energy_delta_quadratic_discrete +=
@@ -3519,6 +3575,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       diag_aw_mode1_gradz_power_pi_drive_discrete_step;
   *diag_aw_mode1_gradz_power_da_dt_discrete +=
       diag_aw_mode1_gradz_power_da_dt_discrete_step;
+  *diag_aw_mode1_gradx_power_da_dt_discrete +=
+      diag_aw_mode1_gradx_power_da_dt_discrete_step;
   *diag_aw_mode1_gradz_energy_delta_exact_discrete +=
       diag_aw_mode1_gradz_energy_delta_exact_discrete_step;
   *diag_aw_mode1_gradz_energy_delta_quadratic_discrete +=
@@ -3557,12 +3615,16 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       diag_aw_mode2_gradz_power_pi_drive_discrete_step;
   *diag_aw_mode2_gradz_power_da_dt_discrete +=
       diag_aw_mode2_gradz_power_da_dt_discrete_step;
+  *diag_aw_mode2_gradx_power_da_dt_discrete +=
+      diag_aw_mode2_gradx_power_da_dt_discrete_step;
   *diag_aw_mode2_gradz_energy_delta_exact_discrete +=
       diag_aw_mode2_gradz_energy_delta_exact_discrete_step;
   *diag_aw_mode2_gradz_energy_delta_quadratic_discrete +=
       diag_aw_mode2_gradz_energy_delta_quadratic_discrete_step;
   *diag_aw_mode3_gradz_power_da_dt_discrete +=
       diag_aw_mode3_gradz_power_da_dt_discrete_step;
+  *diag_aw_mode3_gradx_power_da_dt_discrete +=
+      diag_aw_mode3_gradx_power_da_dt_discrete_step;
   *diag_aw_mode3_gradz_energy_delta_exact_discrete +=
       diag_aw_mode3_gradz_energy_delta_exact_discrete_step;
   *diag_aw_mode3_gradz_energy_delta_quadratic_discrete +=
