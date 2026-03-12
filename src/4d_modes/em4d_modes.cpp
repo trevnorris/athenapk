@@ -669,6 +669,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
 
   Real diag_jw_ew_step = 0.0;
   Real diag_ja_ea_step = 0.0;
+  Real diag_jw_ew_old_step = 0.0;
+  Real diag_jw_ew_new_step = 0.0;
+  Real diag_jw_ew_mid_step = 0.0;
+  Real diag_ja_ea_old_step = 0.0;
+  Real diag_ja_ea_new_step = 0.0;
+  Real diag_ja_ea_mid_step = 0.0;
   Real diag_s_leak_step = 0.0;
   Real diag_s_leak_abs_step = 0.0;
   Real diag_cont_local_l1_step = 0.0;
@@ -809,6 +815,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_aw_gradz_power_pi_drive_discrete_sum_step = 0.0;
   Real diag_aw_gradx_energy_delta_exact_discrete_sum_step = 0.0;
   Real diag_aw_gradx_energy_delta_quadratic_discrete_sum_step = 0.0;
+  Real diag_cx_energy_delta_exact_discrete_sum_step = 0.0;
+  Real diag_cz_energy_delta_exact_discrete_sum_step = 0.0;
   Real diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum_step = 0.0;
   Real diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum_step = 0.0;
   Real diag_response_bridge_power_mode0_step = 0.0;
@@ -880,9 +888,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
     auto pi_old = pi_dev.GetHostMirrorAndCopy();
     auto plasma = plasma_dev.GetHostMirrorAndCopy();
 
-    auto a_new = a_old;
-    auto pi_new = pi_old;
-    auto plasma_new = plasma;
+    // `ParArrayGeneric` copy-assignment is shallow. We need independent host buffers
+    // for the old/new states here, otherwise writes into `*_new` alias back into the
+    // old-state mirrors and corrupt both the update and any old-vs-new diagnostics.
+    auto a_new = a_dev.GetHostMirrorAndCopy();
+    auto pi_new = pi_dev.GetHostMirrorAndCopy();
+    auto plasma_new = plasma_dev.GetHostMirrorAndCopy();
 
     IndexRange ib = bd->GetBoundsI(IndexDomain::interior);
     IndexRange jb = bd->GetBoundsJ(IndexDomain::interior);
@@ -964,7 +975,6 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
     std::vector<Real> jz_modes(n_modes, 0.0);
     std::vector<Real> jw_modes(n_modes, 0.0);
     std::vector<Real> a0_modes(n_modes, 0.0);
-    std::vector<Real> ew_modes(n_modes, 0.0);
     std::vector<Real> ax_modes(n_modes, 0.0);
     std::vector<Real> ay_modes(n_modes, 0.0);
     std::vector<Real> az_modes(n_modes, 0.0);
@@ -994,6 +1004,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
     std::vector<Real> cx_nodes(tables.NumQuadrature(), 0.0);
     std::vector<Real> cy_nodes(tables.NumQuadrature(), 0.0);
     std::vector<Real> cz_nodes(tables.NumQuadrature(), 0.0);
+    std::vector<Real> ex_nodes_new(tables.NumQuadrature(), 0.0);
+    std::vector<Real> ey_nodes_new(tables.NumQuadrature(), 0.0);
+    std::vector<Real> ez_nodes_new(tables.NumQuadrature(), 0.0);
+    std::vector<Real> ew_nodes_new(tables.NumQuadrature(), 0.0);
     std::vector<Real> rho_modes(n_modes, 0.0);
     std::vector<Real> momx_modes(n_modes, 0.0);
     std::vector<Real> momy_modes(n_modes, 0.0);
@@ -1025,6 +1039,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
     std::vector<Real> wflux_momw_modes(n_modes, 0.0);
     std::vector<Real> wflux_energy_modes(n_modes, 0.0);
     std::vector<Real> charge_modes_old(n_modes, 0.0);
+    std::vector<Real> ax_new_modes(n_modes, 0.0);
+    std::vector<Real> az_new_modes(n_modes, 0.0);
+    std::vector<Real> daw_dx_new_modes(n_modes, 0.0);
+    std::vector<Real> daw_dz_new_modes(n_modes, 0.0);
     const int pi0_mode0_idx = EMIndex(0, kCompA0);
     const int pix_mode0_idx = EMIndex(0, kCompAX);
     const int piy_mode0_idx = EMIndex(0, kCompAY);
@@ -2591,42 +2609,103 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
           diag_srcpiw_mode0_step += cell_volume * (piw_mode0_new - piw_mode0_old);
 
           for (int n = 0; n < n_modes; ++n) {
-            a0_modes[n] = a_new(EMIndex(n, kCompA0), k, j, i);
+            const int off = EMIndex(n, 0);
+            a0_modes[n] = a_new(off + kCompA0, k, j, i);
+            pix_modes[n] = pi_new(off + kCompAX, k, j, i);
+            piy_modes[n] = pi_new(off + kCompAY, k, j, i);
+            piz_modes[n] = pi_new(off + kCompAZ, k, j, i);
+            piw_modes[n] = pi_new(off + kCompAW, k, j, i);
+            da0_dx_modes[n] = gradient_x(a_new, off + kCompA0, k, j, i);
+            da0_dy_modes[n] = gradient_y(a_new, off + kCompA0, k, j, i);
+            da0_dz_modes[n] = gradient_z(a_new, off + kCompA0, k, j, i);
           }
-          for (int n = 0; n < n_modes; ++n) {
-            ew_modes[n] = -pi_new(EMIndex(n, kCompAW), k, j, i) -
-                          tables.ApplyID3Raising(a0_modes, n);
+          for (int q = 0; q < tables.NumQuadrature(); ++q) {
+            Real d_w_a0_new = 0.0;
+            Real pix_new_node = 0.0;
+            Real piy_new_node = 0.0;
+            Real piz_new_node = 0.0;
+            Real piw_new_node = 0.0;
+            Real da0_dx_new_node = 0.0;
+            Real da0_dy_new_node = 0.0;
+            Real da0_dz_new_node = 0.0;
+            for (int n = 0; n < n_modes; ++n) {
+              const Real phi_nq = tables.Phi(n, q);
+              const Real dphi_nq = tables.DPhi(n, q);
+              d_w_a0_new += a0_modes[n] * dphi_nq;
+              pix_new_node += pix_modes[n] * phi_nq;
+              piy_new_node += piy_modes[n] * phi_nq;
+              piz_new_node += piz_modes[n] * phi_nq;
+              piw_new_node += piw_modes[n] * phi_nq;
+              da0_dx_new_node += da0_dx_modes[n] * phi_nq;
+              da0_dy_new_node += da0_dy_modes[n] * phi_nq;
+              da0_dz_new_node += da0_dz_modes[n] * phi_nq;
+            }
+            ex_nodes_new[q] = -pix_new_node - da0_dx_new_node;
+            ey_nodes_new[q] = -piy_new_node - da0_dy_new_node;
+            ez_nodes_new[q] = -piz_new_node - da0_dz_new_node;
+            ew_nodes_new[q] = hard_controlled_limit_active ? 0.0 : (-piw_new_node - d_w_a0_new);
           }
 
           Real jw_ew_density = 0.0;
           Real ja_ea_density = 0.0;
+          Real jw_ew_density_old = 0.0;
+          Real jw_ew_density_new = 0.0;
+          Real jw_ew_density_mid = 0.0;
+          Real ja_ea_density_old = 0.0;
+          Real ja_ea_density_new = 0.0;
+          Real ja_ea_density_mid = 0.0;
           for (int q = 0; q < tables.NumQuadrature(); ++q) {
             Real jx_at_node = 0.0;
             Real jy_at_node = 0.0;
             Real jz_at_node = 0.0;
             Real jw_at_node = 0.0;
-            Real ew_at_node = 0.0;
             for (int n = 0; n < n_modes; ++n) {
               const Real phi_nq = tables.Phi(n, q);
               jx_at_node += jx_modes[n] * phi_nq;
               jy_at_node += jy_modes[n] * phi_nq;
               jz_at_node += jz_modes[n] * phi_nq;
               jw_at_node += jw_modes[n] * phi_nq;
-              ew_at_node += ew_modes[n] * phi_nq;
             }
-            const Real ex = ex_nodes[q];
-            const Real ey = ey_nodes[q];
-            const Real ez = ez_nodes[q];
-            ja_ea_density +=
+            const Real ex_old = ex_nodes[q];
+            const Real ey_old = ey_nodes[q];
+            const Real ez_old = ez_nodes[q];
+            const Real ew_old = ew_nodes[q];
+            const Real ex_new = ex_nodes_new[q];
+            const Real ey_new = ey_nodes_new[q];
+            const Real ez_new = ez_nodes_new[q];
+            const Real ew_new = ew_nodes_new[q];
+            const Real ex_mid = 0.5 * (ex_old + ex_new);
+            const Real ey_mid = 0.5 * (ey_old + ey_new);
+            const Real ez_mid = 0.5 * (ez_old + ez_new);
+            const Real ew_mid = 0.5 * (ew_old + ew_new);
+
+            ja_ea_density_old +=
                 weights[q] *
-                ((jx_at_node * ex) + (jy_at_node * ey) + (jz_at_node * ez));
-            jw_ew_density += weights[q] * jw_at_node * ew_at_node;
+                ((jx_at_node * ex_old) + (jy_at_node * ey_old) + (jz_at_node * ez_old));
+            ja_ea_density_new +=
+                weights[q] *
+                ((jx_at_node * ex_new) + (jy_at_node * ey_new) + (jz_at_node * ez_new));
+            ja_ea_density_mid +=
+                weights[q] *
+                ((jx_at_node * ex_mid) + (jy_at_node * ey_mid) + (jz_at_node * ez_mid));
+            jw_ew_density_old += weights[q] * jw_at_node * ew_old;
+            jw_ew_density_new += weights[q] * jw_at_node * ew_new;
+            jw_ew_density_mid += weights[q] * jw_at_node * ew_mid;
           }
+
+          ja_ea_density = ja_ea_density_old;
+          jw_ew_density = jw_ew_density_new;
 
           const Real s_leak_density =
               (n_modes > 1) ? (-(inv_lambda_root2 * jw_modes[1])) : 0.0;
           diag_ja_ea_step += dt * cell_volume * ja_ea_density;
           diag_jw_ew_step += dt * cell_volume * jw_ew_density;
+          diag_ja_ea_old_step += dt * cell_volume * ja_ea_density_old;
+          diag_ja_ea_new_step += dt * cell_volume * ja_ea_density_new;
+          diag_ja_ea_mid_step += dt * cell_volume * ja_ea_density_mid;
+          diag_jw_ew_old_step += dt * cell_volume * jw_ew_density_old;
+          diag_jw_ew_new_step += dt * cell_volume * jw_ew_density_new;
+          diag_jw_ew_mid_step += dt * cell_volume * jw_ew_density_mid;
           diag_s_leak_step += dt * cell_volume * s_leak_density;
           diag_s_leak_abs_step += dt * cell_volume * std::abs(s_leak_density);
         }
@@ -2813,6 +2892,38 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                   cell_volume * (aw_mode3_dz_old * aw_mode3_dg + 0.5 * aw_mode3_dg * aw_mode3_dg);
               diag_aw_mode3_gradz_energy_delta_quadratic_discrete_step +=
                   cell_volume * (0.5 * aw_mode3_dg * aw_mode3_dg);
+            }
+
+            for (int n = 0; n < n_modes; ++n) {
+              const int off = EMIndex(n, 0);
+              ax_modes[n] = a_old(off + kCompAX, k, j, i);
+              az_modes[n] = a_old(off + kCompAZ, k, j, i);
+              daw_dx_modes[n] = gradient_x(a_old, off + kCompAW, k, j, i);
+              daw_dz_modes[n] = gradient_z(a_old, off + kCompAW, k, j, i);
+              ax_new_modes[n] = a_new(off + kCompAX, k, j, i);
+              az_new_modes[n] = a_new(off + kCompAZ, k, j, i);
+              daw_dx_new_modes[n] = gradient_x(a_new, off + kCompAW, k, j, i);
+              daw_dz_new_modes[n] = gradient_z(a_new, off + kCompAW, k, j, i);
+            }
+            for (int q = 0; q < tables.NumQuadrature(); ++q) {
+              Real cx_old_node = 0.0;
+              Real cz_old_node = 0.0;
+              Real cx_new_node = 0.0;
+              Real cz_new_node = 0.0;
+              for (int n = 0; n < n_modes; ++n) {
+                const Real phi_nq = tables.Phi(n, q);
+                const Real dphi_nq = tables.DPhi(n, q);
+                cx_old_node += (daw_dx_modes[n] * phi_nq) - (ax_modes[n] * dphi_nq);
+                cz_old_node += (daw_dz_modes[n] * phi_nq) - (az_modes[n] * dphi_nq);
+                cx_new_node += (daw_dx_new_modes[n] * phi_nq) - (ax_new_modes[n] * dphi_nq);
+                cz_new_node += (daw_dz_new_modes[n] * phi_nq) - (az_new_modes[n] * dphi_nq);
+              }
+              diag_cx_energy_delta_exact_discrete_sum_step +=
+                  0.5 * cell_volume * weights[q] *
+                  ((cx_new_node * cx_new_node) - (cx_old_node * cx_old_node));
+              diag_cz_energy_delta_exact_discrete_sum_step +=
+                  0.5 * cell_volume * weights[q] *
+                  ((cz_new_node * cz_new_node) - (cz_old_node * cz_old_node));
             }
           }
         }
@@ -3024,6 +3135,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
 
   auto *diag_jw_ew = modes_pkg->MutableParam<double>("diag/int_jw_ew");
   auto *diag_ja_ea = modes_pkg->MutableParam<double>("diag/int_ja_ea");
+  auto *diag_jw_ew_old = modes_pkg->MutableParam<double>("diag/int_jw_ew_old");
+  auto *diag_jw_ew_new = modes_pkg->MutableParam<double>("diag/int_jw_ew_new");
+  auto *diag_jw_ew_mid = modes_pkg->MutableParam<double>("diag/int_jw_ew_mid");
+  auto *diag_ja_ea_old = modes_pkg->MutableParam<double>("diag/int_ja_ea_old");
+  auto *diag_ja_ea_new = modes_pkg->MutableParam<double>("diag/int_ja_ea_new");
+  auto *diag_ja_ea_mid = modes_pkg->MutableParam<double>("diag/int_ja_ea_mid");
   auto *diag_s_leak = modes_pkg->MutableParam<double>("diag/int_s_leak");
   auto *diag_s_leak_abs = modes_pkg->MutableParam<double>("diag/int_s_leak_abs");
   auto *diag_cont_local_l1 = modes_pkg->MutableParam<double>("diag/continuity_local_l1");
@@ -3403,6 +3520,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/int_aw_gradx_energy_delta_exact_discrete_sum");
   auto *diag_aw_gradx_energy_delta_quadratic_discrete_sum =
       modes_pkg->MutableParam<double>("diag/int_aw_gradx_energy_delta_quadratic_discrete_sum");
+  auto *diag_cx_energy_delta_exact_discrete_sum =
+      modes_pkg->MutableParam<double>("diag/int_cx_energy_delta_exact_discrete_sum");
+  auto *diag_cz_energy_delta_exact_discrete_sum =
+      modes_pkg->MutableParam<double>("diag/int_cz_energy_delta_exact_discrete_sum");
   auto *diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum = modes_pkg->MutableParam<double>(
       "diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum");
   auto *diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum = modes_pkg->MutableParam<double>(
@@ -3443,6 +3564,12 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/gauge_mode0_max_abs");
   *diag_ja_ea += diag_ja_ea_step;
   *diag_jw_ew += diag_jw_ew_step;
+  *diag_ja_ea_old += diag_ja_ea_old_step;
+  *diag_ja_ea_new += diag_ja_ea_new_step;
+  *diag_ja_ea_mid += diag_ja_ea_mid_step;
+  *diag_jw_ew_old += diag_jw_ew_old_step;
+  *diag_jw_ew_new += diag_jw_ew_new_step;
+  *diag_jw_ew_mid += diag_jw_ew_mid_step;
   *diag_s_leak += diag_s_leak_step;
   *diag_s_leak_abs += diag_s_leak_abs_step;
   *diag_cont_local_l1 = diag_cont_local_l1_step;
@@ -3731,6 +3858,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       diag_aw_gradx_energy_delta_exact_discrete_sum_step;
   *diag_aw_gradx_energy_delta_quadratic_discrete_sum +=
       diag_aw_gradx_energy_delta_quadratic_discrete_sum_step;
+  *diag_cx_energy_delta_exact_discrete_sum +=
+      diag_cx_energy_delta_exact_discrete_sum_step;
+  *diag_cz_energy_delta_exact_discrete_sum +=
+      diag_cz_energy_delta_exact_discrete_sum_step;
   *diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum +=
       diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum_step;
   *diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum +=
