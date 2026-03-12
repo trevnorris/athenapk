@@ -471,6 +471,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->Param<double>("em4d/response_w0_local_gradient_mixing_gain");
   const std::string response_w0_local_gradient_norm_form =
       modes_pkg->Param<std::string>("em4d/response_w0_local_gradient_norm_form");
+  const bool aw_update_midpoint_pi =
+      modes_pkg->Param<bool>("em4d/aw_update_midpoint_pi");
   const bool response_w0_local_enable =
       modes_pkg->Param<bool>("em4d/response_w0_local_enable");
   const Real response_w0_local_mode1_amp =
@@ -2423,10 +2425,13 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                 a_old(idx_ay, k, j, i) + (dt * (pi_new(idx_ay, k, j, i) + mix_ay));
             a_new(idx_az, k, j, i) =
                 a_old(idx_az, k, j, i) + (dt * (pi_new(idx_az, k, j, i) + mix_az));
+            const Real aw_pi_drive =
+                aw_update_midpoint_pi
+                    ? (0.5 * (pi_old(idx_aw, k, j, i) + pi_new(idx_aw, k, j, i)))
+                    : pi_new(idx_aw, k, j, i);
             a_new(idx_aw, k, j, i) =
-                a_old(idx_aw, k, j, i) + (dt * (pi_new(idx_aw, k, j, i) + mix_aw));
+                a_old(idx_aw, k, j, i) + (dt * (aw_pi_drive + mix_aw));
             if (n == 0 || n == 1 || n == 2 || n == 3) {
-              const Real aw_pi_drive = pi_new(idx_aw, k, j, i);
               const Real aw_da_dt = aw_pi_drive + mix_aw;
               const int flat_idx = flat_cell_index(k, j, i);
               if (n == 0) {
