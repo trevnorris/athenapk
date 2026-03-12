@@ -225,7 +225,9 @@ python3 "${REPO_ROOT}/scripts/summarize_step149_transport_components.py" \
   --out-md "${OUTPUT_ROOT}_transport_ledger.md"
 python3 "${REPO_ROOT}/scripts/summarize_step195_aw_midpoint_pi_ab.py" \
   --summary-csv "${OUTPUT_ROOT}_summary.csv" \
-  --transport-csv "${OUTPUT_ROOT}_transport_ledger.csv" \
+  --phase2-csv "${OUTPUT_ROOT}_phase2.csv" \
+  --projected-csv "${OUTPUT_ROOT}_projected_closure.csv" \
+  --mode0-csv "${OUTPUT_ROOT}_mode0_terms.csv" \
   --out-csv "${OUTPUT_ROOT}_aw_midpoint_pi_ab.csv" \
   --out-md "${OUTPUT_ROOT}_aw_midpoint_pi_ab.md"
 
