@@ -817,6 +817,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_aw_gradx_energy_delta_quadratic_discrete_sum_step = 0.0;
   Real diag_cx_energy_delta_exact_discrete_sum_step = 0.0;
   Real diag_cz_energy_delta_exact_discrete_sum_step = 0.0;
+  Real diag_cx_energy_exact_current_sum_step = 0.0;
+  Real diag_cz_energy_exact_current_sum_step = 0.0;
   Real diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum_step = 0.0;
   Real diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum_step = 0.0;
   Real diag_response_bridge_power_mode0_step = 0.0;
@@ -2924,6 +2926,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
               diag_cz_energy_delta_exact_discrete_sum_step +=
                   0.5 * cell_volume * weights[q] *
                   ((cz_new_node * cz_new_node) - (cz_old_node * cz_old_node));
+              diag_cx_energy_exact_current_sum_step +=
+                  0.5 * cell_volume * weights[q] * (cx_new_node * cx_new_node);
+              diag_cz_energy_exact_current_sum_step +=
+                  0.5 * cell_volume * weights[q] * (cz_new_node * cz_new_node);
             }
           }
         }
@@ -3524,6 +3530,10 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/int_cx_energy_delta_exact_discrete_sum");
   auto *diag_cz_energy_delta_exact_discrete_sum =
       modes_pkg->MutableParam<double>("diag/int_cz_energy_delta_exact_discrete_sum");
+  auto *diag_cx_energy_exact_current_sum =
+      modes_pkg->MutableParam<double>("diag/int_cx_energy_exact_current_sum");
+  auto *diag_cz_energy_exact_current_sum =
+      modes_pkg->MutableParam<double>("diag/int_cz_energy_exact_current_sum");
   auto *diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum = modes_pkg->MutableParam<double>(
       "diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum");
   auto *diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum = modes_pkg->MutableParam<double>(
@@ -3862,6 +3872,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       diag_cx_energy_delta_exact_discrete_sum_step;
   *diag_cz_energy_delta_exact_discrete_sum +=
       diag_cz_energy_delta_exact_discrete_sum_step;
+  *diag_cx_energy_exact_current_sum = diag_cx_energy_exact_current_sum_step;
+  *diag_cz_energy_exact_current_sum = diag_cz_energy_exact_current_sum_step;
   *diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum +=
       diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum_step;
   *diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum +=
