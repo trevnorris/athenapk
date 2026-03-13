@@ -821,6 +821,18 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
   Real diag_cz_energy_delta_exact_discrete_sum_step = 0.0;
   Real diag_cx_energy_exact_current_sum_step = 0.0;
   Real diag_cz_energy_exact_current_sum_step = 0.0;
+  Real diag_cx_daw_dx2_energy_delta_exact_discrete_sum_step = 0.0;
+  Real diag_cx_dw_ax2_energy_delta_exact_discrete_sum_step = 0.0;
+  Real diag_cx_cross_energy_delta_exact_discrete_sum_step = 0.0;
+  Real diag_cz_daw_dz2_energy_delta_exact_discrete_sum_step = 0.0;
+  Real diag_cz_dw_az2_energy_delta_exact_discrete_sum_step = 0.0;
+  Real diag_cz_cross_energy_delta_exact_discrete_sum_step = 0.0;
+  Real diag_cx_daw_dx2_energy_exact_current_sum_step = 0.0;
+  Real diag_cx_dw_ax2_energy_exact_current_sum_step = 0.0;
+  Real diag_cx_cross_energy_exact_current_sum_step = 0.0;
+  Real diag_cz_daw_dz2_energy_exact_current_sum_step = 0.0;
+  Real diag_cz_dw_az2_energy_exact_current_sum_step = 0.0;
+  Real diag_cz_cross_energy_exact_current_sum_step = 0.0;
   Real diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum_step = 0.0;
   Real diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum_step = 0.0;
   Real diag_response_bridge_power_mode0_step = 0.0;
@@ -2917,24 +2929,84 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
               Real cz_old_node = 0.0;
               Real cx_new_node = 0.0;
               Real cz_new_node = 0.0;
+              Real daw_dx_old_node = 0.0;
+              Real daw_dz_old_node = 0.0;
+              Real daw_dx_new_node = 0.0;
+              Real daw_dz_new_node = 0.0;
+              Real d_w_ax_old_node = 0.0;
+              Real d_w_az_old_node = 0.0;
+              Real d_w_ax_new_node = 0.0;
+              Real d_w_az_new_node = 0.0;
               for (int n = 0; n < n_modes; ++n) {
                 const Real phi_nq = tables.Phi(n, q);
                 const Real dphi_nq = tables.DPhi(n, q);
-                cx_old_node += (daw_dx_modes[n] * phi_nq) - (ax_modes[n] * dphi_nq);
-                cz_old_node += (daw_dz_modes[n] * phi_nq) - (az_modes[n] * dphi_nq);
-                cx_new_node += (daw_dx_new_modes[n] * phi_nq) - (ax_new_modes[n] * dphi_nq);
-                cz_new_node += (daw_dz_new_modes[n] * phi_nq) - (az_new_modes[n] * dphi_nq);
+                const Real daw_dx_old_mode = daw_dx_modes[n] * phi_nq;
+                const Real daw_dz_old_mode = daw_dz_modes[n] * phi_nq;
+                const Real daw_dx_new_mode = daw_dx_new_modes[n] * phi_nq;
+                const Real daw_dz_new_mode = daw_dz_new_modes[n] * phi_nq;
+                const Real d_w_ax_old_mode = ax_modes[n] * dphi_nq;
+                const Real d_w_az_old_mode = az_modes[n] * dphi_nq;
+                const Real d_w_ax_new_mode = ax_new_modes[n] * dphi_nq;
+                const Real d_w_az_new_mode = az_new_modes[n] * dphi_nq;
+                daw_dx_old_node += daw_dx_old_mode;
+                daw_dz_old_node += daw_dz_old_mode;
+                daw_dx_new_node += daw_dx_new_mode;
+                daw_dz_new_node += daw_dz_new_mode;
+                d_w_ax_old_node += d_w_ax_old_mode;
+                d_w_az_old_node += d_w_az_old_mode;
+                d_w_ax_new_node += d_w_ax_new_mode;
+                d_w_az_new_node += d_w_az_new_mode;
+                cx_old_node += daw_dx_old_mode - d_w_ax_old_mode;
+                cz_old_node += daw_dz_old_mode - d_w_az_old_mode;
+                cx_new_node += daw_dx_new_mode - d_w_ax_new_mode;
+                cz_new_node += daw_dz_new_mode - d_w_az_new_mode;
               }
+              const Real cx_daw_dx2_old = 0.5 * daw_dx_old_node * daw_dx_old_node;
+              const Real cx_daw_dx2_new = 0.5 * daw_dx_new_node * daw_dx_new_node;
+              const Real cx_dw_ax2_old = 0.5 * d_w_ax_old_node * d_w_ax_old_node;
+              const Real cx_dw_ax2_new = 0.5 * d_w_ax_new_node * d_w_ax_new_node;
+              const Real cx_cross_old = -daw_dx_old_node * d_w_ax_old_node;
+              const Real cx_cross_new = -daw_dx_new_node * d_w_ax_new_node;
+              const Real cz_daw_dz2_old = 0.5 * daw_dz_old_node * daw_dz_old_node;
+              const Real cz_daw_dz2_new = 0.5 * daw_dz_new_node * daw_dz_new_node;
+              const Real cz_dw_az2_old = 0.5 * d_w_az_old_node * d_w_az_old_node;
+              const Real cz_dw_az2_new = 0.5 * d_w_az_new_node * d_w_az_new_node;
+              const Real cz_cross_old = -daw_dz_old_node * d_w_az_old_node;
+              const Real cz_cross_new = -daw_dz_new_node * d_w_az_new_node;
               diag_cx_energy_delta_exact_discrete_sum_step +=
                   0.5 * cell_volume * weights[q] *
                   ((cx_new_node * cx_new_node) - (cx_old_node * cx_old_node));
               diag_cz_energy_delta_exact_discrete_sum_step +=
                   0.5 * cell_volume * weights[q] *
                   ((cz_new_node * cz_new_node) - (cz_old_node * cz_old_node));
+              diag_cx_daw_dx2_energy_delta_exact_discrete_sum_step +=
+                  cell_volume * weights[q] * (cx_daw_dx2_new - cx_daw_dx2_old);
+              diag_cx_dw_ax2_energy_delta_exact_discrete_sum_step +=
+                  cell_volume * weights[q] * (cx_dw_ax2_new - cx_dw_ax2_old);
+              diag_cx_cross_energy_delta_exact_discrete_sum_step +=
+                  cell_volume * weights[q] * (cx_cross_new - cx_cross_old);
+              diag_cz_daw_dz2_energy_delta_exact_discrete_sum_step +=
+                  cell_volume * weights[q] * (cz_daw_dz2_new - cz_daw_dz2_old);
+              diag_cz_dw_az2_energy_delta_exact_discrete_sum_step +=
+                  cell_volume * weights[q] * (cz_dw_az2_new - cz_dw_az2_old);
+              diag_cz_cross_energy_delta_exact_discrete_sum_step +=
+                  cell_volume * weights[q] * (cz_cross_new - cz_cross_old);
               diag_cx_energy_exact_current_sum_step +=
                   0.5 * cell_volume * weights[q] * (cx_new_node * cx_new_node);
               diag_cz_energy_exact_current_sum_step +=
                   0.5 * cell_volume * weights[q] * (cz_new_node * cz_new_node);
+              diag_cx_daw_dx2_energy_exact_current_sum_step +=
+                  cell_volume * weights[q] * cx_daw_dx2_new;
+              diag_cx_dw_ax2_energy_exact_current_sum_step +=
+                  cell_volume * weights[q] * cx_dw_ax2_new;
+              diag_cx_cross_energy_exact_current_sum_step +=
+                  cell_volume * weights[q] * cx_cross_new;
+              diag_cz_daw_dz2_energy_exact_current_sum_step +=
+                  cell_volume * weights[q] * cz_daw_dz2_new;
+              diag_cz_dw_az2_energy_exact_current_sum_step +=
+                  cell_volume * weights[q] * cz_dw_az2_new;
+              diag_cz_cross_energy_exact_current_sum_step +=
+                  cell_volume * weights[q] * cz_cross_new;
             }
           }
         }
@@ -3539,6 +3611,30 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->MutableParam<double>("diag/int_cx_energy_exact_current_sum");
   auto *diag_cz_energy_exact_current_sum =
       modes_pkg->MutableParam<double>("diag/int_cz_energy_exact_current_sum");
+  auto *diag_cx_daw_dx2_energy_delta_exact_discrete_sum =
+      modes_pkg->MutableParam<double>("diag/int_cx_daw_dx2_energy_delta_exact_discrete_sum");
+  auto *diag_cx_dw_ax2_energy_delta_exact_discrete_sum =
+      modes_pkg->MutableParam<double>("diag/int_cx_dw_ax2_energy_delta_exact_discrete_sum");
+  auto *diag_cx_cross_energy_delta_exact_discrete_sum =
+      modes_pkg->MutableParam<double>("diag/int_cx_cross_energy_delta_exact_discrete_sum");
+  auto *diag_cz_daw_dz2_energy_delta_exact_discrete_sum =
+      modes_pkg->MutableParam<double>("diag/int_cz_daw_dz2_energy_delta_exact_discrete_sum");
+  auto *diag_cz_dw_az2_energy_delta_exact_discrete_sum =
+      modes_pkg->MutableParam<double>("diag/int_cz_dw_az2_energy_delta_exact_discrete_sum");
+  auto *diag_cz_cross_energy_delta_exact_discrete_sum =
+      modes_pkg->MutableParam<double>("diag/int_cz_cross_energy_delta_exact_discrete_sum");
+  auto *diag_cx_daw_dx2_energy_exact_current_sum =
+      modes_pkg->MutableParam<double>("diag/int_cx_daw_dx2_energy_exact_current_sum");
+  auto *diag_cx_dw_ax2_energy_exact_current_sum =
+      modes_pkg->MutableParam<double>("diag/int_cx_dw_ax2_energy_exact_current_sum");
+  auto *diag_cx_cross_energy_exact_current_sum =
+      modes_pkg->MutableParam<double>("diag/int_cx_cross_energy_exact_current_sum");
+  auto *diag_cz_daw_dz2_energy_exact_current_sum =
+      modes_pkg->MutableParam<double>("diag/int_cz_daw_dz2_energy_exact_current_sum");
+  auto *diag_cz_dw_az2_energy_exact_current_sum =
+      modes_pkg->MutableParam<double>("diag/int_cz_dw_az2_energy_exact_current_sum");
+  auto *diag_cz_cross_energy_exact_current_sum =
+      modes_pkg->MutableParam<double>("diag/int_cz_cross_energy_exact_current_sum");
   auto *diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum = modes_pkg->MutableParam<double>(
       "diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum");
   auto *diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum = modes_pkg->MutableParam<double>(
@@ -3879,6 +3975,30 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       diag_cz_energy_delta_exact_discrete_sum_step;
   *diag_cx_energy_exact_current_sum = diag_cx_energy_exact_current_sum_step;
   *diag_cz_energy_exact_current_sum = diag_cz_energy_exact_current_sum_step;
+  *diag_cx_daw_dx2_energy_delta_exact_discrete_sum +=
+      diag_cx_daw_dx2_energy_delta_exact_discrete_sum_step;
+  *diag_cx_dw_ax2_energy_delta_exact_discrete_sum +=
+      diag_cx_dw_ax2_energy_delta_exact_discrete_sum_step;
+  *diag_cx_cross_energy_delta_exact_discrete_sum +=
+      diag_cx_cross_energy_delta_exact_discrete_sum_step;
+  *diag_cz_daw_dz2_energy_delta_exact_discrete_sum +=
+      diag_cz_daw_dz2_energy_delta_exact_discrete_sum_step;
+  *diag_cz_dw_az2_energy_delta_exact_discrete_sum +=
+      diag_cz_dw_az2_energy_delta_exact_discrete_sum_step;
+  *diag_cz_cross_energy_delta_exact_discrete_sum +=
+      diag_cz_cross_energy_delta_exact_discrete_sum_step;
+  *diag_cx_daw_dx2_energy_exact_current_sum =
+      diag_cx_daw_dx2_energy_exact_current_sum_step;
+  *diag_cx_dw_ax2_energy_exact_current_sum =
+      diag_cx_dw_ax2_energy_exact_current_sum_step;
+  *diag_cx_cross_energy_exact_current_sum =
+      diag_cx_cross_energy_exact_current_sum_step;
+  *diag_cz_daw_dz2_energy_exact_current_sum =
+      diag_cz_daw_dz2_energy_exact_current_sum_step;
+  *diag_cz_dw_az2_energy_exact_current_sum =
+      diag_cz_dw_az2_energy_exact_current_sum_step;
+  *diag_cz_cross_energy_exact_current_sum =
+      diag_cz_cross_energy_exact_current_sum_step;
   *diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum +=
       diag_aw_gradx_power_mix_w0_local_gradient_discrete_sum_step;
   *diag_aw_gradz_power_mix_w0_local_gradient_discrete_sum +=

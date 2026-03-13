@@ -1177,6 +1177,66 @@ Real CzEnergyExactCurrentSumAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_cz_energy_exact_current_sum");
 }
 
+Real CxDawDx2EnergyDeltaExactDiscreteSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cx_daw_dx2_energy_delta_exact_discrete_sum");
+}
+
+Real CxDwAx2EnergyDeltaExactDiscreteSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cx_dw_ax2_energy_delta_exact_discrete_sum");
+}
+
+Real CxCrossEnergyDeltaExactDiscreteSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cx_cross_energy_delta_exact_discrete_sum");
+}
+
+Real CzDawDz2EnergyDeltaExactDiscreteSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cz_daw_dz2_energy_delta_exact_discrete_sum");
+}
+
+Real CzDwAz2EnergyDeltaExactDiscreteSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cz_dw_az2_energy_delta_exact_discrete_sum");
+}
+
+Real CzCrossEnergyDeltaExactDiscreteSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cz_cross_energy_delta_exact_discrete_sum");
+}
+
+Real CxDawDx2EnergyExactCurrentSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cx_daw_dx2_energy_exact_current_sum");
+}
+
+Real CxDwAx2EnergyExactCurrentSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cx_dw_ax2_energy_exact_current_sum");
+}
+
+Real CxCrossEnergyExactCurrentSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cx_cross_energy_exact_current_sum");
+}
+
+Real CzDawDz2EnergyExactCurrentSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cz_daw_dz2_energy_exact_current_sum");
+}
+
+Real CzDwAz2EnergyExactCurrentSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cz_dw_az2_energy_exact_current_sum");
+}
+
+Real CzCrossEnergyExactCurrentSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_cz_cross_energy_exact_current_sum");
+}
+
 Real AwGradxPowerMixW0LocalGradientDiscreteSumAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum");
@@ -3657,6 +3717,18 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_cz_energy_delta_exact_discrete_sum", 0.0, true);
   pkg->AddParam<double>("diag/int_cx_energy_exact_current_sum", 0.0, true);
   pkg->AddParam<double>("diag/int_cz_energy_exact_current_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cx_daw_dx2_energy_delta_exact_discrete_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cx_dw_ax2_energy_delta_exact_discrete_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cx_cross_energy_delta_exact_discrete_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cz_daw_dz2_energy_delta_exact_discrete_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cz_dw_az2_energy_delta_exact_discrete_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cz_cross_energy_delta_exact_discrete_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cx_daw_dx2_energy_exact_current_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cx_dw_ax2_energy_exact_current_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cx_cross_energy_exact_current_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cz_daw_dz2_energy_exact_current_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cz_dw_az2_energy_exact_current_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_cz_cross_energy_exact_current_sum", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum", 0.0,
                         true);
   pkg->AddParam<double>("diag/int_aw_gradz_power_mix_w0_local_gradient_discrete_sum", 0.0,
@@ -4342,6 +4414,54 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, CzEnergyExactCurrentSumAccumulatorHst,
       "m4d_int_cz_energy_exact_current_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CxDawDx2EnergyDeltaExactDiscreteSumAccumulatorHst,
+      "m4d_int_cx_daw_dx2_energy_delta_exact_discrete_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CxDwAx2EnergyDeltaExactDiscreteSumAccumulatorHst,
+      "m4d_int_cx_dw_ax2_energy_delta_exact_discrete_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CxCrossEnergyDeltaExactDiscreteSumAccumulatorHst,
+      "m4d_int_cx_cross_energy_delta_exact_discrete_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CzDawDz2EnergyDeltaExactDiscreteSumAccumulatorHst,
+      "m4d_int_cz_daw_dz2_energy_delta_exact_discrete_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CzDwAz2EnergyDeltaExactDiscreteSumAccumulatorHst,
+      "m4d_int_cz_dw_az2_energy_delta_exact_discrete_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CzCrossEnergyDeltaExactDiscreteSumAccumulatorHst,
+      "m4d_int_cz_cross_energy_delta_exact_discrete_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CxDawDx2EnergyExactCurrentSumAccumulatorHst,
+      "m4d_int_cx_daw_dx2_energy_exact_current_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CxDwAx2EnergyExactCurrentSumAccumulatorHst,
+      "m4d_int_cx_dw_ax2_energy_exact_current_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CxCrossEnergyExactCurrentSumAccumulatorHst,
+      "m4d_int_cx_cross_energy_exact_current_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CzDawDz2EnergyExactCurrentSumAccumulatorHst,
+      "m4d_int_cz_daw_dz2_energy_exact_current_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CzDwAz2EnergyExactCurrentSumAccumulatorHst,
+      "m4d_int_cz_dw_az2_energy_exact_current_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      CzCrossEnergyExactCurrentSumAccumulatorHst,
+      "m4d_int_cz_cross_energy_exact_current_sum"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum,
       AwGradxPowerMixW0LocalGradientDiscreteSumAccumulatorHst,
