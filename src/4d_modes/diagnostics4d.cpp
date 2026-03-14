@@ -1237,6 +1237,16 @@ Real CzCrossEnergyExactCurrentSumAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_cz_cross_energy_exact_current_sum");
 }
 
+Real AwGradxWorkExactNodeSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_gradx_work_exact_node_sum");
+}
+
+Real AwGradzWorkExactNodeSumAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_aw_gradz_work_exact_node_sum");
+}
+
 Real AwGradxPowerMixW0LocalGradientDiscreteSumAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum");
@@ -2086,7 +2096,7 @@ Real EwL2Hst(MeshData<Real> *md) {
   return SpillbackEMFIntegral(md, SpillbackEMFQuantity::EwL2);
 }
 
-Real BulkEMEnergyIntegral(MeshData<Real> *md) {
+Real BulkEMEnergyLegacyIntegral(MeshData<Real> *md) {
   auto modes_pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   const int n_modes = modes_pkg->Param<int>("n_modes");
   const auto &tables = modes_pkg->Param<ModeTables>("mode_tables");
@@ -2266,7 +2276,33 @@ Real BulkEMEnergyIntegral(MeshData<Real> *md) {
   return integral;
 }
 
+Real BulkEMEnergyZBlockCorrectionAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  const Real coeff = pkg->Param<double>("em4d/bulk_energy_zblock_correction_coeff");
+  if (coeff == 0.0) {
+    return 0.0;
+  }
+  const Real cz_exact =
+      pkg->Param<double>("diag/int_cz_energy_delta_exact_discrete_sum");
+  const Real aw_dz_work =
+      pkg->Param<double>("diag/int_aw_mode0_gradz_power_da_dt_discrete") +
+      pkg->Param<double>("diag/int_aw_mode1_gradz_power_da_dt_discrete") +
+      pkg->Param<double>("diag/int_aw_mode2_gradz_power_da_dt_discrete") +
+      pkg->Param<double>("diag/int_aw_mode3_gradz_power_da_dt_discrete");
+  return coeff * (cz_exact + aw_dz_work);
+}
+
+Real BulkEMEnergyIntegral(MeshData<Real> *md) {
+  return BulkEMEnergyLegacyIntegral(md) - BulkEMEnergyZBlockCorrectionAccumulatorHst(md);
+}
+
 Real BulkEMEnergyHst(MeshData<Real> *md) { return BulkEMEnergyIntegral(md); }
+
+Real BulkEMEnergyLegacyHst(MeshData<Real> *md) { return BulkEMEnergyLegacyIntegral(md); }
+
+Real BulkEMEnergyZBlockCorrectionHst(MeshData<Real> *md) {
+  return BulkEMEnergyZBlockCorrectionAccumulatorHst(md);
+}
 
 Real BulkEMEnergyDiscreteAwDzIntegral(MeshData<Real> *md, const int mode_min,
                                       const int mode_max_inclusive) {
@@ -2311,15 +2347,19 @@ Real BulkEMEnergyDiscreteAwDzIntegral(MeshData<Real> *md, const int mode_min,
 }
 
 Real BulkEMEnergyDiscreteAwDzModes12Hst(MeshData<Real> *md) {
-  return BulkEMEnergyDiscreteAwDzIntegral(md, 1, 2);
+  return BulkEMEnergyLegacyIntegral(md) -
+         BraneMixedIntegral(md, BraneMixedQuantity::MixedCz2) +
+         BulkEMEnergyDiscreteAwDzIntegral(md, 1, 2);
 }
 
 Real BulkEMEnergyDiscreteAwDzModes0123Hst(MeshData<Real> *md) {
-  return BulkEMEnergyDiscreteAwDzIntegral(md, 0, 3);
+  return BulkEMEnergyLegacyIntegral(md) -
+         BraneMixedIntegral(md, BraneMixedQuantity::MixedCz2) +
+         BulkEMEnergyDiscreteAwDzIntegral(md, 0, 3);
 }
 
 Real BulkEMEnergyExactCurrentCxzHst(MeshData<Real> *md) {
-  return BulkEMEnergyIntegral(md) -
+  return BulkEMEnergyLegacyIntegral(md) -
          BraneMixedIntegral(md, BraneMixedQuantity::MixedCx2) -
          BraneMixedIntegral(md, BraneMixedQuantity::MixedCz2) +
          CxEnergyExactCurrentSumAccumulatorHst(md) +
@@ -3729,6 +3769,8 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_cz_daw_dz2_energy_exact_current_sum", 0.0, true);
   pkg->AddParam<double>("diag/int_cz_dw_az2_energy_exact_current_sum", 0.0, true);
   pkg->AddParam<double>("diag/int_cz_cross_energy_exact_current_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_gradx_work_exact_node_sum", 0.0, true);
+  pkg->AddParam<double>("diag/int_aw_gradz_work_exact_node_sum", 0.0, true);
   pkg->AddParam<double>("diag/int_aw_gradx_power_mix_w0_local_gradient_discrete_sum", 0.0,
                         true);
   pkg->AddParam<double>("diag/int_aw_gradz_power_mix_w0_local_gradient_discrete_sum", 0.0,
@@ -4463,6 +4505,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       CzCrossEnergyExactCurrentSumAccumulatorHst,
       "m4d_int_cz_cross_energy_exact_current_sum"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwGradxWorkExactNodeSumAccumulatorHst,
+      "m4d_int_aw_gradx_work_exact_node_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, AwGradzWorkExactNodeSumAccumulatorHst,
+      "m4d_int_aw_gradz_work_exact_node_sum"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum,
       AwGradxPowerMixW0LocalGradientDiscreteSumAccumulatorHst,
       "m4d_int_aw_gradx_power_mix_w0_local_gradient_discrete_sum"));
@@ -4632,6 +4680,12 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
                                                     BulkEMEnergyHst,
                                                     "m4d_em_u_bulk"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    BulkEMEnergyLegacyHst,
+                                                    "m4d_em_u_bulk_legacy"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(parthenon::UserHistoryOperation::sum,
+                                                    BulkEMEnergyZBlockCorrectionHst,
+                                                    "m4d_em_u_bulk_zblock_correction"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, BulkEMEnergyExactCurrentCxzHst,
       "m4d_em_u_bulk_exact_current_cxz"));
