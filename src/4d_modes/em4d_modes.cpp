@@ -485,6 +485,14 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->Param<double>("em4d/response_w0_local_mode1_phase");
   const Real response_w0_local_mode1_omega =
       modes_pkg->Param<double>("em4d/response_w0_local_mode1_omega");
+  const Real response_w0_local_gate_t_on =
+      modes_pkg->Param<double>("em4d/response_w0_local_gate_t_on");
+  const Real response_w0_local_gate_t_off =
+      modes_pkg->Param<double>("em4d/response_w0_local_gate_t_off");
+  const Real response_w0_local_gate_period =
+      modes_pkg->Param<double>("em4d/response_w0_local_gate_period");
+  const Real response_w0_local_gate_duty =
+      modes_pkg->Param<double>("em4d/response_w0_local_gate_duty");
   const Real response_w0_local_mode2_amp =
       modes_pkg->Param<double>("em4d/response_w0_local_mode2_amp");
   const Real response_w0_local_mode2_kx =
@@ -649,6 +657,28 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
           ? (response_w0_geometry_shift_gain * response_w0 * response_w0 * inv_lambda4)
           : 0.0;
   const Real response_local_time = tm.time + (0.5 * dt);
+  const auto response_w0_local_gate = [&](const Real t) -> Real {
+    if (t < response_w0_local_gate_t_on) {
+      return 0.0;
+    }
+    if ((response_w0_local_gate_t_off >= response_w0_local_gate_t_on) &&
+        (t > response_w0_local_gate_t_off)) {
+      return 0.0;
+    }
+    if ((response_w0_local_gate_period > 0.0) && (response_w0_local_gate_duty < 1.0)) {
+      const Real duty = std::clamp(response_w0_local_gate_duty, 0.0, 1.0);
+      if (duty <= 0.0) {
+        return 0.0;
+      }
+      const Real phase =
+          std::fmod(std::max(t - response_w0_local_gate_t_on, 0.0),
+                    response_w0_local_gate_period);
+      if (phase > (duty * response_w0_local_gate_period)) {
+        return 0.0;
+      }
+    }
+    return 1.0;
+  };
 
   // Build conservative connection matrices for dynamic-basis mixing.
   // - w0 path: adjacent-mode antisymmetric connection.
@@ -1082,6 +1112,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
           Real response_w0_local_dx = 0.0;
           Real response_w0_local_dz = 0.0;
           if (response_w0_local_enable) {
+            const Real response_w0_local_gate_factor =
+                response_w0_local_gate(response_local_time);
             const Real x = coords.Xc<1>(i);
             const Real z = has_z ? coords.Xc<3>(k) : 0.0;
             const Real phase1 = (response_w0_local_mode1_kx * x) +
@@ -1092,25 +1124,33 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                                 (response_w0_local_mode2_kz * z) +
                                 response_w0_local_mode2_phase +
                                 (response_w0_local_mode2_omega * response_local_time);
-            response_w0_local_mode1 = response_w0_local_mode1_amp * std::sin(phase1);
-            response_w0_local_mode2 = response_w0_local_mode2_amp * std::sin(phase2);
+            response_w0_local_mode1 =
+                response_w0_local_gate_factor * response_w0_local_mode1_amp * std::sin(phase1);
+            response_w0_local_mode2 =
+                response_w0_local_gate_factor * response_w0_local_mode2_amp * std::sin(phase2);
             response_w0_local = response_w0_local_mode1 + response_w0_local_mode2;
             response_w0_local_dot =
-                (response_w0_local_mode1_amp * response_w0_local_mode1_omega *
+                (response_w0_local_gate_factor * response_w0_local_mode1_amp *
+                 response_w0_local_mode1_omega *
                  std::cos(phase1)) +
-                (response_w0_local_mode2_amp * response_w0_local_mode2_omega *
+                (response_w0_local_gate_factor * response_w0_local_mode2_amp *
+                 response_w0_local_mode2_omega *
                  std::cos(phase2));
             response_w0_local_mode1_dx =
-                response_w0_local_mode1_amp * response_w0_local_mode1_kx *
+                response_w0_local_gate_factor * response_w0_local_mode1_amp *
+                response_w0_local_mode1_kx *
                 std::cos(phase1);
             response_w0_local_mode1_dz =
-                response_w0_local_mode1_amp * response_w0_local_mode1_kz *
+                response_w0_local_gate_factor * response_w0_local_mode1_amp *
+                response_w0_local_mode1_kz *
                 std::cos(phase1);
             response_w0_local_mode2_dx =
-                response_w0_local_mode2_amp * response_w0_local_mode2_kx *
+                response_w0_local_gate_factor * response_w0_local_mode2_amp *
+                response_w0_local_mode2_kx *
                 std::cos(phase2);
             response_w0_local_mode2_dz =
-                response_w0_local_mode2_amp * response_w0_local_mode2_kz *
+                response_w0_local_gate_factor * response_w0_local_mode2_amp *
+                response_w0_local_mode2_kz *
                 std::cos(phase2);
             response_w0_local_dx =
                 response_w0_local_mode1_dx + response_w0_local_mode2_dx;
@@ -1218,6 +1258,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
 
             const Real x_eval = coords.Xc<1>(ii);
             const Real z_eval = has_z ? coords.Xc<3>(kk) : 0.0;
+            const Real response_w0_local_gate_factor =
+                response_w0_local_gate(response_local_time);
             const Real phase1_eval = (response_w0_local_mode1_kx * x_eval) +
                                      (response_w0_local_mode1_kz * z_eval) +
                                      response_w0_local_mode1_phase +
@@ -1227,16 +1269,20 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
                                      response_w0_local_mode2_phase +
                                      (response_w0_local_mode2_omega * response_local_time);
             const Real mode1_dx_eval =
-                response_w0_local_mode1_amp * response_w0_local_mode1_kx *
+                response_w0_local_gate_factor * response_w0_local_mode1_amp *
+                response_w0_local_mode1_kx *
                 std::cos(phase1_eval);
             const Real mode1_dz_eval =
-                response_w0_local_mode1_amp * response_w0_local_mode1_kz *
+                response_w0_local_gate_factor * response_w0_local_mode1_amp *
+                response_w0_local_mode1_kz *
                 std::cos(phase1_eval);
             const Real mode2_dx_eval =
-                response_w0_local_mode2_amp * response_w0_local_mode2_kx *
+                response_w0_local_gate_factor * response_w0_local_mode2_amp *
+                response_w0_local_mode2_kx *
                 std::cos(phase2_eval);
             const Real mode2_dz_eval =
-                response_w0_local_mode2_amp * response_w0_local_mode2_kz *
+                response_w0_local_gate_factor * response_w0_local_mode2_amp *
+                response_w0_local_mode2_kz *
                 std::cos(phase2_eval);
             const Real total_dx_eval = mode1_dx_eval + mode2_dx_eval;
             const Real total_dz_eval = mode1_dz_eval + mode2_dz_eval;

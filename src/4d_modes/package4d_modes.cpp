@@ -141,6 +141,14 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
       pin->GetOrAddReal("modes4d", "response_w0_local_mode1_phase", 0.0);
   const double response_w0_local_mode1_omega =
       pin->GetOrAddReal("modes4d", "response_w0_local_mode1_omega", 0.0);
+  const double response_w0_local_gate_t_on =
+      pin->GetOrAddReal("modes4d", "response_w0_local_gate_t_on", 0.0);
+  const double response_w0_local_gate_t_off =
+      pin->GetOrAddReal("modes4d", "response_w0_local_gate_t_off", -1.0);
+  const double response_w0_local_gate_period =
+      pin->GetOrAddReal("modes4d", "response_w0_local_gate_period", 0.0);
+  const double response_w0_local_gate_duty =
+      pin->GetOrAddReal("modes4d", "response_w0_local_gate_duty", 1.0);
   const double response_w0_local_mode2_amp =
       pin->GetOrAddReal("modes4d", "response_w0_local_mode2_amp", 0.0);
   const double response_w0_local_mode2_kx =
@@ -392,6 +400,11 @@ std::shared_ptr<parthenon::StateDescriptor> Initialize(parthenon::ParameterInput
   pkg->AddParam<double>("em4d/response_w0_local_mode1_kz", response_w0_local_mode1_kz);
   pkg->AddParam<double>("em4d/response_w0_local_mode1_phase", response_w0_local_mode1_phase);
   pkg->AddParam<double>("em4d/response_w0_local_mode1_omega", response_w0_local_mode1_omega);
+  pkg->AddParam<double>("em4d/response_w0_local_gate_t_on", response_w0_local_gate_t_on);
+  pkg->AddParam<double>("em4d/response_w0_local_gate_t_off", response_w0_local_gate_t_off);
+  pkg->AddParam<double>("em4d/response_w0_local_gate_period",
+                        response_w0_local_gate_period);
+  pkg->AddParam<double>("em4d/response_w0_local_gate_duty", response_w0_local_gate_duty);
   pkg->AddParam<double>("em4d/response_w0_local_mode2_amp", response_w0_local_mode2_amp);
   pkg->AddParam<double>("em4d/response_w0_local_mode2_kx", response_w0_local_mode2_kx);
   pkg->AddParam<double>("em4d/response_w0_local_mode2_kz", response_w0_local_mode2_kz);
