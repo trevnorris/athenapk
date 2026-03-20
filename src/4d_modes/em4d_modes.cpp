@@ -493,6 +493,8 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
       modes_pkg->Param<double>("em4d/response_w0_local_gate_period");
   const Real response_w0_local_gate_duty =
       modes_pkg->Param<double>("em4d/response_w0_local_gate_duty");
+  const Real response_w0_local_gate_ramp =
+      modes_pkg->Param<double>("em4d/response_w0_local_gate_ramp");
   const Real response_w0_local_mode2_amp =
       modes_pkg->Param<double>("em4d/response_w0_local_mode2_amp");
   const Real response_w0_local_mode2_kx =
@@ -665,19 +667,41 @@ void SourceUnsplit(MeshData<Real> *md, const parthenon::SimTime &tm, const Real 
         (t > response_w0_local_gate_t_off)) {
       return 0.0;
     }
+    Real gate_start = response_w0_local_gate_t_on;
+    Real gate_end = response_w0_local_gate_t_off;
+    bool has_gate_end = (response_w0_local_gate_t_off >= response_w0_local_gate_t_on);
     if ((response_w0_local_gate_period > 0.0) && (response_w0_local_gate_duty < 1.0)) {
       const Real duty = std::clamp(response_w0_local_gate_duty, 0.0, 1.0);
       if (duty <= 0.0) {
         return 0.0;
       }
-      const Real phase =
-          std::fmod(std::max(t - response_w0_local_gate_t_on, 0.0),
-                    response_w0_local_gate_period);
-      if (phase > (duty * response_w0_local_gate_period)) {
+      const Real phase = std::fmod(std::max(t - response_w0_local_gate_t_on, 0.0),
+                                   response_w0_local_gate_period);
+      const Real active_duration = duty * response_w0_local_gate_period;
+      if (phase > active_duration) {
         return 0.0;
       }
+      gate_start = t - phase;
+      gate_end = gate_start + active_duration;
+      has_gate_end = true;
     }
-    return 1.0;
+    if (response_w0_local_gate_ramp <= 0.0) {
+      return 1.0;
+    }
+    const auto smoothstep01 = [](const Real x) -> Real {
+      const Real y = std::clamp(x, 0.0, 1.0);
+      return y * y * (3.0 - 2.0 * y);
+    };
+    Real gate_weight = 1.0;
+    if (t < gate_start + response_w0_local_gate_ramp) {
+      gate_weight = std::min(
+          gate_weight, smoothstep01((t - gate_start) / response_w0_local_gate_ramp));
+    }
+    if (has_gate_end && (t > gate_end - response_w0_local_gate_ramp)) {
+      gate_weight = std::min(
+          gate_weight, smoothstep01((gate_end - t) / response_w0_local_gate_ramp));
+    }
+    return gate_weight;
   };
 
   // Build conservative connection matrices for dynamic-basis mixing.
