@@ -636,6 +636,11 @@ Real ResponseW0LocalAbsHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/response_w0_local_abs");
 }
 
+Real ResponseW0LocalHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local");
+}
+
 Real ResponseW0LocalMode1AbsHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/response_w0_local_mode1_abs");
@@ -651,6 +656,11 @@ Real ResponseW0LocalDotAbsHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/response_w0_local_dot_abs");
 }
 
+Real ResponseW0LocalDotHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_dot");
+}
+
 Real ResponseW0LocalDxAbsHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/response_w0_local_dx_abs");
@@ -659,6 +669,31 @@ Real ResponseW0LocalDxAbsHst(MeshData<Real> *md) {
 Real ResponseW0LocalDzAbsHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/response_w0_local_dz_abs");
+}
+
+Real ResponseW0LocalDzHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_dz");
+}
+
+Real ResponseW0LocalGateHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_local_gate");
+}
+
+Real ResponseW0DotLocalTotalHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_dot_local_total");
+}
+
+Real ResponseW0MixRateDotHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_mix_rate_dot");
+}
+
+Real ResponseW0MixRateGradHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_w0_mix_rate_grad");
 }
 
 Real ResponseW0LocalMode1DxAbsHst(MeshData<Real> *md) {
@@ -719,6 +754,11 @@ Real ResponseLambdaFractionHst(MeshData<Real> *md) {
 Real ResponseLambdaDotHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/response_lambda_dot");
+}
+
+Real ResponseLambdaMixRateHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/response_lambda_mix_rate");
 }
 
 Real ResponseLambdaDriveHst(MeshData<Real> *md) {
@@ -801,9 +841,19 @@ Real ResponseW0DynamicMixAAbsAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_response_w0_dynamic_mix_a_abs");
 }
 
+Real ResponseW0DynamicMixAAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_w0_dynamic_mix_a");
+}
+
 Real ResponseW0DynamicMixPiAbsAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_response_w0_dynamic_mix_pi_abs");
+}
+
+Real ResponseW0DynamicMixPiAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_w0_dynamic_mix_pi");
 }
 
 Real ResponseW0LocalGradientMixAAbsAccumulatorHst(MeshData<Real> *md) {
@@ -811,9 +861,19 @@ Real ResponseW0LocalGradientMixAAbsAccumulatorHst(MeshData<Real> *md) {
   return pkg->Param<double>("diag/int_response_w0_local_gradient_mix_a_abs");
 }
 
+Real ResponseW0LocalGradientMixAAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_w0_local_gradient_mix_a");
+}
+
 Real ResponseW0LocalGradientMixPiAbsAccumulatorHst(MeshData<Real> *md) {
   auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
   return pkg->Param<double>("diag/int_response_w0_local_gradient_mix_pi_abs");
+}
+
+Real ResponseW0LocalGradientMixPiAccumulatorHst(MeshData<Real> *md) {
+  auto pkg = md->GetBlockData(0)->GetBlockPointer()->packages.Get("modes4d");
+  return pkg->Param<double>("diag/int_response_w0_local_gradient_mix_pi");
 }
 
 Real ResponseW0LocalGradientMixRateAbsAccumulatorHst(MeshData<Real> *md) {
@@ -3638,12 +3698,19 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/response_w0_geometry_center", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_lambda_fraction", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_lambda_eff", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_abs", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_mode1_abs", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_mode2_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_dot", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_dot_abs", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_dx_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_dz", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_dz_abs", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_local_gate", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_dot_local_total", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_mix_rate_dot", 0.0, true);
+  pkg->AddParam<double>("diag/response_w0_mix_rate_grad", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_mode1_dx_abs", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_mode1_dz_abs", 0.0, true);
   pkg->AddParam<double>("diag/response_w0_local_mode1_grad_abs", 0.0, true);
@@ -3657,6 +3724,7 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<bool>("diag/response_lambda_initialized", false, true);
   pkg->AddParam<double>("diag/response_lambda_fraction", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_dot", 0.0, true);
+  pkg->AddParam<double>("diag/response_lambda_mix_rate", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_drive", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_drive_reservoir", 0.0, true);
   pkg->AddParam<double>("diag/response_lambda_drive_bridge", 0.0, true);
@@ -3675,9 +3743,13 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   pkg->AddParam<double>("diag/int_response_lambda_power_damping", 0.0, true);
   pkg->AddParam<double>("diag/int_response_lambda_power_net", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_dynamic_mix_a_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_w0_dynamic_mix_a", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_dynamic_mix_pi_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_w0_dynamic_mix_pi", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_a_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_a", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_pi_abs", 0.0, true);
+  pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_pi", 0.0, true);
   pkg->AddParam<double>("diag/int_response_w0_local_gradient_mix_rate_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_lambda_dynamic_mix_a_abs", 0.0, true);
   pkg->AddParam<double>("diag/int_response_lambda_dynamic_mix_pi_abs", 0.0, true);
@@ -4115,6 +4187,9 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum, ResponseW0LocalAbsHst,
       "m4d_response_w0_local_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalHst,
+      "m4d_response_w0_local"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0LocalMode1AbsHst,
       "m4d_response_w0_local_mode1_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
@@ -4124,11 +4199,29 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum, ResponseW0LocalDotAbsHst,
       "m4d_response_w0_local_dot_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalDotHst,
+      "m4d_response_w0_local_dot"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0LocalDxAbsHst,
       "m4d_response_w0_local_dx_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0LocalDzAbsHst,
       "m4d_response_w0_local_dz_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalDzHst,
+      "m4d_response_w0_local_dz"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0LocalGateHst,
+      "m4d_response_w0_local_gate"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0DotLocalTotalHst,
+      "m4d_response_w0_dot_local_total"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0MixRateDotHst,
+      "m4d_response_w0_mix_rate_dot"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0MixRateGradHst,
+      "m4d_response_w0_mix_rate_grad"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0LocalMode1DxAbsHst,
       "m4d_response_w0_local_mode1_dx_abs"));
@@ -4165,6 +4258,9 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseLambdaDotHst,
       "m4d_response_lambda_dot"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseLambdaMixRateHst,
+      "m4d_response_lambda_mix_rate"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseLambdaDriveHst,
       "m4d_response_lambda_drive"));
@@ -4217,16 +4313,30 @@ void RegisterDiagnostics(parthenon::StateDescriptor *pkg) {
       parthenon::UserHistoryOperation::sum, ResponseW0DynamicMixAAbsAccumulatorHst,
       "m4d_int_response_w0_dynamic_mix_a_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0DynamicMixAAccumulatorHst,
+      "m4d_int_response_w0_dynamic_mix_a"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum, ResponseW0DynamicMixPiAbsAccumulatorHst,
       "m4d_int_response_w0_dynamic_mix_pi_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum, ResponseW0DynamicMixPiAccumulatorHst,
+      "m4d_int_response_w0_dynamic_mix_pi"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum,
       ResponseW0LocalGradientMixAAbsAccumulatorHst,
       "m4d_int_response_w0_local_gradient_mix_a_abs"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum,
+      ResponseW0LocalGradientMixAAccumulatorHst,
+      "m4d_int_response_w0_local_gradient_mix_a"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
       ResponseW0LocalGradientMixPiAbsAccumulatorHst,
       "m4d_int_response_w0_local_gradient_mix_pi_abs"));
+  hst_vars.emplace_back(parthenon::HistoryOutputVar(
+      parthenon::UserHistoryOperation::sum,
+      ResponseW0LocalGradientMixPiAccumulatorHst,
+      "m4d_int_response_w0_local_gradient_mix_pi"));
   hst_vars.emplace_back(parthenon::HistoryOutputVar(
       parthenon::UserHistoryOperation::sum,
       ResponseW0LocalGradientMixRateAbsAccumulatorHst,
